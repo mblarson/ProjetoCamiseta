@@ -11,8 +11,8 @@ export const Button: React.FC<{
 }> = ({ onClick, type = 'button', variant = 'primary', className = '', children, disabled }) => {
   const base = "font-manrope font-bold uppercase text-xs tracking-widest px-8 py-3 rounded-full transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed";
   const variants = {
-    primary: "bg-primary text-white shadow-lg hover:shadow-primary/30",
-    outline: "border border-primary/30 text-primary hover:bg-primary/10",
+    primary: "bg-primary text-[#0A192F] hover:brightness-95",
+    outline: "border border-primary text-primary hover:bg-primary-light",
     danger: "bg-red-500 text-white hover:bg-red-600"
   };
   

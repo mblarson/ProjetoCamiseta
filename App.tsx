@@ -11,7 +11,6 @@ import { HomeMenu } from './components/HomeMenu';
 import { OrderSection } from './components/OrderSection';
 import { ConsultSection } from './components/ConsultSection';
 import { AdminPanel } from './components/AdminPanel';
-import { SplashScreen } from './components/SplashScreen';
 
 type ConnectionState = 'connecting' | 'connected' | 'error' | 'api-disabled';
 
@@ -22,7 +21,6 @@ const App: React.FC = () => {
   const [stats, setStats] = useState<Stats | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
-  const [showSplash, setShowSplash] = useState(true);
 
   const initFirebase = useCallback(async () => {
     try {
@@ -73,12 +71,8 @@ const App: React.FC = () => {
     setActiveSection(Section.Order);
   };
 
-  if (showSplash) {
-    return <SplashScreen onAccess={() => setShowSplash(false)} loading={connection === 'connecting'} />;
-  }
-
   return (
-    <div className="min-h-screen pb-20 bg-background selection:bg-primary/30 selection:text-primary">
+    <div className="min-h-screen pb-20 bg-background selection:bg-primary selection:text-[#0A192F]">
       <Header isAdmin={isAdmin} onAdminClick={() => setActiveSection(Section.Admin)} />
       
       <main className="container mx-auto px-6 pt-32 animate-in fade-in duration-700">

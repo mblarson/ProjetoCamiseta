@@ -292,7 +292,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
             <button 
               onClick={handleAiAction} 
               disabled={isAnalysing} 
-              className="w-full md:w-auto card px-6 py-4 flex items-center justify-center gap-4 border border-primary/20 hover:bg-primary/5 transition-all group"
+              className="w-full md:w-auto card px-6 py-4 flex items-center justify-center gap-4 border border-primary/20 hover:bg-primary-light transition-all group"
             >
               <i className="fas fa-sparkles text-primary group-hover:rotate-12 transition-transform"></i>
               <span className="font-black tracking-[0.15em] text-[10px] uppercase">
@@ -302,9 +302,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
           </div>
 
           {aiAnalysis && (
-            <Card className="border-primary/30 bg-primary/5 border-dashed">
+            <Card className="border-primary/30 bg-primary-light border-dashed">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
                   <i className="fas fa-robot text-primary text-sm"></i>
                 </div>
                 <h4 className="font-black text-[10px] uppercase tracking-widest text-primary">Insights da Inteligência Artificial</h4>
@@ -380,7 +380,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
                               setRegisterPaymentOrder(order);
                               setPaymentAmount('');
                             }}
-                            className="bg-primary-light border border-primary/20 text-primary hover:bg-primary hover:text-white transition-all px-6 py-3 rounded-full text-[9px] font-black uppercase tracking-widest active:scale-95"
+                            className="bg-primary-light border border-primary/20 text-primary hover:bg-primary hover:text-[#0A192F] transition-all px-6 py-3 rounded-full text-[9px] font-black uppercase tracking-widest active:scale-95"
                           >
                             GERENCIAR
                           </button>
@@ -414,7 +414,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
                   <button 
                     key={loc} 
                     onClick={() => setLocalFilter(loc as any)}
-                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${localFilter === loc ? 'bg-primary border-primary text-white' : 'border-border-light text-text-secondary hover:border-primary/30'}`}
+                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${localFilter === loc ? 'bg-primary border-primary text-[#0A192F]' : 'border-border-light text-text-secondary hover:border-primary/30'}`}
                   >
                     {loc}
                   </button>
@@ -532,7 +532,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
           </div>
 
           <button 
-            className="w-full h-16 rounded-full font-black tracking-[0.2em] text-white uppercase text-sm bg-primary hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-60" 
+            className="w-full h-16 rounded-full font-black tracking-[0.2em] text-[#0A192F] uppercase text-sm bg-primary hover:brightness-90 active:scale-[0.98] transition-all disabled:opacity-60" 
             onClick={handleRegisterPayment} 
             disabled={isProcessingPayment || !paymentAmount}
           >
@@ -713,9 +713,9 @@ const EventActionCard: React.FC<{ icon: string, title: string, desc: string, onC
   <button 
     onClick={onClick}
     disabled={loading}
-    className={`card p-8 text-left group relative overflow-hidden flex flex-row items-center gap-6 w-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${variant === 'danger' ? 'hover:border-red-500/50 hover:bg-red-500/5' : variant === 'success' ? 'hover:border-green-500/50 hover:bg-green-500/5' : 'hover:border-primary/50 hover:bg-primary/5'}`}
+    className={`card p-8 text-left group relative overflow-hidden flex flex-row items-center gap-6 w-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${variant === 'danger' ? 'hover:border-red-500/50 hover:bg-red-500/5' : variant === 'success' ? 'hover:border-green-500/50 hover:bg-green-500/5' : 'hover:border-primary/50 hover:bg-primary-light'}`}
   >
-    <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-2xl transition-all duration-500 shrink-0 group-hover:scale-110 group-hover:rotate-3 ${variant === 'danger' ? 'bg-red-500/10 text-red-500' : variant === 'success' ? 'bg-green-500/10 text-green-500' : 'bg-primary/10 text-primary'}`}>
+    <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-2xl transition-all duration-500 shrink-0 group-hover:scale-110 group-hover:rotate-3 ${variant === 'danger' ? 'bg-red-500/10 text-red-500' : variant === 'success' ? 'bg-green-500/10 text-green-500' : 'bg-primary-light text-primary'}`}>
       <i className={`fas ${loading ? 'fa-circle-notch fa-spin' : icon}`}></i>
     </div>
     <div className="flex-1">
@@ -741,7 +741,8 @@ const OrderListItem: React.FC<{
   shirtCount: number,
   displaySetor: string
 }> = ({ order, isExpanded, onToggle, onPDF, onDelete, shirtCount, displaySetor }) => {
-  const whatsappUrl = `https://wa.me/${order.contato.replace(/\D/g, '')}`;
+  const whatsappMessage = "Prezado lider, segue em anexo o último relatório de seu pedido de camisetas para o Jubileu da Umademats. Por gentileza, analise o mesmo e nos confirme se está correto para que possamos encaminhar para Produção.";
+  const whatsappUrl = `https://wa.me/${order.contato.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMessage)}`;
 
   return (
     <div className={`card overflow-hidden transition-all duration-300 ${isExpanded ? 'ring-1 ring-primary/40 shadow-lg' : 'hover:bg-background/80'}`}>
@@ -808,7 +809,7 @@ const OrderListItem: React.FC<{
               </button>
               <button 
                 onClick={(e) => { e.stopPropagation(); onPDF(); }} 
-                className="flex items-center justify-center gap-2 px-4 py-4 rounded-full bg-primary text-white text-[10px] font-black uppercase hover:brightness-110 transition-all w-full"
+                className="flex items-center justify-center gap-2 px-4 py-4 rounded-full bg-primary text-[#0A192F] text-[10px] font-black uppercase hover:brightness-95 transition-all w-full"
               >
                 <i className="fas fa-file-pdf"></i>
                 <span className="hidden sm:inline">Baixar Pedido (PDF)</span>

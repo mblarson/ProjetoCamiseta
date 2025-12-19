@@ -13,12 +13,12 @@ export const generateOrderPDF = (order: Order) => {
   };
 
   // Main Colors
-  const primaryColor = '#6B46C1'; // New Primary Purple
-  const textColor = '#1A202C'; // New Text Primary
+  const primaryColor = '#64FFDA'; // New Primary Teal
+  const textColor = '#1A202C'; // Standard Dark Text for PDF Body
 
   // Cabeçalho
   doc.setFontSize(20);
-  doc.setTextColor(primaryColor);
+  doc.setTextColor(textColor); // Use dark text for title
   doc.text("UMADEMATS - JUBILEU DE OURO", 105, 20, { align: "center" });
   
   doc.setFontSize(14);
@@ -59,7 +59,7 @@ export const generateOrderPDF = (order: Order) => {
     head: [['Cor', 'Categoria', 'Tamanho', 'Qtd']],
     body: tableData,
     theme: 'striped',
-    headStyles: { fillColor: primaryColor },
+    headStyles: { fillColor: primaryColor, textColor: '#0A192F' }, // Teal background, navy text
   });
 
   const finalY = (doc as any).lastAutoTable.finalY + 10;
