@@ -1,0 +1,49 @@
+
+/* Base Styles */
+body {
+  background-color: #F4F7F5;
+  color: #212121;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Card Style (Replaces .glass) */
+.card {
+  background: #FFFFFF;
+  border-radius: 1.25rem; /* 20px */
+  border: 1px solid #E0E0E0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Remove old gold-text effect */
+.gold-text {
+  color: #2E7D32; /* New primary color */
+}
+
+/* Force Hide Number Input Spinners */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none !important; 
+  margin: 0 !important; 
+}
+
+input[type=number] {
+  -moz-appearance: textfield !important;
+  appearance: none !important;
+}
+
+/* Scroll Customization */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F4F7F5;
+}
+::-webkit-scrollbar-thumb {
+  background: #E0E0E0;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #BDBDBD;
+}
