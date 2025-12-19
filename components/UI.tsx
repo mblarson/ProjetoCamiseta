@@ -39,7 +39,7 @@ export const Input: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { lab
     {label && <label className="text-[10px] uppercase font-black tracking-widest text-primary/70">{label}</label>}
     <input 
       {...props} 
-      className="bg-background border border-border-light rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-primary transition-colors placeholder:text-text-secondary/60"
+      className={`bg-background border border-border-light rounded-xl px-4 py-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors placeholder:text-text-secondary/60 ${props.className || ''}`}
     />
   </div>
 );
@@ -48,7 +48,7 @@ export const Modal: React.FC<{ isOpen: boolean, onClose: () => void, title: stri
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="card w-full max-w-xl p-8 max-h-[90vh] overflow-y-auto relative">
+      <div className="card w-full max-w-xl p-8 max-h-[90vh] overflow-y-auto relative animate-in zoom-in-95 duration-300">
         <button onClick={onClose} className="absolute top-6 right-6 text-text-secondary hover:text-text-primary transition-colors">
           <i className="fas fa-times text-xl"></i>
         </button>

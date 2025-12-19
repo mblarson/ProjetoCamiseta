@@ -1,8 +1,8 @@
 
 /* Base Styles */
 body {
-  background-color: #F4F7F5;
-  color: #212121;
+  background-color: #F5F6FA; /* New background color */
+  color: #1A202C; /* New text color */
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -11,14 +11,9 @@ body {
 /* Card Style (Replaces .glass) */
 .card {
   background: #FFFFFF;
-  border-radius: 1.25rem; /* 20px */
-  border: 1px solid #E0E0E0;
+  border-radius: 1.5rem; /* 24px - More rounded */
+  border: 1px solid #E2E8F0; /* New border color */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-/* Remove old gold-text effect */
-.gold-text {
-  color: #2E7D32; /* New primary color */
 }
 
 /* Force Hide Number Input Spinners */
@@ -38,12 +33,12 @@ input[type=number] {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #F4F7F5;
+  background: #F5F6FA; /* New background color */
 }
 ::-webkit-scrollbar-thumb {
-  background: #E0E0E0;
+  background: #CBD5E0; /* New scrollbar color */
   border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #BDBDBD;
+  background: #A0AEC0; /* New scrollbar hover color */
 }

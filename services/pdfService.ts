@@ -12,13 +12,17 @@ export const generateOrderPDF = (order: Order) => {
       : order.setor;
   };
 
+  // Main Colors
+  const primaryColor = '#6B46C1'; // New Primary Purple
+  const textColor = '#1A202C'; // New Text Primary
+
   // Cabeçalho
   doc.setFontSize(20);
-  doc.setTextColor(46, 125, 50); // New Primary Green
+  doc.setTextColor(primaryColor);
   doc.text("UMADEMATS - JUBILEU DE OURO", 105, 20, { align: "center" });
   
   doc.setFontSize(14);
-  doc.setTextColor(33, 33, 33); // New Text Primary
+  doc.setTextColor(textColor);
   doc.text(`PEDIDO #${order.numPedido}`, 105, 30, { align: "center" });
 
   // Informações do Líder
@@ -55,7 +59,7 @@ export const generateOrderPDF = (order: Order) => {
     head: [['Cor', 'Categoria', 'Tamanho', 'Qtd']],
     body: tableData,
     theme: 'striped',
-    headStyles: { fillColor: [46, 125, 50] }, // New Primary Green
+    headStyles: { fillColor: primaryColor },
   });
 
   const finalY = (doc as any).lastAutoTable.finalY + 10;

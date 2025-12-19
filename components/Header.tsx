@@ -22,7 +22,7 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin, onAdminClick }) => (
         </div>
       </div>
       {isAdmin && (
-        <Button variant="outline" className="px-4 py-2 text-[9px]" onClick={onAdminClick}>
+        <Button variant="outline" className="px-4 py-2 text-[9px] h-10" onClick={onAdminClick}>
           <i className="fas fa-user-shield"></i> PAINEL ADM
         </Button>
       )}

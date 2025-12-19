@@ -94,7 +94,7 @@ export const ConsultSection: React.FC<ConsultSectionProps> = ({ onEdit }) => {
               value={id} 
               onChange={e => setId(e.target.value.toUpperCase())}
               disabled={loading}
-              className="text-center font-black tracking-widest uppercase h-14"
+              className="text-center font-black tracking-widest uppercase h-14 rounded-2xl"
             />
             <Input 
               label="E-MAIL CADASTRADO" 
@@ -103,7 +103,7 @@ export const ConsultSection: React.FC<ConsultSectionProps> = ({ onEdit }) => {
               value={email} 
               onChange={e => setEmail(e.target.value)}
               disabled={loading}
-              className="text-center font-bold h-14"
+              className="text-center font-bold h-14 rounded-2xl"
             />
           </div>
 

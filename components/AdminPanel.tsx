@@ -63,6 +63,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // States for price change modal
+  const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
+  const [newPrice, setNewPrice] = useState('');
+
+
   useEffect(() => {
     if (tab === AdminTab.Orders || tab === AdminTab.Payments) loadOrders();
     if (tab === AdminTab.Event) loadConfig();
@@ -456,10 +461,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
               desc={config.valorCamiseta.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}
               highlightDesc
               onClick={() => {
-                const val = prompt("Informe o novo valor da camiseta (ex: 35.00):", config.valorCamiseta.toString());
-                if (val && !isNaN(parseFloat(val))) {
-                  setSecurityModal({ type: 'price', password: '', newValue: val });
-                }
+                setNewPrice(config.valorCamiseta.toFixed(2));
+                setIsPriceModalOpen(true);
               }}
             />
 
@@ -587,6 +590,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
           </div>
         </div>
       </Modal>
+      
+      {/* Modal para alterar preço */}
+      <Modal isOpen={isPriceModalOpen} onClose={() => setIsPriceModalOpen(false)} title="Alterar Valor da Camiseta">
+        <div className="space-y-6">
+          <div className="p-8 bg-background border border-border-light rounded-3xl">
+            <Input 
+              label="NOVO VALOR UNITÁRIO (R$)"
+              type="number"
+              step="0.01"
+              value={newPrice}
+              onChange={e => setNewPrice(e.target.value)}
+              placeholder="Ex: 35.00"
+              className="text-center text-2xl font-black h-16"
+              autoFocus
+            />
+          </div>
+          <div className="flex gap-4">
+            <Button variant="outline" className="flex-1 h-16" onClick={() => setIsPriceModalOpen(false)}>CANCELAR</Button>
+            <Button 
+              className="flex-1 h-16"
+              onClick={() => {
+                if (newPrice && !isNaN(parseFloat(newPrice)) && parseFloat(newPrice) > 0) {
+                  setIsPriceModalOpen(false);
+                  setSecurityModal({ type: 'price', password: '', newValue: newPrice });
+                } else {
+                  alert("Por favor, insira um valor numérico válido e maior que zero.");
+                }
+              }}
+              disabled={!newPrice || isNaN(parseFloat(newPrice)) || parseFloat(newPrice) <= 0}
+            >
+              SALVAR
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Outros Modais (Segurança, Exclusão) */}
       <Modal isOpen={!!securityModal.type} onClose={() => setSecurityModal({ type: null, password: '' })} title="Verificação Mestre">
@@ -675,7 +713,7 @@ const EventActionCard: React.FC<{ icon: string, title: string, desc: string, onC
   <button 
     onClick={onClick}
     disabled={loading}
-    className={`card p-8 text-left group relative overflow-hidden flex flex-row items-center gap-6 w-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${variant === 'danger' ? 'hover:border-red-500/50 hover:bg-red-500/5' : variant === 'success' ? 'hover:border-green-500/50 hover:bg-green-500/5' : 'hover:border-primary/50 hover:bg-primary/5'}`}
+    className={`card p-8 text-left group relative overflow-hidden flex flex-row items-center gap-6 w-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${variant === 'danger' ? 'hover:border-red-500/50 hover:bg-red-500/5' : variant === 'success' ? 'hover:border-green-500/50 hover:bg-green-500/5' : 'hover:border-primary/50 hover:bg-primary/5'}`}
   >
     <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-2xl transition-all duration-500 shrink-0 group-hover:scale-110 group-hover:rotate-3 ${variant === 'danger' ? 'bg-red-500/10 text-red-500' : variant === 'success' ? 'bg-green-500/10 text-green-500' : 'bg-primary/10 text-primary'}`}>
       <i className={`fas ${loading ? 'fa-circle-notch fa-spin' : icon}`}></i>
@@ -762,7 +800,7 @@ const OrderListItem: React.FC<{
             <div className="grid grid-cols-2 gap-4 pt-6 border-t border-border-light">
               <button 
                 onClick={(e) => { e.stopPropagation(); onDelete(); }} 
-                className="flex items-center justify-center gap-2 px-4 py-4 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] font-black uppercase hover:bg-red-500 hover:text-white transition-all w-full"
+                className="flex items-center justify-center gap-2 px-4 py-4 rounded-full bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] font-black uppercase hover:bg-red-500 hover:text-white transition-all w-full"
               >
                 <i className="fas fa-trash-alt"></i>
                 <span className="hidden sm:inline">Excluir Pedido</span>
@@ -770,7 +808,7 @@ const OrderListItem: React.FC<{
               </button>
               <button 
                 onClick={(e) => { e.stopPropagation(); onPDF(); }} 
-                className="flex items-center justify-center gap-2 px-4 py-4 rounded-xl bg-primary text-white text-[10px] font-black uppercase hover:brightness-110 transition-all w-full"
+                className="flex items-center justify-center gap-2 px-4 py-4 rounded-full bg-primary text-white text-[10px] font-black uppercase hover:brightness-110 transition-all w-full"
               >
                 <i className="fas fa-file-pdf"></i>
                 <span className="hidden sm:inline">Baixar Pedido (PDF)</span>

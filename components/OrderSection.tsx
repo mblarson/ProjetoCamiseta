@@ -134,19 +134,19 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
   if (step === 'success') {
     return (
       <div className="max-w-md mx-auto text-center py-10 animate-in zoom-in-95">
-        <div className="w-12 h-12 bg-green-500/20 text-green-500 rounded-xl flex items-center justify-center mx-auto mb-4">
-          <i className="fas fa-check text-xl"></i>
+        <div className="w-16 h-16 bg-green-500/20 text-green-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <i className="fas fa-check text-2xl"></i>
         </div>
-        <h2 className="text-xl font-black mb-1 text-text-primary">{initialOrder ? "Pedido Atualizado!" : "Pedido Realizado!"}</h2>
+        <h2 className="text-2xl font-black mb-1 text-text-primary">{initialOrder ? "Pedido Atualizado!" : "Pedido Realizado!"}</h2>
         <p className="text-[9px] text-primary/50 uppercase tracking-[0.2em] font-bold mb-6">Código de acompanhamento:</p>
         <div className="card p-5 mb-10">
-          <span className="text-2xl font-black text-text-primary tracking-widest">{orderId}</span>
+          <span className="text-3xl font-black text-text-primary tracking-widest">{orderId}</span>
         </div>
         <div className="flex justify-center w-full">
           <Button 
             onClick={() => onBackToHome ? onBackToHome() : window.location.reload()} 
             variant="outline" 
-            className="h-10 text-[8px] px-8"
+            className="h-12 text-[10px] px-8"
           >
             VOLTAR AO INÍCIO
           </Button>
@@ -163,7 +163,7 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
 
   return (
     <div className={`max-w-5xl mx-auto ${step === 'sizes' ? 'pb-48 sm:pb-72' : 'pb-20'}`}>
-      <div className="flex justify-between items-center mb-8 relative px-4">
+      <div className="flex justify-between items-center mb-12 relative px-4">
         <div className="absolute top-1/2 left-0 w-full h-px bg-border-light -z-10"></div>
         <StepIndicator num={1} active={step === 'info'} done={step !== 'info'} label="Identificação" />
         <StepIndicator num={2} active={step === 'sizes'} done={step === 'summary'} label="Tamanhos" />
@@ -190,7 +190,7 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
           {info.local === 'Capital' ? (
             <div className="flex flex-col gap-3">
               <label className="text-[10px] uppercase font-black tracking-[0.2em] text-primary">Setor</label>
-              <select required className="bg-background border border-border-light rounded-xl px-4 py-4 text-text-primary focus:outline-none focus:border-primary transition-all font-bold appearance-none" value={info.setor} onChange={e => setInfo({...info, setor: e.target.value})}>
+              <select required className="bg-background border border-border-light rounded-xl px-4 py-4 text-text-primary focus:outline-none focus:border-primary transition-all font-bold appearance-none h-[50px]" value={info.setor} onChange={e => setInfo({...info, setor: e.target.value})}>
                 <option value="">-- Selecione --</option>
                 {SETORES_CAPITAL.map(s => <option key={s} value={s}>SETOR {s}</option>)}
               </select>
@@ -215,15 +215,15 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
             <SizeGrid title="Babylook (Feminina)" sizes={ADULTO_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.babylook : terracota.babylook} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, babylook: { ...prev.babylook, [sz]: val } }))} />
             <SizeGrid title="Unissex (Masculina)" sizes={ADULTO_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.unissex : terracota.unissex} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, unissex: { ...prev.unissex, [sz]: val } }))} />
           </div>
-          <div className="fixed bottom-0 inset-x-0 bg-surface p-3 sm:p-7 z-[200] animate-in slide-in-from-bottom-full duration-500 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] border-t border-border-light">
+          <div className="fixed bottom-0 inset-x-0 bg-surface/80 backdrop-blur-lg p-3 sm:p-7 z-[200] animate-in slide-in-from-bottom-full duration-500 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] border-t border-border-light">
             <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-10">
               <div className="flex flex-row items-center justify-around sm:justify-start gap-6 sm:gap-14 w-full sm:w-auto text-text-primary">
                 <div className="flex flex-col items-center sm:items-start">
                   <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Valor Total</span>
-                  <span className="text-xl sm:text-4xl font-black leading-none tracking-tighter">{totals.preco.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</span>
+                  <span className="text-2xl sm:text-4xl font-black leading-none tracking-tighter">{totals.preco.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</span>
                 </div>
               </div>
-              <Button className="w-full sm:w-auto h-12 sm:h-16 min-w-[250px] font-black uppercase tracking-[0.2em] text-[10px]" onClick={() => setStep('summary')} disabled={totals.total === 0}>CONTINUAR</Button>
+              <Button className="w-full sm:w-auto h-14 sm:h-16 min-w-[250px] font-black uppercase tracking-[0.2em] text-[10px]" onClick={() => setStep('summary')} disabled={totals.total === 0}>CONTINUAR</Button>
             </div>
           </div>
         </div>
@@ -269,7 +269,7 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
 
 const StepIndicator: React.FC<{ num: number, active: boolean, done: boolean, label: string }> = ({ num, active, done, label }) => (
   <div className="flex flex-col items-center gap-3 relative z-10 bg-background px-2">
-    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center font-black transition-all ${done ? 'bg-green-500 text-white' : active ? 'bg-primary text-white shadow-[0_0_20px_rgba(46,125,50,0.4)] scale-110' : 'bg-surface border border-border-light text-primary/50'}`}>
+    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center font-black transition-all ${done ? 'bg-primary/80 text-white' : active ? 'bg-primary text-white shadow-[0_0_20px_rgba(107,70,193,0.5)] scale-110' : 'bg-surface border border-border-light text-primary/50'}`}>
       {done ? <i className="fas fa-check"></i> : num}
     </div>
     <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-center ${active ? 'text-primary' : 'text-text-secondary/50'}`}>{label}</span>
@@ -277,7 +277,7 @@ const StepIndicator: React.FC<{ num: number, active: boolean, done: boolean, lab
 );
 
 const LocOption: React.FC<{ label: string, checked: boolean, onClick: () => void }> = ({ label, checked, onClick }) => (
-  <div onClick={onClick} className={`flex-1 card p-4 rounded-xl flex items-center justify-center gap-4 cursor-pointer transition-all border-2 ${checked ? 'border-primary bg-primary/5 text-primary' : 'border-transparent hover:border-border-light text-text-secondary'}`}>
+  <div onClick={onClick} className={`flex-1 card p-4 rounded-2xl flex items-center justify-center gap-4 cursor-pointer transition-all border-2 ${checked ? 'border-primary bg-primary/5 text-primary' : 'border-transparent hover:border-border-light text-text-secondary'}`}>
     <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${checked ? 'border-primary' : 'border-border-light'}`}>
       {checked && <div className="w-2 h-2 rounded-full bg-primary animate-in zoom-in"></div>}
     </div>
