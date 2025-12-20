@@ -57,6 +57,13 @@ export interface Stats {
   [key: string]: number; 
 }
 
+export interface Confirmation {
+  docId: string;
+  type: 'Capital' | 'Interior';
+  status: 'none' | 'confirmed' | 'pending';
+  lastUpdated: string; // ISO string
+}
+
 export enum Section {
   Home = 'home',
   Order = 'order',
@@ -68,6 +75,7 @@ export enum AdminTab {
   Dashboard = 'dashboard',
   Orders = 'pedidos',
   Payments = 'pagamentos',
+  Confirmation = 'confirmação',
   Statistics = 'estatisticas',
   Event = 'evento'
 }

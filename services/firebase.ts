@@ -5,7 +5,7 @@ import {
   doc, getDoc, setDoc, runTransaction, increment, limit, Firestore, updateDoc, orderBy, deleteDoc, writeBatch
 } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
 import { getAuth, signInAnonymously, Auth, User, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
-import { Order, Stats, PaymentHistory, ColorData } from '../types';
+import { Order, Stats, PaymentHistory, ColorData, Confirmation } from '../types';
 
 const firebaseConfig = {
   apiKey: "AIzaSyA1I6zqowDo3k8eG1A1c-1hnGBofNX6PoA",
@@ -631,4 +631,69 @@ export const createOrder = async (orderData: Partial<Order>, prefix: string = 'P
       return numPedido;
     });
   } catch (e: any) { service.handleFirebaseError(e); }
-}
+};
+
+// --- Confirmation Module Functions ---
+
+export const getConfirmations = async (): Promise<Confirmation[]> => {
+  try {
+    await service.connect();
+    const snap = await getDocs(collection(db, "confirmacoes"));
+    return snap.docs.map(d => ({ docId: d.id, ...d.data() } as Confirmation));
+  } catch (e: any) {
+    service.handleFirebaseError(e);
+    return [];
+  }
+};
+
+export const syncConfirmationsFromOrders = async () => {
+  try {
+    await service.connect();
+    const [orders, confirmations] = await Promise.all([
+      getAllOrders(),
+      getConfirmations()
+    ]);
+
+    const existingIds = new Set(confirmations.map(c => c.docId));
+    const newConfirmationsMap = new Map<string, Omit<Confirmation, 'docId'>>();
+
+    orders.forEach(order => {
+      const docId = order.local === 'Capital' ? `SETOR ${order.setor}` : order.setor;
+      if (!existingIds.has(docId) && !newConfirmationsMap.has(docId)) {
+        newConfirmationsMap.set(docId, {
+          type: order.local,
+          status: 'none',
+          lastUpdated: ''
+        });
+      }
+    });
+
+    if (newConfirmationsMap.size > 0) {
+      const batch = writeBatch(db);
+      newConfirmationsMap.forEach((data, docId) => {
+        const docRef = doc(db, "confirmacoes", docId);
+        batch.set(docRef, data);
+      });
+      await batch.commit();
+    }
+    return true;
+  } catch (e: any) {
+    service.handleFirebaseError(e);
+    return false;
+  }
+};
+
+export const updateConfirmationStatus = async (docId: string, status: 'confirmed' | 'pending') => {
+  try {
+    await service.connect();
+    const docRef = doc(db, "confirmacoes", docId);
+    await updateDoc(docRef, {
+      status: status,
+      lastUpdated: new Date().toISOString()
+    });
+    return true;
+  } catch (e: any) {
+    service.handleFirebaseError(e);
+    return false;
+  }
+};

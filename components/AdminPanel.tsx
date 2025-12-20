@@ -1,17 +1,20 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { AdminTab, Stats, Order, PaymentHistory } from '../types';
+import { AdminTab, Stats, Order, PaymentHistory, Confirmation } from '../types';
 import { Card, Button, Input, CurrencyInput, Modal } from './UI';
 import { AdminMenu } from './AdminMenu';
 import { SizeMatrix } from './SizeMatrix';
 import { analyzeSales } from '../services/aiService';
 import { 
   getAllOrders, deleteOrder, getGlobalConfig, updateGlobalConfig, 
-  endEvent, getStats, recordPayment, cancelLastPayment, getOrderById, getPaymentHistoryForOrder 
+  endEvent, getStats, recordPayment, cancelLastPayment, getOrderById, getPaymentHistoryForOrder, 
+  syncConfirmationsFromOrders, getConfirmations, updateConfirmationStatus
 } from '../services/firebase';
 import { generateOrderPDF } from '../services/pdfService';
 import { DashboardTab } from './admin/DashboardTab';
 import { PaymentsTab } from './admin/PaymentsTab';
 import { OrdersTab } from './admin/OrdersTab';
+import { ConfirmationTab } from './admin/ConfirmationTab';
 import { EventTab } from './admin/EventTab';
 import { StatisticsTab } from './admin/StatisticsTab';
 
@@ -26,6 +29,7 @@ const getTabDescription = (tab: AdminTab) => {
         case AdminTab.Dashboard: return "Visão geral e métricas do evento.";
         case AdminTab.Orders: return "Gerenciar todos os pedidos individuais.";
         case AdminTab.Payments: return "Controlar recebimentos por setor ou cidade.";
+        case AdminTab.Confirmation: return "Controlar confirmações de presença via WhatsApp.";
         case AdminTab.Statistics: return "Análise de performance e débitos por localidade.";
         case AdminTab.Event: return "Configurações gerais e ações críticas.";
         default: return "";
@@ -56,6 +60,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [searchText, setSearchText] = useState('');
   
+  const [confirmations, setConfirmations] = useState<Confirmation[]>([]);
+  const [isLoadingConfirmations, setIsLoadingConfirmations] = useState(false);
+  const [editingConfirmation, setEditingConfirmation] = useState<Confirmation | null>(null);
+  const [isUpdatingConfirmation, setIsUpdatingConfirmation] = useState(false);
+
   const [registerPaymentOrder, setRegisterPaymentOrder] = useState<Order | null>(null);
   const [paymentAmount, setPaymentAmount] = useState<string>('');
   const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -78,6 +87,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
         loadOrders();
       } else if (tab === AdminTab.Event) {
         loadConfig();
+      } else if (tab === AdminTab.Confirmation) {
+        loadConfirmations();
       }
     };
     loadDataForTab();
@@ -107,6 +118,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
     const data = await getAllOrders();
     setOrders(data);
     setIsLoadingOrders(false);
+  };
+
+  const loadConfirmations = async () => {
+    setIsLoadingConfirmations(true);
+    await syncConfirmationsFromOrders();
+    const data = await getConfirmations();
+    setConfirmations(data);
+    setIsLoadingConfirmations(false);
   };
 
   const handleRefreshMetrics = async () => {
@@ -229,6 +248,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
     }
   };
 
+  const handleUpdateConfirmationStatus = async (status: 'confirmed' | 'pending') => {
+    if (!editingConfirmation) return;
+    setIsUpdatingConfirmation(true);
+    const success = await updateConfirmationStatus(editingConfirmation.docId, status);
+    if (success) {
+        const newTimestamp = new Date().toISOString();
+        setConfirmations(prev => prev.map(c => 
+            c.docId === editingConfirmation.docId 
+            ? { ...c, status, lastUpdated: newTimestamp } 
+            : c
+        ));
+        setEditingConfirmation(null);
+    } else {
+        alert("Falha ao atualizar o status.");
+    }
+    setIsUpdatingConfirmation(false);
+};
+
   return (
     <div className="flex flex-col gap-6 animate-in slide-in-from-right-4 duration-500">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-6 border-b border-border-light pb-8">
@@ -284,6 +321,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
         />
       )}
       
+      {tab === AdminTab.Confirmation && (
+        <ConfirmationTab 
+          confirmations={confirmations}
+          isLoading={isLoadingConfirmations}
+          onEdit={setEditingConfirmation}
+        />
+      )}
+
       {tab === AdminTab.Statistics && (
         <StatisticsTab
           orders={orders}
@@ -386,7 +431,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
           </div>
         </div>
       </Modal>
-      
+
+      <Modal 
+        isOpen={!!editingConfirmation} 
+        onClose={() => setEditingConfirmation(null)} 
+        title={`Alterar Status: ${editingConfirmation?.docId}`}
+      >
+        <div className="space-y-6">
+            <p className="text-center text-sm text-text-secondary font-bold uppercase tracking-widest">Selecione o novo status de confirmação para este local.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                <Button 
+                    onClick={() => handleUpdateConfirmationStatus('confirmed')} 
+                    disabled={isUpdatingConfirmation}
+                    className="h-16 bg-green-600 hover:bg-green-700 text-white"
+                >
+                    <i className="fas fa-check-circle"></i> Confirmado
+                </Button>
+                <Button 
+                    onClick={() => handleUpdateConfirmationStatus('pending')} 
+                    disabled={isUpdatingConfirmation}
+                    className="h-16 bg-yellow-500 hover:bg-yellow-600 text-white"
+                >
+                    <i className="fas fa-clock"></i> Pendente
+                </Button>
+            </div>
+            {isUpdatingConfirmation && (
+                <p className="text-center text-primary font-bold text-xs animate-pulse uppercase tracking-widest">Atualizando...</p>
+            )}
+        </div>
+      </Modal>
+
       <Modal isOpen={isPriceModalOpen} onClose={() => setIsPriceModalOpen(false)} title="Alterar Valor da Camiseta">
         <div className="space-y-6">
           <div className="p-8 bg-surface border border-border-light rounded-3xl">

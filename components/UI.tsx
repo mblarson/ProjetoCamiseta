@@ -28,8 +28,9 @@ export const Button: React.FC<{
   );
 };
 
-export const Card: React.FC<{ children: React.ReactNode, className?: string }> = ({ children, className = "" }) => (
-  <div className={`card p-6 ${className}`}>
+// FIX: Add onClick prop to Card component to allow it to be clickable and resolve type error.
+export const Card: React.FC<{ children: React.ReactNode, className?: string, onClick?: () => void }> = ({ children, className = "", onClick }) => (
+  <div onClick={onClick} className={`card p-6 ${className}`}>
     {children}
   </div>
 );
