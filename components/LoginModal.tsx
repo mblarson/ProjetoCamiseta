@@ -25,7 +25,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
       if (result.success) {
         onSuccess();
       } else {
-        if (result.code === 'auth/wrong-password' || result.code === 'auth/user-not-found' || result.code === 'auth/invalid-credential' || result.code === 'auth/invalid-login-credentials') {
+        const invalidCredentialCodes = [
+          'auth/wrong-password', 
+          'auth/user-not-found', 
+          'auth/invalid-credential',
+          'auth/invalid-login-credentials'
+        ];
+        if (result.code && invalidCredentialCodes.includes(result.code)) {
           setError('Credenciais inválidas. Verifique a senha e tente novamente.');
         } else {
           setError('Ocorreu um erro durante o login. Tente novamente mais tarde.');
