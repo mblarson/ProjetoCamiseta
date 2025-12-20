@@ -75,13 +75,13 @@ export const ConsultSection: React.FC<ConsultSectionProps> = ({ onEdit }) => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto animate-in zoom-in-95 duration-500 px-4">
+    <div className="max-w-4xl mx-auto animate-in zoom-in-95 duration-500">
       <Card className="p-10 md:p-14 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -mr-16 -mt-16"></div>
         
-        <div className="text-center mb-12 relative z-10">
-          <h2 className="text-4xl md:text-5xl font-black mb-3 tracking-tighter text-text-primary uppercase">Consultar Pedido</h2>
-          <p className="text-text-secondary text-xs font-bold uppercase tracking-[0.2em] max-w-sm mx-auto leading-relaxed">
+        <div className="text-center mb-8 relative z-10">
+          <h2 className="text-3xl md:text-5xl font-black mb-3 tracking-tighter text-text-primary uppercase">Consultar Pedido</h2>
+          <p className="text-text-secondary text-[11px] font-bold uppercase tracking-widest max-w-sm mx-auto leading-relaxed">
             Localize seu pedido usando o código ou seu e-mail de cadastro.
           </p>
         </div>

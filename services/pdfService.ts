@@ -1,83 +1,119 @@
 
-import { Order } from '../types';
+import { Order, Stats } from '../types';
 import { DEFAULT_PRICE, INFANTIL_SIZES, ADULTO_SIZES } from '../constants';
 
 const CATEGORIES = ['infantil', 'babylook', 'unissex'] as const;
 const COLORS = ['verdeOliva', 'terracota'] as const;
 
-export const generateOrderPDF = (order: Order) => {
-  const { jsPDF } = (window as any).jspdf;
-  const doc = new jsPDF();
-
-  const formatSetor = (order: Order) => {
-    return order.local === 'Capital' && !order.setor.startsWith('SETOR') 
-      ? `SETOR ${order.setor}` 
-      : order.setor;
-  };
-
-  // Main Colors
-  const primaryColor = '#2563EB'; // New Primary Blue
-  const textColor = '#1A202C'; // Standard Dark Text for PDF Body
-
-  // Cabeçalho
-  doc.setFontSize(20);
-  doc.setTextColor(textColor); // Use dark text for title
-  doc.text("UMADEMATS - JUBILEU DE OURO", 105, 20, { align: "center" });
-  
-  doc.setFontSize(14);
-  doc.setTextColor(textColor);
-  doc.text(`PEDIDO #${order.numPedido}`, 105, 30, { align: "center" });
-
-  // Informações do Líder
-  doc.setFontSize(10);
-  doc.setTextColor(0, 0, 0);
-  doc.text(`Líder: ${order.nome}`, 14, 45);
-  doc.text(`Localização: ${order.local} - ${formatSetor(order)}`, 14, 52);
-  doc.text(`E-mail: ${order.email}`, 14, 59);
-  doc.text(`Contato: ${order.contato}`, 14, 66);
-  doc.text(`Data: ${new Date(order.data).toLocaleDateString('pt-BR')}`, 14, 73);
-
-  const tableData: any[] = [];
-
-  const addRows = (label: string, colorData: any) => {
-    if (!colorData) return;
-    ['infantil', 'babylook', 'unissex'].forEach(cat => {
-      const sizes = colorData[cat];
-      if (sizes) {
-        Object.entries(sizes).forEach(([size, qty]) => {
-          if ((qty as number) > 0) {
-            tableData.push([label, cat.toUpperCase(), size, qty]);
-          }
-        });
-      }
+const getLogoBase64 = async (): Promise<string> => {
+    // Simple caching to avoid re-fetching on multiple PDF generations in the same session
+    if ((window as any).logoBase64) {
+        return (window as any).logoBase64;
+    }
+    const logoUrl = 'https://raw.githubusercontent.com/mblarson/sistema-pedidos-camisetas/main/50ANOS-black.png';
+    const response = await fetch(logoUrl);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64 = reader.result as string;
+            (window as any).logoBase64 = base64; // Cache it
+            resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
     });
-  };
-
-  addRows("VERDE OLIVA", order.verdeOliva);
-  addRows("TERRACOTA", order.terracota);
-
-  // Detalhamento do Pedido (Tabela)
-  (doc as any).autoTable({
-    startY: 85,
-    head: [['Cor', 'Categoria', 'Tamanho', 'Qtd']],
-    body: tableData,
-    theme: 'striped',
-    headStyles: { fillColor: primaryColor, textColor: '#FFFFFF' }, // Blue background, white text
-  });
-
-  const finalY = (doc as any).lastAutoTable.finalY + 10;
-  doc.setFontSize(12);
-  doc.text(`VALOR TOTAL: ${order.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, finalY);
-
-  if (order.observacao) {
-    doc.setFontSize(10);
-    doc.text(`OBSERVAÇÕES: ${order.observacao}`, 14, finalY + 10);
-  }
-
-  doc.save(`Pedido_${order.numPedido}.pdf`);
 };
 
-export const generateSizeMatrixPDF = (orders: Order[]) => {
+export const generateOrderPDF = async (order: Order) => {
+  try {
+    const { jsPDF } = (window as any).jspdf;
+    const doc = new jsPDF();
+
+    const logoBase64 = await getLogoBase64();
+    doc.addImage(logoBase64, 'PNG', 14, 15, 20, 20);
+
+    const formatSetor = (order: Order) => {
+      return order.local === 'Capital' && !order.setor.startsWith('SETOR') 
+        ? `SETOR ${order.setor}` 
+        : order.setor;
+    };
+
+    // Main Colors
+    const primaryColor = '#2563EB'; // New Primary Blue
+    const textColor = '#1A202C'; // Standard Dark Text for PDF Body
+
+    // Cabeçalho
+    doc.setFontSize(20);
+    doc.setTextColor(textColor); // Use dark text for title
+    doc.text("UMADEMATS - JUBILEU DE OURO", 105, 20, { align: "center" });
+    
+    doc.setFontSize(14);
+    doc.setTextColor(textColor);
+    doc.text(`PEDIDO #${order.numPedido}`, 105, 30, { align: "center" });
+
+    // Informações do Líder
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Líder: ${order.nome}`, 14, 45);
+    doc.text(`Localização: ${order.local} - ${formatSetor(order)}`, 14, 52);
+    doc.text(`E-mail: ${order.email}`, 14, 59);
+    doc.text(`Contato: ${order.contato}`, 14, 66);
+    doc.text(`Data: ${new Date(order.data).toLocaleDateString('pt-BR')}`, 14, 73);
+
+    const tableData: any[] = [];
+
+    const addRows = (label: string, colorData: any) => {
+      if (!colorData) return;
+      ['infantil', 'babylook', 'unissex'].forEach(cat => {
+        const sizes = colorData[cat];
+        if (sizes) {
+          Object.entries(sizes).forEach(([size, qty]) => {
+            if ((qty as number) > 0) {
+              tableData.push([label, cat.toUpperCase(), size, qty]);
+            }
+          });
+        }
+      });
+    };
+
+    addRows("VERDE OLIVA", order.verdeOliva);
+    addRows("TERRACOTA", order.terracota);
+
+    // Detalhamento do Pedido (Tabela)
+    (doc as any).autoTable({
+      startY: 85,
+      head: [['Cor', 'Categoria', 'Tamanho', 'Qtd']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor, textColor: '#FFFFFF' }, // Blue background, white text
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFontSize(12);
+    doc.text(`VALOR TOTAL: ${order.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, finalY);
+
+    if (order.observacao) {
+      doc.setFontSize(10);
+      doc.text(`OBSERVAÇÕES: ${order.observacao}`, 14, finalY + 10);
+    }
+
+    doc.save(`Pedido_${order.numPedido}.pdf`);
+  } catch (error) {
+    console.error("--- INÍCIO DO LOG DE ERRO PDF INDIVIDUAL ---");
+    console.error(`Falha ao gerar o PDF para o Pedido #${order.numPedido}. Motivo:`, error);
+    if (error instanceof Error) {
+        console.error("Mensagem de Erro:", error.message);
+        console.error("Rastreamento de Pilha:", error.stack);
+    }
+    console.error("Dados do pedido no momento do erro:", JSON.stringify(order, null, 2));
+    console.error("--- FIM DO LOG DE ERRO PDF INDIVIDUAL ---");
+    alert(`Ocorreu um erro ao gerar o PDF para o Pedido #${order.numPedido}. Por favor, verifique o console do navegador (F12) para mais detalhes técnicos.`);
+  }
+};
+
+export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, stats: Stats | null) => {
+  try {
     // 1. Calculate matrix data
     const data: any = {};
     const columnTotals: { [size: string]: number } = {};
@@ -120,11 +156,14 @@ export const generateSizeMatrixPDF = (orders: Order[]) => {
     const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF({ orientation: 'landscape' });
 
+    const logoBase64 = await getLogoBase64();
+    doc.addImage(logoBase64, 'PNG', 14, 15, 20, 20);
+
     doc.setFontSize(18);
-    doc.text("Relatório de Produção - Matriz de Tamanhos", 14, 22);
+    doc.text("Relatório de Produção - Matriz de Tamanhos", 148.5, 22, { align: "center" });
     doc.setFontSize(11);
     doc.setTextColor(100);
-    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 29);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 148.5, 29, { align: "center" });
 
     // 3. Prepare data for autoTable
     const head = [['Categoria / Cor', ...allSizes, 'TOTAL']];
@@ -143,20 +182,11 @@ export const generateSizeMatrixPDF = (orders: Order[]) => {
             rowData.push(data[cat][color].subTotal.toString());
             body.push(rowData);
         });
-        
-        // FIX: Cast styles to any in the initial element to prevent overly strict type inference for subsequent pushes. This resolves errors on lines 149 and 151.
-        const subtotalRow = [{ content: `Subtotal ${cat}`, styles: { fontStyle: 'bold', halign: 'right' } as any }];
-        allSizes.forEach(size => {
-            const sub = (data[cat]['verdeOliva'][size] || 0) + (data[cat]['terracota'][size] || 0);
-            subtotalRow.push({ content: sub > 0 ? sub.toString() : '-', styles: { fontStyle: 'bold' }});
-        });
-        subtotalRow.push({ content: data[cat].rowTotal.toString(), styles: { fontStyle: 'bold', fillColor: 'rgba(37, 99, 235, 0.1)' }});
-        body.push(subtotalRow);
     });
 
-    // 4. Create the table
+    // 4. Create the main table
     (doc as any).autoTable({
-        startY: 35,
+        startY: 40,
         head: head,
         body: body,
         theme: 'striped',
@@ -167,6 +197,73 @@ export const generateSizeMatrixPDF = (orders: Order[]) => {
         columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
     });
 
-    // 5. Save the PDF
+    // 5. Add summary tables side-by-side
+    const mainTableFinalY = (doc as any).lastAutoTable.finalY;
+    const summaryStartY = mainTableFinalY + 20;
+
+    // Table 1: Category Summary
+    doc.setFontSize(14);
+    doc.setTextColor('#1E293B');
+    doc.text("Resumo por Categoria", 14, mainTableFinalY + 15);
+    
+    const summaryBody = CATEGORIES.map(cat => [cat.toUpperCase(), data[cat].rowTotal.toString()]);
+    
+    (doc as any).autoTable({
+        startY: summaryStartY,
+        head: [['Categoria', 'Total de Peças']],
+        body: summaryBody,
+        theme: 'grid',
+        headStyles: { fillColor: '#64748B', textColor: '#FFFFFF', fontStyle: 'bold' },
+        styles: { halign: 'center' },
+        columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
+        tableWidth: 'wrap',
+        margin: { left: 14 }
+    });
+
+    const categorySummaryTable = (doc as any).lastAutoTable;
+
+    if (stats && categorySummaryTable) {
+        // Unify the financial data into a single table.
+        const financialBody = [
+            ['Valor Unitário', unitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })],
+            ['Total Arrecadado', stats.total_recebido_real.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })]
+        ];
+
+        // Robustly calculate the start position for the second table.
+        const tableWidth = categorySummaryTable.width ?? categorySummaryTable.columns.reduce((acc: number, col: any) => acc + col.width, 0);
+        const startX = (categorySummaryTable.startX ?? 14) + tableWidth + 10;
+
+        // Add a single title for the financial summary.
+        doc.setFontSize(14);
+        doc.setTextColor('#1E293B');
+        doc.text("Resumo Financeiro", startX, mainTableFinalY + 15);
+
+        // Draw the single financial table side-by-side with the first.
+        (doc as any).autoTable({
+            startY: summaryStartY, // Align vertically with the category table
+            body: financialBody,
+            theme: 'grid',
+            // No header needed as we have a text title.
+            columnStyles: { 
+                0: { halign: 'left', fontStyle: 'bold' },
+                1: { halign: 'right' }
+            },
+            tableWidth: 'wrap',
+            margin: { left: startX }
+        });
+    }
+
+    // 6. Save the PDF
     doc.save(`Matriz_de_Tamanhos_${new Date().toISOString().slice(0, 10)}.pdf`);
+  } catch (error) {
+    console.error("--- INÍCIO DO LOG DE ERRO PDF GERAL ---");
+    console.error("Falha ao gerar o PDF da Matriz de Tamanhos. Motivo:", error);
+    if (error instanceof Error) {
+        console.error("Mensagem de Erro:", error.message);
+        console.error("Rastreamento de Pilha:", error.stack);
+    }
+    console.error("Dados dos pedidos no momento do erro:", JSON.stringify(orders, null, 2));
+    console.error("--- FIM DO LOG DE ERRO PDF GERAL ---");
+    alert("Ocorreu um erro ao gerar o PDF da Matriz de Tamanhos. Por favor, verifique o console do navegador (F12) para mais detalhes técnicos.");
+  }
 };

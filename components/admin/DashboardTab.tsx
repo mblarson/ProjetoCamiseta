@@ -2,28 +2,21 @@
 import React from 'react';
 import { Stats, Order } from '../../types';
 import { Card, Button } from '../UI';
-import { SizeMatrix } from '../SizeMatrix';
 
 interface DashboardTabProps {
   handleAiAction: () => void;
   isAnalysing: boolean;
-  setShowSizeMatrix: (show: boolean) => void;
+  onShowSizeMatrix: () => void;
   aiAnalysis: string;
   currentStats: Stats | null;
-  showSizeMatrix: boolean;
-  orders: Order[];
-  isLoadingOrders: boolean;
 }
 
 export const DashboardTab: React.FC<DashboardTabProps> = ({
   handleAiAction,
   isAnalysing,
-  setShowSizeMatrix,
+  onShowSizeMatrix,
   aiAnalysis,
   currentStats,
-  showSizeMatrix,
-  orders,
-  isLoadingOrders,
 }) => (
   <div className="space-y-10 animate-in fade-in duration-700">
     <div className="flex justify-end gap-4">
@@ -58,23 +51,15 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       <StatCard label="Total Recebido" value={currentStats?.total_recebido_real || 0} isMoney icon="fa-money-bill-trend-up" description="Valores confirmados em caixa" accentColor="text-green-600" bgStyle="bg-green-500/5" />
     </div>
 
-    {showSizeMatrix ? (
-      <SizeMatrix 
-          orders={orders} 
-          loading={isLoadingOrders}
-          onClose={() => setShowSizeMatrix(false)}
-      />
-    ) : (
-      <div className="pt-6">
-        <Button 
-          onClick={() => setShowSizeMatrix(true)} 
-          variant="outline"
-          className="w-full h-16 text-sm"
-        >
-            <i className="fas fa-file-alt"></i> Relatório Detalhado de Produção
-        </Button>
-      </div>
-    )}
+    <div className="pt-6">
+      <Button 
+        onClick={onShowSizeMatrix} 
+        variant="outline"
+        className="w-full h-16 text-sm"
+      >
+          <i className="fas fa-file-alt"></i> Relatório Detalhado de Produção
+      </Button>
+    </div>
   </div>
 );
 
@@ -88,11 +73,11 @@ const StatCard: React.FC<{ label: string, value: number, isMoney?: boolean, icon
       <div className="absolute -right-4 -top-4 opacity-5 text-7xl transition-transform group-hover:scale-125 group-hover:rotate-6 text-text-primary">
         <i className={`fas ${icon}`}></i>
       </div>
-      <div className="flex flex-col h-full justify-between">
+      <div className="flex flex-col h-full justify-between text-center">
         <div>
-          <div className="flex items-center gap-3 mb-1">
+          <div className="flex items-center justify-center gap-3 mb-1">
             <div className={`w-2 h-2 rounded-full ${accentColor.replace('text-', 'bg-')}`}></div>
-            <p className="text-[9px] text-text-secondary font-black uppercase tracking-[0.2em]">{label}</p>
+            <p className="text-[10px] text-text-secondary font-black uppercase tracking-[0.2em]">{label}</p>
           </div>
           <p className="text-[8px] text-text-secondary/70 font-bold uppercase tracking-widest mb-4">{description}</p>
         </div>

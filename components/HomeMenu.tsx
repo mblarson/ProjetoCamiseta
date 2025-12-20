@@ -31,7 +31,7 @@ export const HomeMenu: React.FC<{ onNavigate: (s: Section) => void }> = ({ onNav
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl px-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl">
         {pedidosAbertos ? (
           <HomeCard 
             icon="fa-cart-plus" 
@@ -69,9 +69,9 @@ const HomeCard: React.FC<{ icon: string, title: string, onClick: () => void }> =
     duration={4000}
     containerClassName="w-full h-full group transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
     borderClassName="bg-[radial-gradient(var(--primary)_40%,transparent_60%)]"
-    className="bg-surface p-7 text-left justify-start gap-6 border-transparent backdrop-blur-none"
+    className="bg-surface p-6 text-left justify-start gap-6 border-transparent backdrop-blur-none"
   >
-    <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-all group-hover:scale-110 shrink-0 bg-primary-light text-primary border border-primary/10">
+    <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition-all group-hover:scale-110 shrink-0 bg-primary-light text-primary border border-primary/10">
       <i className={`fas ${icon}`}></i>
     </div>
     <div className="flex-1">

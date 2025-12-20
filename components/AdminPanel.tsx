@@ -14,10 +14,12 @@ import { DashboardTab } from './admin/DashboardTab';
 import { PaymentsTab } from './admin/PaymentsTab';
 import { OrdersTab } from './admin/OrdersTab';
 import { EventTab } from './admin/EventTab';
+import { StatisticsTab } from './admin/StatisticsTab';
 
 interface AdminPanelProps {
   stats: Stats | null;
   onEditOrder: (order: Order) => void;
+  onShowSizeMatrix: () => void;
 }
 
 const getTabDescription = (tab: AdminTab) => {
@@ -25,6 +27,7 @@ const getTabDescription = (tab: AdminTab) => {
         case AdminTab.Dashboard: return "Visão geral e métricas do evento.";
         case AdminTab.Orders: return "Gerenciar todos os pedidos individuais.";
         case AdminTab.Payments: return "Controlar recebimentos por setor ou cidade.";
+        case AdminTab.Statistics: return "Análise de performance e débitos por localidade.";
         case AdminTab.Event: return "Configurações gerais e ações críticas.";
         default: return "";
     }
@@ -40,7 +43,7 @@ const formatNumberToCurrency = (value: number): string => {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onEditOrder }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onEditOrder, onShowSizeMatrix }) => {
   const [tab, setTab] = useState<AdminTab>(AdminTab.Dashboard);
   const [aiAnalysis, setAiAnalysis] = useState('');
   const [isAnalysing, setIsAnalysing] = useState(false);
@@ -66,11 +69,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
 
   const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
   const [newPrice, setNewPrice] = useState('');
-  
-  const [showSizeMatrix, setShowSizeMatrix] = useState(false);
 
   useEffect(() => {
-    if (tab === AdminTab.Dashboard || tab === AdminTab.Orders || tab === AdminTab.Payments) loadOrders();
+    if (tab === AdminTab.Dashboard || tab === AdminTab.Orders || tab === AdminTab.Payments || tab === AdminTab.Statistics) loadOrders();
     if (tab === AdminTab.Event) loadConfig();
   }, [tab]);
 
@@ -221,10 +222,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
   };
 
   return (
-    <div className="flex flex-col gap-10 animate-in slide-in-from-right-4 duration-500">
+    <div className="flex flex-col gap-6 animate-in slide-in-from-right-4 duration-500">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-6 border-b border-border-light pb-8">
         <div>
-            <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter capitalize">{tab}</h2>
+            <div className="flex items-center gap-6">
+              <h2 className="text-3xl font-black text-text-primary uppercase tracking-tighter capitalize">{tab}</h2>
+              {tab === AdminTab.Payments && (
+                <button 
+                  onClick={handleRefreshMetrics}
+                  disabled={isProcessingConfig}
+                  className="flex items-center gap-2 text-primary hover:text-text-primary transition-colors text-[10px] font-black uppercase tracking-widest"
+                >
+                  <i className={`fas fa-sync-alt ${isProcessingConfig ? 'fa-spin' : ''}`}></i>
+                  Atualizar
+                </button>
+              )}
+            </div>
             <p className="text-xs text-text-secondary font-bold uppercase tracking-widest mt-1">
                 {getTabDescription(tab)}
             </p>
@@ -236,19 +249,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
         <DashboardTab 
           handleAiAction={handleAiAction}
           isAnalysing={isAnalysing}
-          setShowSizeMatrix={setShowSizeMatrix}
+          onShowSizeMatrix={onShowSizeMatrix}
           aiAnalysis={aiAnalysis}
           currentStats={currentStats}
-          showSizeMatrix={showSizeMatrix}
-          orders={orders}
-          isLoadingOrders={isLoadingOrders}
         />
       )}
       
       {tab === AdminTab.Payments && (
         <PaymentsTab 
-          handleRefreshMetrics={handleRefreshMetrics}
-          isProcessingConfig={isProcessingConfig}
           searchText={searchText}
           setSearchText={setSearchText}
           isLoadingOrders={isLoadingOrders}
@@ -265,6 +273,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
           isLoadingOrders={isLoadingOrders}
           orders={orders}
           setOrderToDelete={setOrderToDelete}
+        />
+      )}
+      
+      {tab === AdminTab.Statistics && (
+        <StatisticsTab
+          orders={orders}
+          isLoading={isLoadingOrders}
         />
       )}
 

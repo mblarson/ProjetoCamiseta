@@ -68,5 +68,6 @@ export enum AdminTab {
   Dashboard = 'dashboard',
   Orders = 'pedidos',
   Payments = 'pagamentos',
+  Statistics = 'estatisticas',
   Event = 'evento'
 }

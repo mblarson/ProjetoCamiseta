@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button, Input, Card, Modal } from './UI';
-import { checkExistingOrder, createOrder, updateOrder, getGlobalConfig } from '../services/firebase';
+import { checkExistingEmail, checkExistingSector, createOrder, updateOrder, getGlobalConfig } from '../services/firebase';
 import { SETORES_CAPITAL, INFANTIL_SIZES, ADULTO_SIZES, DEFAULT_PRICE } from '../constants';
 import { ColorType, CategoryType, SizeQuantities, ColorData, Order } from '../types';
 
@@ -24,6 +24,7 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [unitPrice, setUnitPrice] = useState(DEFAULT_PRICE);
   
   // Form States
@@ -79,30 +80,37 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
     e.preventDefault();
     if (step === 'info') {
       setErrorMsg('');
+      setValidationError(null);
+
+      // Validation runs only for NEW orders.
       if (!initialOrder) {
-          setIsSubmitting(true);
-          try {
-            const result = await checkExistingOrder(info.email);
-            if (result.exists) {
-              setErrorMsg(result.message);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-              setIsSubmitting(false);
-              return;
-            }
-          } catch (err: any) {
-            setErrorMsg("Erro de conexão.");
+        setIsSubmitting(true);
+        try {
+          // 1. Validate Sector first
+          const sectorResult = await checkExistingSector(info.local, info.setor);
+          if (sectorResult.exists) {
+            setValidationError(sectorResult.message);
             setIsSubmitting(false);
             return;
           }
+
+          // 2. Validate Email second
+          const emailResult = await checkExistingEmail(info.email);
+          if (emailResult.exists) {
+            setValidationError(emailResult.message);
+            setIsSubmitting(false);
+            return;
+          }
+        } catch (err: any) {
+          setErrorMsg("Erro de conexão ao validar dados. Tente novamente.");
+          setIsSubmitting(false);
+          return;
+        }
       }
+
+      // If validation passes or it's an edit, proceed to the next step.
       setStep('sizes');
       setIsSubmitting(false);
-    } else if (step === 'sizes') {
-      if (totals.total === 0) {
-        setErrorMsg("Por favor, selecione ao menos uma camiseta.");
-        return;
-      }
-      setStep('summary');
     }
   };
 
@@ -163,8 +171,8 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
 
   return (
     <div className={`max-w-5xl mx-auto ${step === 'sizes' ? 'pb-48 sm:pb-72' : 'pb-20'}`}>
-      <div className="flex justify-between items-center mb-12 relative px-4">
-        <div className="absolute top-1/2 left-0 w-full h-px bg-border-light -z-10"></div>
+      <div className="flex items-center mb-12 relative px-4">
+        <div className="absolute top-5 sm:top-6 left-0 w-full h-px bg-border-light -z-10"></div>
         <StepIndicator num={1} active={step === 'info'} done={step !== 'info'} label="Identificação" />
         <StepIndicator num={2} active={step === 'sizes'} done={step === 'summary'} label="Tamanhos" />
         <StepIndicator num={3} active={step === 'summary'} done={false} label="Resumo" />
@@ -192,14 +200,16 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
               <label className="text-[10px] uppercase font-black tracking-[0.2em] text-primary">Setor</label>
               <select required className="bg-background border border-border-light rounded-xl px-4 py-4 text-text-primary focus:outline-none focus:border-primary transition-all font-bold appearance-none h-[50px]" value={info.setor} onChange={e => setInfo({...info, setor: e.target.value})}>
                 <option value="">-- Selecione --</option>
-                {SETORES_CAPITAL.map(s => <option key={s} value={s}>SETOR {s}</option>)}
+                {SETORES_CAPITAL.map(s => <option key={s} value={s}>{`SETOR ${s}`}</option>)}
               </select>
             </div>
           ) : <Input label="Cidade" required value={info.setor} onChange={e => setInfo({...info, setor: e.target.value})} />}
           <Input label="E-mail" type="email" required value={info.email} onChange={e => setInfo({...info, email: e.target.value})} />
           <Input label="WhatsApp" required value={info.contato} onChange={e => setInfo({...info, contato: maskPhone(e.target.value)})} />
           <div className="md:col-span-2 flex justify-center pt-8">
-            <Button type="submit" className="min-w-[300px] h-14" disabled={isSubmitting}>Avançar para Tamanhos</Button>
+            <Button type="submit" className="min-w-[300px] h-14" disabled={isSubmitting}>
+              {isSubmitting ? <i className="fas fa-spinner fa-spin"></i> : "Avançar para Tamanhos"}
+            </Button>
           </div>
         </form>
       )}
@@ -263,12 +273,28 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
           </Button>
         </div>
       </Modal>
+
+      <Modal
+        isOpen={!!validationError}
+        onClose={() => setValidationError(null)}
+        title="Ação Bloqueada"
+      >
+        <div className="text-center space-y-6">
+            <p className="text-base text-text-secondary font-bold">{validationError}</p>
+            <Button
+                onClick={() => setValidationError(null)}
+                className="w-full h-12"
+            >
+                ENTENDI
+            </Button>
+        </div>
+      </Modal>
     </div>
   );
 };
 
 const StepIndicator: React.FC<{ num: number, active: boolean, done: boolean, label: string }> = ({ num, active, done, label }) => (
-  <div className="flex flex-col items-center gap-3 relative z-10 bg-background px-2">
+  <div className="flex-1 flex flex-col items-center gap-3 relative z-10 bg-background px-2">
     <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center font-black transition-all ${done ? 'bg-primary/80 text-white' : active ? 'bg-primary text-white shadow-[0_0_20px_rgba(107,70,193,0.5)] scale-110' : 'bg-surface border border-border-light text-primary/50'}`}>
       {done ? <i className="fas fa-check"></i> : num}
     </div>
@@ -301,7 +327,19 @@ const SizeGrid: React.FC<{ title: string, sizes: string[], data: SizeQuantities,
       {sizes.map(sz => (
         <div key={sz} className="flex flex-col gap-2">
           <span className="text-xs sm:text-sm font-black text-center text-text-secondary/60 uppercase tracking-widest">{sz}</span>
-          <input type="number" min="0" inputMode="numeric" placeholder="0" className="w-full bg-background border border-border-light rounded-xl p-3 sm:p-4 text-center font-black focus:border-primary transition-all text-text-primary placeholder:text-text-secondary/30 text-lg sm:text-xl h-14 sm:h-16" value={data[sz] || ''} onChange={e => onChange(sz, parseInt(e.target.value) || 0)} />
+          <input 
+            type="text"
+            pattern="[0-9]*"
+            min="0" 
+            inputMode="numeric" 
+            placeholder="0" 
+            className="w-full bg-background border border-border-light rounded-xl p-3 sm:p-4 text-center font-black focus:border-primary transition-all text-text-primary placeholder:text-text-secondary/30 text-lg sm:text-xl h-14 sm:h-16" 
+            value={data[sz] || ''} 
+            onChange={e => {
+              const value = e.target.value.replace(/[^0-9]/g, '');
+              onChange(sz, parseInt(value) || 0)
+            }} 
+          />
         </div>
       ))}
     </div>

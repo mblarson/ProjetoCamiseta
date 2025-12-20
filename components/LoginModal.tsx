@@ -63,12 +63,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
         />
         <Input 
           label="Senha de Acesso" 
-          type="password" 
+          type="text" 
           value={password} 
           onChange={(e) => setPassword(e.target.value)} 
-          placeholder="••••••••••" 
           required 
           autoFocus 
+          className="text-center"
         />
         
         {error && (

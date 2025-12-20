@@ -481,13 +481,41 @@ export const deleteOrder = async (order: Order) => {
   } catch (e: any) { service.handleFirebaseError(e); return false; }
 };
 
-export const checkExistingOrder = async (email: string) => {
+export const checkExistingEmail = async (email: string) => {
   try {
     await service.connect();
     const q = query(collection(db, "pedidos"), where("email", "==", email.toLowerCase().trim()), limit(1));
     const snap = await getDocs(q);
-    return { exists: !snap.empty, message: !snap.empty ? "Já existe um pedido com este e-mail." : "" };
-  } catch (e: any) { service.handleFirebaseError(e); return { exists: false }; }
+    return { exists: !snap.empty, message: !snap.empty ? "Já existe um pedido registrado com este e-mail." : "" };
+  } catch (e: any) { 
+    service.handleFirebaseError(e); 
+    return { exists: false, message: "Erro ao verificar o e-mail." };
+  }
+};
+
+export const checkExistingSector = async (local: 'Capital' | 'Interior', setor: string) => {
+  try {
+    await service.connect();
+    const q = query(collection(db, "pedidos"),
+      where("local", "==", local),
+      where("setor", "==", setor),
+      limit(1)
+    );
+    const snap = await getDocs(q);
+
+    let message = "";
+    if (!snap.empty) {
+      const displaySetor = local === 'Capital' ? `SETOR ${setor}` : setor;
+      message = local === 'Capital'
+        ? `O ${displaySetor} já possui um pedido registrado.`
+        : `A cidade de ${setor} já possui um pedido registrado.`;
+    }
+
+    return { exists: !snap.empty, message };
+  } catch (e: any) {
+    service.handleFirebaseError(e);
+    return { exists: false, message: "Erro ao verificar o setor/cidade." };
+  }
 };
 
 export const findOrder = async (id: string) => {

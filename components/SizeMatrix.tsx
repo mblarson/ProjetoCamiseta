@@ -1,31 +1,54 @@
 
-import React, { useMemo } from 'react';
-import { Order } from '../types';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Order, Stats } from '../types';
 import { Card, Button } from './UI';
-import { INFANTIL_SIZES, ADULTO_SIZES } from '../constants';
+import { INFANTIL_SIZES, ADULTO_SIZES, DEFAULT_PRICE } from '../constants';
 import { generateSizeMatrixPDF } from '../services/pdfService';
+import { getAllOrders, getGlobalConfig, getStats } from '../services/firebase';
 
 interface SizeMatrixProps {
-  orders: Order[];
-  loading: boolean;
   onClose: () => void;
 }
 
-const CATEGORIES = ['infantil', 'babylook', 'unissex'] as const;
+const CATEGORIES = ['unissex', 'babylook', 'infantil'] as const;
 const COLORS = ['verdeOliva', 'terracota'] as const;
 
-export const SizeMatrix: React.FC<SizeMatrixProps> = ({ orders, loading, onClose }) => {
+export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [unitPrice, setUnitPrice] = useState(DEFAULT_PRICE);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const [ordersData, configData, statsData] = await Promise.all([
+          getAllOrders(),
+          getGlobalConfig(),
+          getStats()
+        ]);
+        setOrders(ordersData);
+        setUnitPrice(configData.valorCamiseta);
+        setStats(statsData);
+      } catch (error) {
+        console.error("Failed to load size matrix data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const matrixData = useMemo(() => {
     const data: any = {};
-    const columnTotals: { [size: string]: number } = {};
     let grandTotal = 0;
 
     const allSizes = [...INFANTIL_SIZES, ...ADULTO_SIZES];
 
     // Initialize data structure
     CATEGORIES.forEach(cat => {
-      data[cat] = { rowTotal: 0 };
+      data[cat] = {};
       COLORS.forEach(color => {
         data[cat][color] = { subTotal: 0 };
         allSizes.forEach(size => {
@@ -46,8 +69,6 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ orders, loading, onClose
                 if (typeof qty === 'number' && allSizes.includes(size)) {
                   data[cat][color][size] += qty;
                   data[cat][color].subTotal += qty;
-                  data[cat].rowTotal += qty;
-                  columnTotals[size] = (columnTotals[size] || 0) + qty;
                   grandTotal += qty;
                 }
               });
@@ -57,7 +78,7 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ orders, loading, onClose
       });
     });
 
-    return { data, columnTotals, grandTotal, allSizes };
+    return { data, grandTotal };
   }, [orders]);
 
   if (loading) {
@@ -74,94 +95,101 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ orders, loading, onClose
   }
 
   return (
-    <Card className="p-6 md:p-8 animate-in fade-in zoom-in-95 duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div className="animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 pb-6 border-b border-border-light">
         <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-primary-light flex items-center justify-center">
-                <i className="fas fa-ruler-combined text-primary text-xl"></i>
-            </div>
-            <div>
-                <h3 className="text-xl font-black text-text-primary uppercase tracking-tight">Matriz de Tamanhos</h3>
-                <p className="text-[10px] text-text-secondary font-bold uppercase tracking-[0.2em]">Resumo para Produção</p>
-            </div>
+          <button 
+            onClick={onClose} 
+            className="w-12 h-12 rounded-full bg-surface border border-border-light hover:bg-background transition-colors text-text-secondary hover:text-primary flex items-center justify-center"
+            aria-label="Voltar"
+          >
+            <i className="fas fa-arrow-left text-lg"></i>
+          </button>
+          <div>
+              <h3 className="text-2xl font-black text-text-primary uppercase tracking-tight">Matriz de Tamanhos</h3>
+              <p className="text-[10px] text-text-secondary font-bold uppercase tracking-[0.2em]">Resumo para Produção</p>
+          </div>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-            <Button 
-                variant="outline" 
-                onClick={() => generateSizeMatrixPDF(orders)}
-                className="flex-1 sm:flex-none text-[10px] h-12"
-            >
-                <i className="fas fa-file-pdf"></i> Baixar PDF
-            </Button>
-            <button 
-                onClick={onClose} 
-                className="w-12 h-12 rounded-full bg-surface hover:bg-background transition-colors text-text-secondary hover:text-primary"
-                aria-label="Fechar matriz de tamanhos"
-            >
-                <i className="fas fa-times text-lg"></i>
-            </button>
+        <div className="w-full sm:w-auto">
+          <Button 
+              variant="outline" 
+              onClick={() => generateSizeMatrixPDF(orders, unitPrice, stats)}
+              className="w-full text-[10px] h-12"
+          >
+              <i className="fas fa-file-pdf"></i> Baixar PDF
+          </Button>
         </div>
       </div>
       
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[800px] text-sm text-left">
-          <thead className="text-[10px] text-primary/80 uppercase tracking-widest">
-            <tr>
-              <th className="py-4 px-2 font-black">Categoria / Cor</th>
-              {matrixData.allSizes.map(size => (
-                <th key={size} className="py-4 px-2 text-center font-black">{size}</th>
-              ))}
-              <th className="py-4 px-2 text-center font-black bg-primary/10 text-primary">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border-light">
-            {CATEGORIES.map((cat, catIndex) => (
-              <React.Fragment key={cat}>
-                {COLORS.map((color, colorIndex) => (
-                  <tr key={color} className="hover:bg-background/50">
-                    <td className="py-4 px-2 font-bold whitespace-nowrap">
-                      {colorIndex === 0 && <span className="font-black text-primary uppercase tracking-widest text-xs block mb-1">{cat}</span>}
-                      <span className="flex items-center gap-2 pl-2 text-text-secondary">
-                        <div className={`w-2.5 h-2.5 rounded-full ${color === 'verdeOliva' ? 'bg-[#3b4a3c]' : 'bg-[#a35e47]'}`}></div>
-                        {color === 'verdeOliva' ? 'Verde Oliva' : 'Terracota'}
-                      </span>
-                    </td>
-                    {matrixData.allSizes.map(size => (
-                      <td key={size} className="py-3 px-2 text-center text-text-primary/90 font-mono">
-                        {(matrixData.data[cat][color][size] > 0) ? matrixData.data[cat][color][size] : <span className="text-text-secondary/30">-</span>}
-                      </td>
-                    ))}
-                    <td className="py-3 px-2 text-center font-black text-primary bg-primary/10">
-                      {matrixData.data[cat][color].subTotal}
-                    </td>
-                  </tr>
-                ))}
-                <tr className="bg-surface">
-                   <td className="py-3 px-2 font-black text-text-secondary uppercase tracking-widest text-right">Subtotal {cat}</td>
-                   {matrixData.allSizes.map(size => {
-                     const sub = (matrixData.data[cat]['verdeOliva'][size] || 0) + (matrixData.data[cat]['terracota'][size] || 0);
-                     return <td key={size} className="py-3 px-2 text-center font-bold text-text-secondary/80 font-mono">{sub > 0 ? sub : '-'}</td>
-                   })}
-                   <td className="py-3 px-2 text-center font-black text-primary bg-primary/10">{matrixData.data[cat].rowTotal}</td>
-                </tr>
-              </React.Fragment>
-            ))}
-          </tbody>
-          <tfoot className="bg-surface border-t-2 border-primary/30">
-            <tr>
-              <td className="py-4 px-2 font-black text-primary uppercase tracking-widest text-sm">Total Geral</td>
-              {matrixData.allSizes.map(size => (
-                <td key={size} className="py-4 px-2 text-center font-black text-primary font-mono text-base">
-                  {matrixData.columnTotals[size] || '-'}
-                </td>
-              ))}
-              <td className="py-4 px-2 text-center font-black text-primary bg-primary/20 font-mono text-xl">
-                {matrixData.grandTotal}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+      <div className="space-y-12">
+        {CATEGORIES.map(category => {
+          const categoryHasData = COLORS.some(color => matrixData.data[category][color].subTotal > 0);
+          if (!categoryHasData) return null;
+
+          const relevantSizes = category === 'infantil' ? INFANTIL_SIZES : ADULTO_SIZES;
+          
+          return (
+            <div key={category}>
+              <div className="flex items-center gap-4 mb-6">
+                <div className="flex-grow h-px bg-border-light"></div>
+                <h2 className="text-xl font-black uppercase tracking-[0.3em] text-text-primary text-center">
+                  {category}
+                </h2>
+                <div className="flex-grow h-px bg-border-light"></div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {COLORS.map(color => {
+                  const colorData = matrixData.data[category][color];
+                  if (colorData.subTotal === 0) return null;
+
+                  const colorName = color === 'verdeOliva' ? 'Verde-Oliva' : 'Terracota';
+                  const colorHex = color === 'verdeOliva' ? '#556B2F' : '#a35e47';
+
+                  return (
+                    <Card key={color} className="overflow-hidden p-0">
+                       <div className="p-6">
+                         <h3 className="font-black text-lg tracking-tight" style={{ color: colorHex }}>{colorName}</h3>
+                       </div>
+                       <div className="overflow-x-auto">
+                         <table className="w-full text-sm">
+                           <thead className="bg-background">
+                             <tr className="border-y border-border-light">
+                               <th className="text-left text-[10px] font-black uppercase tracking-widest text-text-secondary py-3 px-4">TIPO</th>
+                               {relevantSizes.map(size => (
+                                 <th key={size} className="text-center text-[10px] font-black uppercase tracking-widest text-text-secondary py-3 px-2">{size}</th>
+                               ))}
+                             </tr>
+                           </thead>
+                           <tbody>
+                             <tr className="border-b border-border-light">
+                               <td className="font-bold py-4 px-4 text-text-primary capitalize">{category}</td>
+                               {relevantSizes.map(size => (
+                                 <td key={size} className="text-center font-bold text-lg py-4 px-2 text-text-primary">
+                                   {colorData[size] || '-'}
+                                 </td>
+                               ))}
+                             </tr>
+                           </tbody>
+                         </table>
+                       </div>
+                       <div className="bg-background p-4 flex justify-end items-center gap-4">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Subtotal</span>
+                          <span className="font-black text-xl text-primary">{colorData.subTotal}</span>
+                       </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
-    </Card>
+
+      <div className="mt-12 pt-8 border-t border-primary/20 flex justify-end items-center gap-6">
+        <span className="text-sm font-bold uppercase tracking-widest text-text-secondary">Total Geral de Camisetas</span>
+        <span className="text-4xl font-black text-primary tracking-tighter">{matrixData.grandTotal}</span>
+      </div>
+    </div>
   );
 };

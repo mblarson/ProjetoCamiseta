@@ -12,8 +12,6 @@ interface PaymentGroup {
 }
 
 interface PaymentsTabProps {
-  handleRefreshMetrics: () => void;
-  isProcessingConfig: boolean;
   searchText: string;
   setSearchText: (text: string) => void;
   isLoadingOrders: boolean;
@@ -23,8 +21,6 @@ interface PaymentsTabProps {
 }
 
 export const PaymentsTab: React.FC<PaymentsTabProps> = ({
-  handleRefreshMetrics,
-  isProcessingConfig,
   searchText,
   setSearchText,
   isLoadingOrders,
@@ -62,18 +58,6 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-black text-text-primary uppercase tracking-tight">Pagamentos</h2>
-        <button 
-          onClick={handleRefreshMetrics}
-          disabled={isProcessingConfig}
-          className="flex items-center gap-2 text-primary hover:text-text-primary transition-colors text-[10px] font-black uppercase tracking-widest"
-        >
-          <i className={`fas fa-sync-alt ${isProcessingConfig ? 'fa-spin' : ''}`}></i>
-          Atualizar
-        </button>
-      </div>
-
       <div className="relative">
         <i className="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-text-secondary/50 text-sm"></i>
         <input 
@@ -101,7 +85,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
               {expandedSector === group.name && (
                 <div className="space-y-3 animate-in slide-in-from-top-4 duration-500 pl-4 border-l-2 border-primary/30">
                   {group.orders.map(order => (
-                    <div key={order.docId} className="card bg-surface p-5 flex justify-between items-center hover:border-primary/30 transition-all">
+                    <div key={order.docId} className="card bg-surface p-5 flex justify-between items-center hover:border-primary/30 transition-all border border-primary/20">
                       <div className="flex flex-col gap-1">
                         <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em] opacity-80">Valor do Pedido</span>
                         <span className="text-lg font-black text-text-primary tracking-tighter">
@@ -136,7 +120,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
 const PaymentGroupCard: React.FC<{ group: PaymentGroup, isExpanded: boolean, onToggle: () => void }> = ({ group, isExpanded, onToggle }) => (
   <button 
     onClick={onToggle}
-    className={`w-full card bg-surface p-6 text-left flex flex-col gap-6 group transition-all duration-300 hover:shadow-xl active:scale-[0.98] ${isExpanded ? 'ring-2 ring-primary' : 'hover:border-primary/40 hover:-translate-y-1'}`}
+    className={`w-full card bg-surface p-6 text-left flex flex-col gap-6 group transition-all duration-300 hover:shadow-xl active:scale-[0.98] border border-primary/20 ${isExpanded ? 'ring-2 ring-primary' : 'hover:border-primary/40 hover:-translate-y-1'}`}
   >
     <div className="flex justify-between items-start">
       <div className="flex items-center gap-3">

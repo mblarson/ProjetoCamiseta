@@ -54,12 +54,12 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
         </div>
         <div className="flex flex-col gap-3">
           <label className="text-[10px] uppercase font-black tracking-widest text-primary/70 px-1">Filtrar Local</label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2">
             {['Todos', 'Capital', 'Interior'].map(loc => (
               <button 
                 key={loc} 
                 onClick={() => setLocalFilter(loc as any)}
-                className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${localFilter === loc ? 'bg-primary border-primary text-[#0A192F]' : 'border-border-light text-text-secondary hover:border-primary/30'}`}
+                className={`flex-1 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${localFilter === loc ? 'bg-primary border-primary text-[#0A192F]' : 'border-border-light text-text-secondary hover:border-primary/30'}`}
               >
                 {loc}
               </button>
@@ -110,28 +110,29 @@ const OrderListItem: React.FC<{
   const whatsappUrl = `https://wa.me/${order.contato.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMessage)}`;
 
   return (
-    <div className={`card bg-surface overflow-hidden transition-all duration-300 ${isExpanded ? 'ring-1 ring-primary/40 shadow-lg' : 'hover:border-primary/40 hover:-translate-y-1 hover:shadow-lg'}`}>
+    <div className={`card bg-surface overflow-hidden transition-all duration-300 border border-primary/20 ${isExpanded ? 'ring-2 ring-primary/40 shadow-lg' : 'hover:-translate-y-1 hover:shadow-lg hover:border-primary/40'}`}>
       <div className="p-6 cursor-pointer relative" onClick={onToggle}>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="space-y-2 w-full">
-            <h3 className="text-sm font-black text-text-primary tracking-widest uppercase leading-none">Pedido #{order.numPedido}</h3>
-            <p className="text-primary font-black text-[10px] uppercase tracking-[0.2em] opacity-80">
+          <div className="space-y-3 w-full">
+            <h3 className="text-base font-black text-text-primary tracking-widest uppercase leading-none">Pedido #{order.numPedido}</h3>
+            <p className="text-primary font-black text-xs uppercase tracking-[0.2em] opacity-80">
               {shirtCount} peças • {order.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
-            <div className="space-y-1">
-              <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">
+            <div className="space-y-2">
+              <p className="text-sm text-text-secondary font-bold uppercase tracking-widest">
                 {order.nome} | {order.local} – {displaySetor}
               </p>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-text-secondary/70 font-bold tracking-widest">{order.contato}</span>
+                <span className="text-sm text-text-secondary/70 font-bold tracking-widest">{order.contato}</span>
                 <a 
                   href={whatsappUrl} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="text-green-500 hover:text-green-400 transition-colors flex items-center justify-center p-1"
+                  className="text-green-500 hover:text-green-400 transition-colors flex items-center justify-center p-2 -m-2 rounded-full"
+                  aria-label="Contact on WhatsApp"
                 >
-                  <i className="fab fa-whatsapp text-sm"></i>
+                  <i className="fab fa-whatsapp text-lg"></i>
                 </a>
               </div>
             </div>

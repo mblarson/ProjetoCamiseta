@@ -82,15 +82,16 @@ export const CurrencyInput: React.FC<{
   );
 };
 
-export const Modal: React.FC<{ isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }> = ({ isOpen, onClose, title, children }) => {
+export const Modal: React.FC<{ isOpen: boolean, onClose: () => void, title?: string, children: React.ReactNode, size?: 'default' | 'large' }> = ({ isOpen, onClose, title, children, size = 'default' }) => {
   if (!isOpen) return null;
+  const sizeClass = size === 'large' ? 'max-w-7xl' : 'max-w-xl';
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="card bg-surface w-full max-w-xl p-8 max-h-[90vh] overflow-y-auto relative animate-in zoom-in-95 duration-300 border-2 border-primary/40 shadow-2xl">
+      <div className={`card bg-surface w-full ${sizeClass} p-8 max-h-[90vh] overflow-y-auto relative animate-in zoom-in-95 duration-300 border-2 border-primary/40 shadow-2xl`}>
         <button onClick={onClose} className="absolute top-6 right-6 text-text-secondary hover:text-text-primary transition-colors">
           <i className="fas fa-times text-xl"></i>
         </button>
-        <h2 className="text-2xl font-black mb-6 text-primary border-b border-border-light pb-4 uppercase tracking-tighter">{title}</h2>
+        {title && <h2 className="text-2xl font-black mb-6 text-primary border-b border-border-light pb-4 uppercase tracking-tighter">{title}</h2>}
         {children}
       </div>
     </div>
