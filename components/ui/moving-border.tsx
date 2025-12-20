@@ -18,7 +18,8 @@ export const MovingBorder = ({
   ry,
   ...otherProps
 }: {
-  children: React.ReactNode;
+  // FIX: Made children prop optional to fix type inference issue.
+  children?: React.ReactNode;
   duration?: number;
   rx?: string;
   ry?: string;
@@ -91,7 +92,8 @@ export function Button({
   ...otherProps
 }: {
   borderRadius?: string;
-  children: React.ReactNode;
+  // FIX: Made children prop optional to fix type inference issue.
+  children?: React.ReactNode;
   as?: any;
   containerClassName?: string;
   borderClassName?: string;
