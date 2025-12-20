@@ -11,7 +11,7 @@ export const Button: React.FC<{
 }> = ({ onClick, type = 'button', variant = 'primary', className = '', children, disabled }) => {
   const base = "font-manrope font-bold uppercase text-xs tracking-widest px-8 py-3 rounded-full transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed";
   const variants = {
-    primary: "bg-primary text-[#0A192F] hover:brightness-95",
+    primary: "bg-primary text-white hover:brightness-95",
     outline: "border border-primary text-primary hover:bg-primary-light",
     danger: "bg-red-500 text-white hover:bg-red-600"
   };
@@ -39,16 +39,54 @@ export const Input: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { lab
     {label && <label className="text-[10px] uppercase font-black tracking-widest text-primary/70">{label}</label>}
     <input 
       {...props} 
-      className={`bg-background border border-border-light rounded-xl px-4 py-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors placeholder:text-text-secondary/60 ${props.className || ''}`}
+      className={`bg-surface border border-border-light rounded-xl px-4 py-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors placeholder:text-text-secondary/60 disabled:bg-background disabled:text-text-secondary ${props.className || ''}`}
     />
   </div>
 );
+
+// Novo componente de Input com máscara de moeda
+export const CurrencyInput: React.FC<{
+  label?: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+  autoFocus?: boolean;
+}> = ({ label, value, onChange, placeholder, className, autoFocus }) => {
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let rawValue = e.target.value.replace(/\D/g, "");
+    if (!rawValue) {
+      onChange("");
+      return;
+    }
+    
+    // Converte para centavos e depois para BRL
+    const options = { style: 'currency', currency: 'BRL' };
+    const formattedValue = (Number(rawValue) / 100).toLocaleString('pt-BR', options);
+    onChange(formattedValue);
+  };
+
+  return (
+    <div className="flex flex-col gap-2 w-full text-left">
+      {label && <label className="text-[10px] uppercase font-black tracking-widest text-primary/70">{label}</label>}
+      <input 
+        type="text"
+        value={value}
+        onChange={handleInputChange}
+        placeholder={placeholder || "R$ 0,00"}
+        autoFocus={autoFocus}
+        className={`bg-surface border border-border-light rounded-xl px-4 py-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors placeholder:text-text-secondary/60 ${className || ''}`}
+      />
+    </div>
+  );
+};
 
 export const Modal: React.FC<{ isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }> = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="card w-full max-w-xl p-8 max-h-[90vh] overflow-y-auto relative animate-in zoom-in-95 duration-300">
+      <div className="card bg-surface w-full max-w-xl p-8 max-h-[90vh] overflow-y-auto relative animate-in zoom-in-95 duration-300 border-2 border-primary/40 shadow-2xl">
         <button onClick={onClose} className="absolute top-6 right-6 text-text-secondary hover:text-text-primary transition-colors">
           <i className="fas fa-times text-xl"></i>
         </button>

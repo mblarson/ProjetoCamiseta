@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Section } from '../types';
 import { getGlobalConfig } from '../services/firebase';
+import { Button as MovingBorderButton } from './ui/moving-border';
 
 export const HomeMenu: React.FC<{ onNavigate: (s: Section) => void }> = ({ onNavigate }) => {
   const [pedidosAbertos, setPedidosAbertos] = useState(true);
@@ -11,7 +12,7 @@ export const HomeMenu: React.FC<{ onNavigate: (s: Section) => void }> = ({ onNav
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[55vh] gap-16 animate-in fade-in zoom-in-95 duration-1000">
+    <div className="flex flex-col items-center justify-center min-h-[45vh] gap-12 animate-in fade-in zoom-in-95 duration-1000">
       <div className="text-center space-y-6">
         <div className="inline-block px-4 py-1 rounded-full border border-primary/20 bg-primary/5 mb-2">
           <p className="text-primary font-black uppercase tracking-[0.4em] text-[8px]">Mato Grosso do Sul • 2025</p>
@@ -39,7 +40,7 @@ export const HomeMenu: React.FC<{ onNavigate: (s: Section) => void }> = ({ onNav
           />
         ) : (
           <div className="opacity-40 grayscale cursor-not-allowed">
-            <HomeCard 
+             <HomeCard 
               icon="fa-lock" 
               title="Pedidos Fechados" 
               onClick={() => {}} 
@@ -62,9 +63,13 @@ export const HomeMenu: React.FC<{ onNavigate: (s: Section) => void }> = ({ onNav
 };
 
 const HomeCard: React.FC<{ icon: string, title: string, onClick: () => void }> = ({ icon, title, onClick }) => (
-  <button 
-    onClick={onClick} 
-    className="group card p-7 text-left transition-all duration-300 hover:-translate-y-2 hover:shadow-xl flex items-center gap-6 w-full"
+  <MovingBorderButton
+    onClick={onClick}
+    borderRadius="1.5rem"
+    duration={4000}
+    containerClassName="w-full h-full group transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
+    borderClassName="bg-[radial-gradient(var(--primary)_40%,transparent_60%)]"
+    className="bg-surface p-7 text-left justify-start gap-6 border-transparent backdrop-blur-none"
   >
     <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-all group-hover:scale-110 shrink-0 bg-primary-light text-primary border border-primary/10">
       <i className={`fas ${icon}`}></i>
@@ -77,5 +82,5 @@ const HomeCard: React.FC<{ icon: string, title: string, onClick: () => void }> =
     <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 text-primary transform translate-x-[-10px] group-hover:translate-x-0">
       <i className="fas fa-arrow-right text-xs"></i>
     </div>
-  </button>
+  </MovingBorderButton>
 );

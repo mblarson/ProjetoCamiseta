@@ -4,8 +4,8 @@ import {
   getFirestore, initializeFirestore, collection, getDocs, query, where, 
   doc, getDoc, setDoc, runTransaction, increment, limit, Firestore, updateDoc, orderBy, deleteDoc, writeBatch
 } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
-import { getAuth, signInAnonymously, Auth, User } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
-import { Order, Stats, PaymentHistory } from '../types';
+import { getAuth, signInAnonymously, Auth, User, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
+import { Order, Stats, PaymentHistory, ColorData } from '../types';
 
 const firebaseConfig = {
   apiKey: "AIzaSyA1I6zqowDo3k8eG1A1c-1hnGBofNX6PoA",
@@ -70,6 +70,26 @@ export const auth = service.auth;
 export const db = service.db;
 export const connectFirebase = () => service.connect();
 
+export const signInWithEmail = async (email, password) => {
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        return { success: true };
+    } catch (error: any) {
+        console.error("Firebase Auth Error:", error.code);
+        return { success: false, code: error.code };
+    }
+};
+
+export const signOutUser = async () => {
+    try {
+        await signOut(auth);
+        // Re-authenticate anonymously for public access
+        await signInAnonymously(auth);
+    } catch (error) {
+        console.error("Sign Out Error:", error);
+    }
+};
+
 export interface GlobalConfig {
   pedidosAbertos: boolean;
   valorCamiseta: number;
@@ -82,6 +102,49 @@ const getPaymentDocId = (order: Pick<Order, 'local' | 'setor'>): string => {
   }
   return key;
 };
+
+const calculateShirtCount = (order: Partial<Order>) => {
+  const calculate = (data?: ColorData) => {
+    if (!data) return 0;
+    let q = 0;
+    Object.values(data).forEach(cat => {
+      Object.values(cat).forEach(val => q += (val as number || 0));
+    });
+    return q;
+  };
+  return calculate(order.verdeOliva) + calculate(order.terracota);
+};
+
+export const recalculateTotalsAfterPriceChange = async (newPrice: number) => {
+  try {
+    await service.connect();
+    const ordersQuery = query(collection(db, "pedidos"));
+    const ordersSnap = await getDocs(ordersQuery);
+    const statsRef = doc(db, "configuracoes", "estatisticas");
+
+    const batch = writeBatch(db);
+    let newGlobalTotal = 0;
+
+    ordersSnap.forEach(orderDoc => {
+      const orderData = orderDoc.data() as Order;
+      const shirtCount = calculateShirtCount(orderData);
+      const newOrderTotal = shirtCount * newPrice;
+      newGlobalTotal += newOrderTotal;
+      
+      const orderRef = doc(db, "pedidos", orderDoc.id);
+      batch.update(orderRef, { valorTotal: newOrderTotal });
+    });
+
+    batch.update(statsRef, { valor_total: newGlobalTotal });
+
+    await batch.commit();
+    return true;
+  } catch (e: any) {
+    service.handleFirebaseError(e);
+    return false;
+  }
+};
+
 
 export const getPaymentHistoryForOrder = async (order: Order): Promise<PaymentHistory[]> => {
   try {
@@ -113,16 +176,30 @@ export const getGlobalConfig = async (): Promise<GlobalConfig> => {
 };
 
 export const updateGlobalConfig = async (data: Partial<GlobalConfig>) => {
+  const updateAndRecalculate = async () => {
+    await updateDoc(doc(db, "configuracoes", "geral"), data);
+    if (data.valorCamiseta !== undefined) {
+      await recalculateTotalsAfterPriceChange(data.valorCamiseta);
+    }
+  };
+
+  const setAndRecalculate = async () => {
+    await setDoc(doc(db, "configuracoes", "geral"), { pedidosAbertos: true, valorCamiseta: 30.00, ...data }, { merge: true });
+    if (data.valorCamiseta !== undefined) {
+      await recalculateTotalsAfterPriceChange(data.valorCamiseta);
+    }
+  };
+
   try {
     await service.connect();
-    await updateDoc(doc(db, "configuracoes", "geral"), data);
+    await updateAndRecalculate();
     return true;
-  } catch (e: any) { 
+  } catch (e: any) {
     try {
-      await setDoc(doc(db, "configuracoes", "geral"), { pedidosAbertos: true, valorCamiseta: 30.00, ...data }, { merge: true });
+      await setAndRecalculate();
       return true;
     } catch (inner) {
-      service.handleFirebaseError(e); 
+      service.handleFirebaseError(e);
       return false;
     }
   }
@@ -319,12 +396,27 @@ export const endEvent = async () => {
 };
 
 export const getStats = async (): Promise<Stats> => {
+  const defaultStats: Stats = { qtd_pedidos: 0, qtd_camisetas: 0, valor_total: 0, total_recebido_real: 0, qtd_infantil: 0, qtd_babylook: 0, qtd_unissex: 0, pedidos_pagos: 0, pedidos_pendentes: 0, pedidos_parciais: 0 };
   try {
     await service.connect();
-    const snap = await getDoc(doc(db, "configuracoes", "estatisticas"));
-    if (snap.exists()) return snap.data() as Stats;
-  } catch (e: any) { service.handleFirebaseError(e); }
-  return { qtd_pedidos: 0, qtd_camisetas: 0, valor_total: 0, total_recebido_real: 0, qtd_infantil: 0, qtd_babylook: 0, qtd_unissex: 0, pedidos_pagos: 0, pedidos_pendentes: 0, pedidos_parciais: 0 } as Stats;
+    // Fetch both stats document and orders collection in parallel
+    const statsPromise = getDoc(doc(db, "configuracoes", "estatisticas"));
+    const ordersPromise = getDocs(collection(db, "pedidos"));
+
+    const [statsSnap, ordersSnap] = await Promise.all([statsPromise, ordersPromise]);
+    
+    const statsData = statsSnap.exists() ? statsSnap.data() as Stats : defaultStats;
+    
+    // Override qtd_pedidos with the actual document count for accuracy
+    statsData.qtd_pedidos = ordersSnap.size;
+
+    return statsData;
+
+  } catch (e: any) { 
+    service.handleFirebaseError(e); 
+  }
+  // Return default stats on error
+  return defaultStats;
 };
 
 export const getAllOrders = async (): Promise<Order[]> => {
@@ -349,19 +441,6 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
     service.handleFirebaseError(e);
     return null;
   }
-};
-
-const calculateShirtCount = (order: Order) => {
-  let count = 0;
-  const countColor = (data?: any) => {
-    if (!data) return;
-    Object.values(data).forEach((cat: any) => {
-      Object.values(cat).forEach((q: any) => count += (q || 0));
-    });
-  };
-  countColor(order.verdeOliva);
-  countColor(order.terracota);
-  return count;
 };
 
 export const deleteOrder = async (order: Order) => {
@@ -432,10 +511,61 @@ export const findOrderByEmail = async (email: string) => {
 export const updateOrder = async (docId: string, orderData: Partial<Order>) => {
   try {
     await service.connect();
-    const docRef = doc(db, "pedidos", docId);
-    await updateDoc(docRef, orderData);
-    return true;
-  } catch (e: any) { service.handleFirebaseError(e); return false; }
+    return await runTransaction(db, async (transaction) => {
+      const orderRef = doc(db, "pedidos", docId);
+      const statsRef = doc(db, "configuracoes", "estatisticas");
+      
+      const orderSnap = await transaction.get(orderRef);
+      if (!orderSnap.exists()) {
+        throw new Error("Pedido não encontrado durante a atualização");
+      }
+      
+      const oldOrderData = orderSnap.data() as Order;
+      
+      const oldCount = calculateShirtCount(oldOrderData);
+      const newCount = calculateShirtCount(orderData);
+      const shirtCountDifference = newCount - oldCount;
+      
+      const oldTotalValue = oldOrderData.valorTotal;
+      const newTotalValue = orderData.valorTotal!;
+      const totalValueDifference = newTotalValue - oldTotalValue;
+
+      const valorPago = oldOrderData.valorPago;
+      const oldStatus = oldOrderData.statusPagamento;
+      let newStatus: 'Pendente' | 'Parcial' | 'Pago' = 'Pendente';
+      if (valorPago >= newTotalValue) {
+        newStatus = 'Pago';
+      } else if (valorPago > 0) {
+        newStatus = 'Parcial';
+      }
+
+      const statusChanged = oldStatus !== newStatus;
+      const finalOrderData = { ...orderData, statusPagamento: newStatus };
+      transaction.update(orderRef, finalOrderData);
+      
+      const statsSnap = await transaction.get(statsRef);
+      if (statsSnap.exists()) {
+        const statsUpdate: any = {
+          qtd_camisetas: increment(shirtCountDifference),
+          valor_total: increment(totalValueDifference)
+        };
+        
+        if (statusChanged) {
+            if (oldStatus === 'Pendente') statsUpdate.pedidos_pendentes = increment(-1);
+            if (oldStatus === 'Parcial') statsUpdate.pedidos_parciais = increment(-1);
+            if (oldStatus === 'Pago') statsUpdate.pedidos_pagos = increment(-1);
+            if (newStatus === 'Pendente') statsUpdate.pedidos_pendentes = increment(1);
+            if (newStatus === 'Parcial') statsUpdate.pedidos_parciais = increment(1);
+            if (newStatus === 'Pago') statsUpdate.pedidos_pagos = increment(1);
+        }
+        transaction.update(statsRef, statsUpdate);
+      }
+      return true;
+    });
+  } catch (e: any) { 
+    service.handleFirebaseError(e); 
+    return false; 
+  }
 };
 
 export const createOrder = async (orderData: Partial<Order>, prefix: string = 'PED') => {
@@ -453,6 +583,9 @@ export const createOrder = async (orderData: Partial<Order>, prefix: string = 'P
       const randomPart = Math.random().toString(36).substr(2, 6).toUpperCase();
       const numPedido = `${prefix}-${randomPart}`;
       
+      const shirtCount = calculateShirtCount(orderData);
+      const valorTotal = orderData.valorTotal || 0;
+
       transaction.set(orderRef, {
         ...orderData,
         numPedido,
@@ -461,7 +594,12 @@ export const createOrder = async (orderData: Partial<Order>, prefix: string = 'P
         valorPago: 0
       });
 
-      transaction.update(statsRef, { qtd_pedidos: increment(1), pedidos_pendentes: increment(1) });
+      transaction.update(statsRef, { 
+        qtd_pedidos: increment(1), 
+        pedidos_pendentes: increment(1),
+        qtd_camisetas: increment(shirtCount),
+        valor_total: increment(valorTotal)
+      });
       return numPedido;
     });
   } catch (e: any) { service.handleFirebaseError(e); }

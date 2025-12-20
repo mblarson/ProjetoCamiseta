@@ -5,10 +5,13 @@ import { Button } from './UI';
 interface HeaderProps {
   isAdmin: boolean;
   onAdminClick: () => void;
+  // FIX: Add onLogout and isAtAdminPanel props to fix type error in App.tsx and provide contextual admin actions.
+  onLogout: () => void;
+  isAtAdminPanel: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ isAdmin, onAdminClick }) => (
-  <header className="fixed top-0 inset-x-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border-light py-4">
+export const Header: React.FC<HeaderProps> = ({ isAdmin, onAdminClick, onLogout, isAtAdminPanel }) => (
+  <header className="fixed top-0 inset-x-0 z-50 bg-slate-900 border-b border-slate-700 py-4">
     <div className="container mx-auto px-6 flex justify-between items-center">
       <div className="flex items-center gap-4">
         <img 
@@ -17,14 +20,20 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin, onAdminClick }) => (
           className="w-10 h-10 object-contain" 
         />
         <div className="flex flex-col">
-          <h1 className="text-md font-extrabold leading-none text-primary tracking-tight">UMADEMATS</h1>
-          <span className="text-[8px] text-primary/80 font-bold tracking-[0.2em] uppercase mt-1">50 Anos • Mato Grosso do Sul</span>
+          <h1 className="text-md font-extrabold leading-none text-white tracking-tight">UMADEMATS</h1>
+          <span className="text-[8px] text-white/80 font-bold tracking-[0.2em] uppercase mt-1">50 Anos • Mato Grosso do Sul</span>
         </div>
       </div>
       {isAdmin && (
-        <Button variant="outline" className="px-4 py-2 text-[9px] h-10" onClick={onAdminClick}>
-          <i className="fas fa-user-shield"></i> PAINEL ADM
-        </Button>
+        isAtAdminPanel ? (
+          <Button variant="danger" className="px-4 py-2 text-[9px] h-10" onClick={onLogout}>
+            <i className="fas fa-sign-out-alt"></i> SAIR
+          </Button>
+        ) : (
+          <Button variant="outline" className="px-4 py-2 text-[9px] h-10 border-white/50 text-white hover:bg-white/10" onClick={onAdminClick}>
+            <i className="fas fa-user-shield"></i> PAINEL ADM
+          </Button>
+        )
       )}
     </div>
   </header>
