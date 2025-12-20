@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from './UI';
 
@@ -24,16 +23,10 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin, onAdminClick, onLogout,
           <span className="text-[8px] text-white/80 font-bold tracking-[0.2em] uppercase mt-1">50 Anos • Mato Grosso do Sul</span>
         </div>
       </div>
-      {isAdmin && (
-        isAtAdminPanel ? (
-          <Button variant="danger" className="px-4 py-2 text-[9px] h-10" onClick={onLogout}>
-            <i className="fas fa-sign-out-alt"></i> SAIR
-          </Button>
-        ) : (
-          <Button variant="outline" className="px-4 py-2 text-[9px] h-10 border-white/50 text-white hover:bg-white/10" onClick={onAdminClick}>
-            <i className="fas fa-user-shield"></i> PAINEL ADM
-          </Button>
-        )
+      {isAdmin && isAtAdminPanel && (
+        <Button variant="danger" className="px-4 py-2 text-[9px] h-10" onClick={onLogout}>
+          <i className="fas fa-sign-out-alt"></i> SAIR
+        </Button>
       )}
     </div>
   </header>

@@ -1,19 +1,56 @@
-
 /* Base Styles */
 body {
-  background-color: #F0F4F8; /* New background color */
-  color: #1E293B; /* New text color */
+  position: relative;
+  /* Fallback color if image fails to load */
+  background-color: #020617; 
+  color: var(--text-primary);
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Card Style (Replaces .glass) */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  /* Image provided by the user, now served locally */
+  background-image: url('/holographic-background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: brightness(0.7); /* Slightly dim the image */
+  z-index: -2;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  /* Dark overlay for readability with a vignette effect */
+  background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.5) 0%, rgba(2, 6, 23, 0.8) 100%);
+  z-index: -1;
+}
+
+/* Card Style (Glassmorphism) */
 .card {
-  background: #FFFFFF;
+  background: var(--surface);
   border-radius: 1.5rem; /* 24px - More rounded */
-  border: 1px solid #E2E8F0; /* New border color */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Softer shadow for light theme */
+  border: 1px solid var(--border-light);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Selection Color */
+::selection {
+  background-color: var(--primary);
+  color: #020617; /* Darkest slate color for contrast */
 }
 
 /* Force Hide Number Input Spinners */
@@ -28,17 +65,17 @@ input[type=number] {
   appearance: none !important;
 }
 
-/* Scroll Customization */
+/* Scroll Customization (Dark Theme) */
 ::-webkit-scrollbar {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #F0F4F8; /* New background color */
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1; /* New scrollbar color (slate-300) */
+  background: #334155; /* slate-700 */
   border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8; /* New scrollbar hover color (slate-400) */
+  background: #475569; /* slate-600 */
 }

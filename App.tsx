@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Section, Stats, Order } from './types';
 import { getStats, auth, connectFirebase, signOutUser } from './services/firebase';
@@ -157,8 +156,12 @@ const App: React.FC = () => {
               {activeSection !== Section.Home && (
                 <button 
                   onClick={() => {
-                    setActiveSection(Section.Home);
-                    setEditingOrder(null);
+                    if (activeSection === Section.Admin) {
+                      handleLogout();
+                    } else {
+                      setActiveSection(Section.Home);
+                      setEditingOrder(null);
+                    }
                   }} 
                   className="mb-6 group flex items-center gap-3 text-text-secondary hover:text-primary transition-all font-black text-[10px] uppercase tracking-[0.2em]"
                 >

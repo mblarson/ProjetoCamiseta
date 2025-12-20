@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Stats, Order } from '../../types';
 import { Card, Button } from '../UI';
@@ -73,15 +72,15 @@ const StatCard: React.FC<{ label: string, value: number, isMoney?: boolean, icon
       <div className="absolute -right-4 -top-4 opacity-5 text-7xl transition-transform group-hover:scale-125 group-hover:rotate-6 text-text-primary">
         <i className={`fas ${icon}`}></i>
       </div>
-      <div className="flex flex-col h-full justify-between text-center">
+      <div className="flex flex-col h-full justify-center text-center gap-2">
         <div>
           <div className="flex items-center justify-center gap-3 mb-1">
             <div className={`w-2 h-2 rounded-full ${accentColor.replace('text-', 'bg-')}`}></div>
             <p className="text-[10px] text-text-secondary font-black uppercase tracking-[0.2em]">{label}</p>
           </div>
-          <p className="text-[8px] text-text-secondary/70 font-bold uppercase tracking-widest mb-4">{description}</p>
+          <p className="text-[8px] text-text-secondary/70 font-bold uppercase tracking-widest">{description}</p>
         </div>
-        <p className={`text-3xl font-light tracking-tighter ${accentColor}`}>
+        <p className={`text-4xl font-black tracking-tighter ${accentColor}`}>
           {isMoney ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : value}
         </p>
       </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { AdminTab, Stats, Order, PaymentHistory } from '../types';
 import { Card, Button, Input, CurrencyInput, Modal } from './UI';
@@ -71,8 +70,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
   const [newPrice, setNewPrice] = useState('');
 
   useEffect(() => {
-    if (tab === AdminTab.Dashboard || tab === AdminTab.Orders || tab === AdminTab.Payments || tab === AdminTab.Statistics) loadOrders();
-    if (tab === AdminTab.Event) loadConfig();
+    const loadDataForTab = async () => {
+      if (tab === AdminTab.Dashboard) {
+        const s = await getStats();
+        setCurrentStats(s);
+      } else if (tab === AdminTab.Orders || tab === AdminTab.Payments || tab === AdminTab.Statistics) {
+        loadOrders();
+      } else if (tab === AdminTab.Event) {
+        loadConfig();
+      }
+    };
+    loadDataForTab();
   }, [tab]);
 
   useEffect(() => {
