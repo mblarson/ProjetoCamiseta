@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Modal, Input, Button } from './UI';
 import { signInWithEmail } from '../services/firebase';
@@ -62,7 +63,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSucce
         />
         <Input 
           label="Senha de Acesso" 
-          type="password" 
+          type="text" 
           value={password} 
           onChange={(e) => setPassword(e.target.value)} 
           required 

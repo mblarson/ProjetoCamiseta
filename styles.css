@@ -2,7 +2,7 @@
 body {
   position: relative;
   /* Fallback color if image fails to load */
-  background-color: var(--background); 
+  background-color: #020617; 
   color: var(--text-primary);
   margin: 0;
   -webkit-font-smoothing: antialiased;
@@ -16,9 +16,13 @@ body::before {
   left: 0;
   width: 100vw;
   height: 100vh;
-  /* FIX: Replaced missing 'comic-background.jpg' with a lightweight, inline SVG pattern to prevent 404 errors. */
-  background-color: var(--background);
-  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2338bdf8' fill-opacity='0.07'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  /* UPDATED: Changed to the new comic book style background image. */
+  background-image: url('/comic-background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* UPDATED: Slightly increased brightness to better suit the new image. */
+  filter: brightness(0.8);
   z-index: -2;
 }
 
@@ -39,15 +43,15 @@ body::after {
   background: var(--surface);
   border-radius: 1.5rem; /* 24px - More rounded */
   border: 1px solid var(--border-light);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 /* Selection Color */
 ::selection {
   background-color: var(--primary);
-  color: #0f172a; /* Match dark background for contrast */
+  color: #020617; /* Darkest slate color for contrast */
 }
 
 /* Force Hide Number Input Spinners */
@@ -64,18 +68,15 @@ input[type=number] {
 
 /* Scroll Customization (Dark Theme) */
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-light);
+  background: #334155; /* slate-700 */
   border-radius: 10px;
-  border: 2px solid transparent;
-  background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.4);
-  background-clip: content-box;
+  background: #475569; /* slate-600 */
 }
