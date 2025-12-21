@@ -106,7 +106,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pb-20 bg-background selection:bg-primary selection:text-[#0A192F]">
+    <div className="min-h-screen pb-20 selection:bg-primary selection:text-[#0A192F]">
       <Header 
         isAdmin={isAdmin} 
         onAdminClick={() => handleNavigation(Section.Admin)} 

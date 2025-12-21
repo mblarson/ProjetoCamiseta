@@ -16,7 +16,7 @@ body::before {
   left: 0;
   width: 100vw;
   height: 100vh;
-  /* UPDATED: Path changed to absolute to reflect file being in a 'public' directory. */
+  /* UPDATED: Path changed to absolute to load from the 'public' directory. */
   background-image: url('/comic-background.jpg');
   background-size: cover;
   background-position: center;
