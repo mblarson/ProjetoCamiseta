@@ -41,9 +41,9 @@ export const AdminMenu: React.FC<AdminMenuProps> = ({ activeTab, onSelectTab }) 
     <div className="relative w-full md:w-64" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full h-16 flex items-center justify-between px-6 bg-surface border border-border-light rounded-2xl text-text-primary font-black uppercase tracking-widest text-xs transition-all hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+        className="w-full h-14 flex items-center justify-between px-6 bg-white border border-border-light rounded-2xl text-text-primary font-black uppercase tracking-widest text-[10px] transition-all hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-sm"
       >
-        <span className="flex items-center gap-4">
+        <span className="flex items-center gap-3">
             <i className={`fas ${tabIcons[activeTab]} text-primary`}></i>
             {activeTab}
         </span>
@@ -51,16 +51,16 @@ export const AdminMenu: React.FC<AdminMenuProps> = ({ activeTab, onSelectTab }) 
       </button>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 w-full bg-surface border border-border-light rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
-          <ul className="space-y-1">
+        <div className="absolute top-full mt-2 w-full bg-white border border-border-light rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-4 duration-300">
+          <ul className="divide-y divide-border-light/40">
             {Object.values(AdminTab).map(tab => (
               <li key={tab}>
                 <button
                   onClick={() => handleSelect(tab)}
-                  className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg text-left text-xs font-bold uppercase tracking-widest transition-colors ${
+                  className={`w-full flex items-center justify-center gap-4 px-4 py-4 text-center text-[10px] font-bold uppercase tracking-[0.2em] transition-colors ${
                     activeTab === tab
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-text-secondary hover:bg-background hover:text-text-primary'
+                      ? 'bg-primary/5 text-primary'
+                      : 'text-text-secondary hover:bg-slate-50 hover:text-text-primary'
                   }`}
                 >
                     <i className={`fas ${tabIcons[tab]} w-4 text-center`}></i>
