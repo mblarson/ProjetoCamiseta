@@ -20,15 +20,15 @@
     <!-- CSS Variables for Tailwind Plugin -->
     <style>
       :root {
-        --background: #F0F4F8;
-        --surface: #FFFFFF;
-        --primary: #2563EB;
-        --primary-light: rgba(37, 99, 235, 0.1);
-        --secondary: #D53F8C;
-        --text-primary: #1E293B;
-        --text-secondary: #64748B;
-        --border-light: #E2E8F0;
-        --splash-bg: #F0F4F8;
+        --background: #0f172a;      /* slate-900 */
+        --surface: rgba(30, 41, 59, 0.6); /* slate-800 with alpha for glassmorphism */
+        --primary: #38bdf8;         /* sky-400 */
+        --primary-light: rgba(56, 189, 248, 0.1);
+        --secondary: #fb7185;       /* rose-400 */
+        --text-primary: #f1f5f9;     /* slate-100 */
+        --text-secondary: #94a3b8;   /* slate-400 */
+        --border-light: rgba(148, 163, 184, 0.2); /* slate-400 with alpha */
+        --splash-bg: #0f172a;
         --sky-500: #0ea5e9;
       }
     </style>
@@ -39,22 +39,28 @@
         theme: {
           extend: {
             colors: {
-              background: '#F0F4F8',      // Light Blue-Gray
-              surface: '#FFFFFF',         // White for cards
-              primary: '#2563EB',         // Vibrant Blue (Tailwind blue-600)
-              'primary-light': 'rgba(37, 99, 235, 0.1)', // Blue tint for hovers
-              secondary: '#D53F8C',       // Magenta accent
-              'text-primary': '#1E293B',    // Dark Slate for main text (slate-800)
-              'text-secondary': '#64748B',   // Slate for secondary text (slate-500)
-              'border-light': '#E2E8F0',    // Light Gray for borders (slate-200)
-              'splash-bg': '#F0F4F8',       // Match background
+              background: 'var(--background)',
+              surface: 'var(--surface)',
+              primary: 'var(--primary)',
+              'primary-light': 'var(--primary-light)',
+              secondary: 'var(--secondary)',
+              'text-primary': 'var(--text-primary)',
+              'text-secondary': 'var(--text-secondary)',
+              'border-light': 'var(--border-light)',
+              'splash-bg': 'var(--splash-bg)',
               sky: {
+                '400': '#38bdf8',
                 '500': '#0ea5e9',
               },
               slate: {
+                  '100': '#f1f5f9',
+                  '400': '#94a3b8',
                   '800': '#1e293b',
                   '900': '#0f172a'
               },
+              rose: {
+                '400': '#fb7185'
+              }
             },
             fontFamily: { manrope: ['Manrope', 'sans-serif'] }
           }
