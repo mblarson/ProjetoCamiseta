@@ -84,7 +84,6 @@ export const signInWithEmail = async (email, password) => {
 export const signOutUser = async () => {
     try {
         await signOut(auth);
-        // Re-authenticate anonymously for public access
         await signInAnonymously(auth);
     } catch (error) {
         console.error("Sign Out Error:", error);
@@ -116,29 +115,47 @@ const calculateShirtCount = (order: Partial<Order>) => {
   return calculate(order.verdeOliva) + calculate(order.terracota);
 };
 
-export const recalculateTotalsAfterPriceChange = async (newPrice: number) => {
+// DEEP SYNC FUNCTION
+export const syncAllStats = async () => {
   try {
     await service.connect();
-    const ordersQuery = query(collection(db, "pedidos"));
-    const ordersSnap = await getDocs(ordersQuery);
-    const statsRef = doc(db, "configuracoes", "estatisticas");
+    const ordersSnap = await getDocs(collection(db, "pedidos"));
+    
+    let totalCamisetas = 0;
+    let totalPrevisto = 0;
+    let totalRecebido = 0;
+    let totalPedidos = 0;
+    let pagos = 0;
+    let parciais = 0;
+    let pendentes = 0;
 
-    const batch = writeBatch(db);
-    let newGlobalTotal = 0;
+    ordersSnap.forEach(doc => {
+      const data = doc.data() as Order;
+      totalPedidos++;
+      totalCamisetas += calculateShirtCount(data);
+      totalPrevisto += (data.valorTotal || 0);
+      totalRecebido += (data.valorPago || 0);
 
-    ordersSnap.forEach(orderDoc => {
-      const orderData = orderDoc.data() as Order;
-      const shirtCount = calculateShirtCount(orderData);
-      const newOrderTotal = shirtCount * newPrice;
-      newGlobalTotal += newOrderTotal;
-      
-      const orderRef = doc(db, "pedidos", orderDoc.id);
-      batch.update(orderRef, { valorTotal: newOrderTotal });
+      if (data.statusPagamento === 'Pago') pagos++;
+      else if (data.statusPagamento === 'Parcial') parciais++;
+      else pendentes++;
     });
 
-    batch.update(statsRef, { valor_total: newGlobalTotal });
+    const statsRef = doc(db, "configuracoes", "estatisticas");
+    await setDoc(statsRef, {
+      qtd_pedidos: totalPedidos,
+      qtd_camisetas: totalCamisetas,
+      valor_total: totalPrevisto,
+      total_recebido_real: totalRecebido,
+      pedidos_pagos: pagos,
+      pedidos_parciais: parciais,
+      pedidos_pendentes: pendentes,
+      // Reset modality counts to 0 or implement deeper logic if needed
+      qtd_infantil: 0,
+      qtd_babylook: 0,
+      qtd_unissex: 0
+    }, { merge: true });
 
-    await batch.commit();
     return true;
   } catch (e: any) {
     service.handleFirebaseError(e);
@@ -146,6 +163,31 @@ export const recalculateTotalsAfterPriceChange = async (newPrice: number) => {
   }
 };
 
+export const recalculateTotalsAfterPriceChange = async (newPrice: number) => {
+  try {
+    await service.connect();
+    const ordersQuery = query(collection(db, "pedidos"));
+    const ordersSnap = await getDocs(ordersQuery);
+    const batch = writeBatch(db);
+
+    ordersSnap.forEach(orderDoc => {
+      const orderData = orderDoc.data() as Order;
+      const shirtCount = calculateShirtCount(orderData);
+      const newOrderTotal = shirtCount * newPrice;
+      
+      const orderRef = doc(db, "pedidos", orderDoc.id);
+      batch.update(orderRef, { valorTotal: newOrderTotal });
+    });
+
+    await batch.commit();
+    // After updating all orders, trigger a deep sync to fix the stats document
+    await syncAllStats();
+    return true;
+  } catch (e: any) {
+    service.handleFirebaseError(e);
+    return false;
+  }
+};
 
 export const getPaymentHistoryForOrder = async (order: Order): Promise<PaymentHistory[]> => {
   try {
@@ -177,32 +219,18 @@ export const getGlobalConfig = async (): Promise<GlobalConfig> => {
 };
 
 export const updateGlobalConfig = async (data: Partial<GlobalConfig>) => {
-  const updateAndRecalculate = async () => {
-    await updateDoc(doc(db, "configuracoes", "geral"), data);
-    if (data.valorCamiseta !== undefined) {
-      await recalculateTotalsAfterPriceChange(data.valorCamiseta);
-    }
-  };
-
-  const setAndRecalculate = async () => {
-    await setDoc(doc(db, "configuracoes", "geral"), { pedidosAbertos: true, valorCamiseta: 30.00, ...data }, { merge: true });
-    if (data.valorCamiseta !== undefined) {
-      await recalculateTotalsAfterPriceChange(data.valorCamiseta);
-    }
-  };
-
   try {
     await service.connect();
-    await updateAndRecalculate();
+    const configRef = doc(db, "configuracoes", "geral");
+    await setDoc(configRef, data, { merge: true });
+    
+    if (data.valorCamiseta !== undefined) {
+      await recalculateTotalsAfterPriceChange(data.valorCamiseta);
+    }
     return true;
   } catch (e: any) {
-    try {
-      await setAndRecalculate();
-      return true;
-    } catch (inner) {
       service.handleFirebaseError(e);
       return false;
-    }
   }
 };
 
@@ -309,19 +337,14 @@ export const cancelLastPayment = async (orderId: string) => {
       const statsSnap = await transaction.get(statsRef);
       const paymentLogSnap = await transaction.get(paymentLogRef);
       
-      if (!paymentLogSnap.exists()) {
-        throw new Error("Registro de pagamentos do setor não encontrado.");
-      }
+      if (!paymentLogSnap.exists()) return false;
 
       const allLiquidacoes = paymentLogSnap.data().liquidacoes || [];
       const orderPayments = allLiquidacoes
         .filter((p: any) => p.pedidoId === orderId)
         .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-      if (orderPayments.length === 0) {
-        console.warn("Attempted to cancel payment on an order with no payment history in the payments collection.");
-        return false;
-      }
+      if (orderPayments.length === 0) return false;
       const lastPayment = orderPayments[0];
       
       const amountToCancel = lastPayment.valor;
@@ -363,7 +386,6 @@ export const cancelLastPayment = async (orderId: string) => {
       return true;
     });
   } catch (e: any) { 
-    console.error("🔥 Error within cancelLastPayment transaction:", e);
     return false;
   }
 };
@@ -449,21 +471,9 @@ export const searchOrders = async (searchTerm: string): Promise<Order[]> => {
     await service.connect();
     const term = searchTerm.trim();
 
-    // Firestore doesn't support OR queries on different fields.
-    // We run multiple queries and merge the results client-side.
     const numPedidoQuery = query(collection(db, "pedidos"), where("numPedido", "==", term.toUpperCase()));
-    
-    const nomeQuery = query(collection(db, "pedidos"), 
-      orderBy("nome"),
-      where("nome", ">=", term),
-      where("nome", "<=", term + '\uf8ff')
-    );
-    
-    const setorQuery = query(collection(db, "pedidos"),
-      orderBy("setor"),
-      where("setor", ">=", term),
-      where("setor", "<=", term + '\uf8ff')
-    );
+    const nomeQuery = query(collection(db, "pedidos"), orderBy("nome"), where("nome", ">=", term), where("nome", "<=", term + '\uf8ff'));
+    const setorQuery = query(collection(db, "pedidos"), orderBy("setor"), where("setor", ">=", term), where("setor", "<=", term + '\uf8ff'));
 
     const [numPedidoSnap, nomeSnap, setorSnap] = await Promise.all([
       getDocs(numPedidoQuery),
@@ -485,7 +495,6 @@ export const searchOrders = async (searchTerm: string): Promise<Order[]> => {
     processSnapshot(setorSnap);
 
     return Array.from(ordersMap.values()).sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
-
   } catch (e: any) {
     service.handleFirebaseError(e);
     return [];
@@ -510,27 +519,10 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
 export const deleteOrder = async (order: Order) => {
   try {
     await service.connect();
-    return await runTransaction(db, async (transaction) => {
-      const statsRef = doc(db, "configuracoes", "estatisticas");
+    const success = await runTransaction(db, async (transaction) => {
       const orderRef = doc(db, "pedidos", order.docId);
       const paymentDocId = getPaymentDocId(order);
       const paymentLogRef = doc(db, "pagamentos", paymentDocId);
-      
-      const statsSnap = await transaction.get(statsRef);
-      if (statsSnap.exists()) {
-        const update: any = {
-          qtd_pedidos: increment(-1),
-          qtd_camisetas: increment(-calculateShirtCount(order)),
-          valor_total: increment(-order.valorTotal),
-          total_recebido_real: increment(-(order.valorPago || 0))
-        };
-        
-        if (order.statusPagamento === 'Pago') update.pedidos_pagos = increment(-1);
-        else if (order.statusPagamento === 'Parcial') update.pedidos_parciais = increment(-1);
-        else update.pedidos_pendentes = increment(-1);
-
-        transaction.update(statsRef, update);
-      }
 
       const paymentLogSnap = await transaction.get(paymentLogRef);
       if (paymentLogSnap.exists()) {
@@ -542,6 +534,11 @@ export const deleteOrder = async (order: Order) => {
       transaction.delete(orderRef);
       return true;
     });
+
+    if (success) {
+      await syncAllStats();
+    }
+    return success;
   } catch (e: any) { service.handleFirebaseError(e); return false; }
 };
 
@@ -560,19 +557,13 @@ export const checkExistingEmail = async (email: string) => {
 export const checkExistingSector = async (local: 'Capital' | 'Interior', setor: string) => {
   try {
     await service.connect();
-    const q = query(collection(db, "pedidos"),
-      where("local", "==", local),
-      where("setor", "==", setor),
-      limit(1)
-    );
+    const q = query(collection(db, "pedidos"), where("local", "==", local), where("setor", "==", setor), limit(1));
     const snap = await getDocs(q);
 
     let message = "";
     if (!snap.empty) {
       const displaySetor = local === 'Capital' ? `SETOR ${setor}` : setor;
-      message = local === 'Capital'
-        ? `O ${displaySetor} já possui um pedido registrado.`
-        : `A cidade de ${setor} já possui um pedido registrado.`;
+      message = local === 'Capital' ? `O ${displaySetor} já possui um pedido registrado.` : `A cidade de ${setor} já possui um pedido registrado.`;
     }
 
     return { exists: !snap.empty, message };
@@ -603,57 +594,27 @@ export const findOrderByEmail = async (email: string) => {
 export const updateOrder = async (docId: string, orderData: Partial<Order>) => {
   try {
     await service.connect();
-    return await runTransaction(db, async (transaction) => {
+    const success = await runTransaction(db, async (transaction) => {
       const orderRef = doc(db, "pedidos", docId);
-      const statsRef = doc(db, "configuracoes", "estatisticas");
-      
       const orderSnap = await transaction.get(orderRef);
-      if (!orderSnap.exists()) {
-        throw new Error("Pedido não encontrado durante a atualização");
-      }
+      if (!orderSnap.exists()) throw new Error("Pedido não encontrado");
       
       const oldOrderData = orderSnap.data() as Order;
-      
-      const oldCount = calculateShirtCount(oldOrderData);
-      const newCount = calculateShirtCount(orderData);
-      const shirtCountDifference = newCount - oldCount;
-      
-      const oldTotalValue = oldOrderData.valorTotal;
       const newTotalValue = orderData.valorTotal!;
-      const totalValueDifference = newTotalValue - oldTotalValue;
-
       const valorPago = oldOrderData.valorPago;
-      const oldStatus = oldOrderData.statusPagamento;
-      let newStatus: 'Pendente' | 'Parcial' | 'Pago' = 'Pendente';
-      if (valorPago >= newTotalValue) {
-        newStatus = 'Pago';
-      } else if (valorPago > 0) {
-        newStatus = 'Parcial';
-      }
-
-      const statusChanged = oldStatus !== newStatus;
-      const finalOrderData = { ...orderData, statusPagamento: newStatus };
-      transaction.update(orderRef, finalOrderData);
       
-      const statsSnap = await transaction.get(statsRef);
-      if (statsSnap.exists()) {
-        const statsUpdate: any = {
-          qtd_camisetas: increment(shirtCountDifference),
-          valor_total: increment(totalValueDifference)
-        };
-        
-        if (statusChanged) {
-            if (oldStatus === 'Pendente') statsUpdate.pedidos_pendentes = increment(-1);
-            if (oldStatus === 'Parcial') statsUpdate.pedidos_parciais = increment(-1);
-            if (oldStatus === 'Pago') statsUpdate.pedidos_pagos = increment(-1);
-            if (newStatus === 'Pendente') statsUpdate.pedidos_pendentes = increment(1);
-            if (newStatus === 'Parcial') statsUpdate.pedidos_parciais = increment(1);
-            if (newStatus === 'Pago') statsUpdate.pedidos_pagos = increment(1);
-        }
-        transaction.update(statsRef, statsUpdate);
-      }
+      let newStatus: 'Pendente' | 'Parcial' | 'Pago' = 'Pendente';
+      if (valorPago >= newTotalValue) newStatus = 'Pago';
+      else if (valorPago > 0) newStatus = 'Parcial';
+
+      transaction.update(orderRef, { ...orderData, statusPagamento: newStatus });
       return true;
     });
+
+    if (success) {
+      await syncAllStats();
+    }
+    return success;
   } catch (e: any) { 
     service.handleFirebaseError(e); 
     return false; 
@@ -663,21 +624,11 @@ export const updateOrder = async (docId: string, orderData: Partial<Order>) => {
 export const createOrder = async (orderData: Partial<Order>, prefix: string = 'PED') => {
   try {
     await service.connect();
-    return await runTransaction(db, async (transaction) => {
-      const statsRef = doc(db, "configuracoes", "estatisticas");
-      const statsSnap = await transaction.get(statsRef);
-      
-      if (!statsSnap.exists()) {
-        transaction.set(statsRef, { qtd_pedidos: 0, qtd_camisetas: 0, valor_total: 0, total_recebido_real: 0, qtd_infantil: 0, qtd_babylook: 0, qtd_unissex: 0, pedidos_pagos: 0, pedidos_pendentes: 0, pedidos_parciais: 0 });
-      }
-
+    const numPedido = await runTransaction(db, async (transaction) => {
       const orderRef = doc(collection(db, "pedidos"));
       const randomPart = Math.random().toString(36).substr(2, 6).toUpperCase();
       const numPedido = `${prefix}-${randomPart}`;
       
-      const shirtCount = calculateShirtCount(orderData);
-      const valorTotal = orderData.valorTotal || 0;
-
       transaction.set(orderRef, {
         ...orderData,
         numPedido,
@@ -686,18 +637,15 @@ export const createOrder = async (orderData: Partial<Order>, prefix: string = 'P
         valorPago: 0
       });
 
-      transaction.update(statsRef, { 
-        qtd_pedidos: increment(1), 
-        pedidos_pendentes: increment(1),
-        qtd_camisetas: increment(shirtCount),
-        valor_total: increment(valorTotal)
-      });
       return numPedido;
     });
+
+    if (numPedido) {
+      await syncAllStats();
+    }
+    return numPedido;
   } catch (e: any) { service.handleFirebaseError(e); }
 };
-
-// --- Confirmation Module Functions ---
 
 export const getConfirmations = async (): Promise<Confirmation[]> => {
   try {
@@ -714,14 +662,7 @@ export const searchConfirmations = async (searchTerm: string): Promise<Confirmat
   try {
     await service.connect();
     const term = searchTerm.trim().toUpperCase();
-    
-    // The document ID is the searchable field. We can use a range query to simulate "starts with".
-    const q = query(collection(db, "confirmacoes"), 
-        orderBy(documentId()),
-        where(documentId(), ">=", term),
-        where(documentId(), "<=", term + '\uf8ff')
-    );
-    
+    const q = query(collection(db, "confirmacoes"), orderBy(documentId()), where(documentId(), ">=", term), where(documentId(), "<=", term + '\uf8ff'));
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ docId: d.id, ...d.data() } as Confirmation));
   } catch (e: any) {

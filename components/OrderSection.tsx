@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button, Input, Card, Modal } from './UI';
 import { checkExistingEmail, checkExistingSector, createOrder, updateOrder, getGlobalConfig } from '../services/firebase';
@@ -23,9 +24,11 @@ const OrderReviewTable: React.FC<{ title: string, data: ColorData, colorHex: str
     (['infantil', 'babylook', 'unissex'] as const).forEach(category => {
         const categoryData = data[category];
         if (categoryData) {
+            // FIX: Cast quantity to number to resolve "Operator '>' cannot be applied to types 'unknown' and 'number'" and assignment error.
             Object.entries(categoryData).forEach(([size, quantity]) => {
-                if (quantity > 0) {
-                    items.push({ category, size, quantity });
+                const q = quantity as number;
+                if (q > 0) {
+                    items.push({ category, size, quantity: q });
                 }
             });
         }
