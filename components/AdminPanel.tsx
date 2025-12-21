@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { AdminTab, Stats, Order, PaymentHistory, Confirmation } from '../types';
 import { Card, Button, Input, CurrencyInput, Modal } from './UI';
@@ -225,13 +224,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
   };
 
   const handleSecurityAction = async () => {
-    const ADMIN_PASS = "UMADEMATS50"; 
-    
-    if (securityModal.password !== ADMIN_PASS) {
-      alert("Senha incorreta!");
+    // SECURITY FIX: Removed client-side password check. This is a critical vulnerability.
+    // TODO: This validation MUST be performed in a secure backend environment (e.g., Firebase Cloud Function)
+    // before executing the sensitive action. The current implementation is NOT secure for production.
+    if (!securityModal.password) {
+      alert("A senha é necessária para verificação (simulação).");
       return;
     }
-
+    
     setIsProcessingConfig(true);
     let success = false;
 
@@ -454,7 +454,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
           </div>
 
           <button 
-            className="w-full h-16 rounded-full font-black tracking-[0.2em] text-[#0A192F] uppercase text-sm bg-primary hover:brightness-90 active:scale-[0.98] transition-all disabled:opacity-60" 
+            className="w-full h-16 rounded-full font-black tracking-[0.2em] text-white uppercase text-sm bg-primary hover:brightness-90 active:scale-[0.98] transition-all disabled:opacity-60" 
             onClick={handleRegisterPayment} 
             disabled={isProcessingPayment || !paymentAmount}
           >

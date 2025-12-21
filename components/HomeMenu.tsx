@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Section } from '../types';
 import { getGlobalConfig } from '../services/firebase';
@@ -49,7 +48,7 @@ export const HomeMenu: React.FC<{ onNavigate: (s: Section) => void }> = ({ onNav
         )}
         <HomeCard 
           icon="fa-magnifying-glass" 
-          title="Consulta" 
+          title="Consultar Pedido" 
           onClick={() => onNavigate(Section.Consult)} 
         />
         <HomeCard 

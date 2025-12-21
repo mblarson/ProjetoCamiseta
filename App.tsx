@@ -106,7 +106,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pb-20 bg-background selection:bg-primary selection:text-[#0A192F]">
+    <div className="min-h-screen pb-20 bg-background selection:bg-primary selection:text-white">
       <Header 
         isAdmin={isAdmin} 
         onAdminClick={() => handleNavigation(Section.Admin)} 
@@ -115,7 +115,7 @@ const App: React.FC = () => {
       />
       
       {showSizeMatrix ? (
-        <main className="px-4 sm:px-6 pt-24 animate-in fade-in duration-700">
+        <main className="container mx-auto px-4 sm:px-6 pt-24 animate-in fade-in duration-700">
           <SizeMatrix onClose={handleCloseSizeMatrix} />
         </main>
       ) : (
@@ -156,11 +156,12 @@ const App: React.FC = () => {
               {activeSection !== Section.Home && (
                 <button 
                   onClick={() => {
-                    if (activeSection === Section.Admin) {
-                      handleLogout();
+                    // SESSION FIX: Logout admin when they return to the main menu.
+                    if (isAdmin && activeSection === Section.Admin) {
+                        handleLogout();
                     } else {
-                      setActiveSection(Section.Home);
-                      setEditingOrder(null);
+                        setActiveSection(Section.Home);
+                        setEditingOrder(null);
                     }
                   }} 
                   className="mb-6 group flex items-center gap-3 text-text-secondary hover:text-primary transition-all font-black text-[10px] uppercase tracking-[0.2em]"

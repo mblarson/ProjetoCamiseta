@@ -67,7 +67,7 @@ const EventActionCard: React.FC<{ icon: string, title: string, desc: string, onC
   <button 
     onClick={onClick}
     disabled={loading}
-    className={`card p-8 text-left group relative overflow-hidden flex flex-row items-center gap-6 w-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${variant === 'danger' ? 'hover:border-red-500/50' : variant === 'success' ? 'hover:border-green-500/50' : 'hover:border-primary/50'}`}
+    className={`card bg-primary-light border-primary/30 p-8 text-left group relative overflow-hidden flex flex-row items-center gap-6 w-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${variant === 'danger' ? 'hover:border-red-500/50' : variant === 'success' ? 'hover:border-green-500/50' : 'hover:border-primary/50'}`}
   >
     <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-2xl transition-all duration-500 shrink-0 group-hover:scale-110 group-hover:rotate-3 ${variant === 'danger' ? 'bg-red-500/10 text-red-500' : variant === 'success' ? 'bg-green-500/10 text-green-500' : 'bg-primary-light text-primary'}`}>
       <i className={`fas ${loading ? 'fa-circle-notch fa-spin' : icon}`}></i>

@@ -2,40 +2,11 @@
 body {
   position: relative;
   /* Fallback color if image fails to load */
-  background-color: #020617; 
+  background-color: var(--background); 
   color: var(--text-primary);
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  /* UPDATED: Changed to the new comic book style background image. */
-  background-image: url('/comic-background.jpg');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  /* UPDATED: Slightly increased brightness to better suit the new image. */
-  filter: brightness(0.8);
-  z-index: -2;
-}
-
-body::after {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  /* UPDATED: Adjusted the overlay for better readability with the vibrant background. */
-  background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.4) 0%, rgba(2, 6, 23, 0.75) 100%);
-  z-index: -1;
 }
 
 /* Card Style (Glassmorphism) */
@@ -43,15 +14,15 @@ body::after {
   background: var(--surface);
   border-radius: 1.5rem; /* 24px - More rounded */
   border: 1px solid var(--border-light);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 /* Selection Color */
 ::selection {
   background-color: var(--primary);
-  color: #020617; /* Darkest slate color for contrast */
+  color: #ffffff; /* Match dark background for contrast */
 }
 
 /* Force Hide Number Input Spinners */
@@ -66,17 +37,20 @@ input[type=number] {
   appearance: none !important;
 }
 
-/* Scroll Customization (Dark Theme) */
+/* Scroll Customization (Light Theme) */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155; /* slate-700 */
+  background: #cbd5e1; /* slate-300 */
   border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569; /* slate-600 */
+  background: #94a3b8; /* slate-400 */
+  background-clip: content-box;
 }

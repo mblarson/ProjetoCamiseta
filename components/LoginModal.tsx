@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Modal, Input, Button } from './UI';
 import { signInWithEmail } from '../services/firebase';
