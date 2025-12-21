@@ -68,7 +68,7 @@ const HomeCard: React.FC<{ icon: string, title: string, onClick: () => void }> =
     duration={4000}
     containerClassName="w-full h-full group transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
     borderClassName="bg-[radial-gradient(var(--primary)_40%,transparent_60%)]"
-    className="bg-surface p-6 text-left justify-start gap-6 border-transparent backdrop-blur-none"
+    className="bg-slate-100 p-6 text-left justify-start gap-6 border-transparent backdrop-blur-none"
   >
     <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition-all group-hover:scale-110 shrink-0 bg-primary-light text-primary border border-primary/10">
       <i className={`fas ${icon}`}></i>

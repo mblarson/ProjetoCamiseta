@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button, Input, Card, Modal } from './UI';
 import { checkExistingEmail, checkExistingSector, createOrder, updateOrder, getGlobalConfig } from '../services/firebase';
@@ -17,6 +16,46 @@ const initialColorData = (): ColorData => ({
   babylook: {},
   unissex: {}
 });
+
+// Helper component for the summary screen
+const OrderReviewTable: React.FC<{ title: string, data: ColorData, colorHex: string }> = ({ title, data, colorHex }) => {
+    const items: { category: string, size: string, quantity: number }[] = [];
+    (['infantil', 'babylook', 'unissex'] as const).forEach(category => {
+        const categoryData = data[category];
+        if (categoryData) {
+            Object.entries(categoryData).forEach(([size, quantity]) => {
+                if (quantity > 0) {
+                    items.push({ category, size, quantity });
+                }
+            });
+        }
+    });
+
+    if (items.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="space-y-4">
+            <h4 className="flex items-center gap-3 text-sm font-black uppercase tracking-widest text-text-primary">
+                <div className="w-4 h-4 rounded-md shadow-inner" style={{ backgroundColor: colorHex }}></div>
+                {title}
+            </h4>
+            <div className="grid grid-cols-3 gap-x-4 gap-y-2 text-xs border-t border-border-light pt-3">
+                <div className="font-bold text-text-secondary uppercase tracking-wider">Categoria</div>
+                <div className="font-bold text-text-secondary uppercase tracking-wider text-center">Tamanho</div>
+                <div className="font-bold text-text-secondary uppercase tracking-wider text-right">Qtd.</div>
+                {items.map((item, index) => (
+                    <React.Fragment key={index}>
+                        <div className="text-text-secondary capitalize">{item.category}</div>
+                        <div className="text-text-primary font-bold text-center">{item.size}</div>
+                        <div className="text-text-primary font-bold text-right">{item.quantity}</div>
+                    </React.Fragment>
+                ))}
+            </div>
+        </div>
+    );
+};
 
 export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initialOrder }) => {
   const [step, setStep] = useState<OrderStep>(initialOrder ? 'sizes' : 'info');
@@ -253,6 +292,12 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
                 <p className="font-bold text-text-primary">{formatSetorDisplay()} ({info.local})</p>
               </div>
             </div>
+            
+            <div className="space-y-8 my-10">
+                <OrderReviewTable title="Verde Oliva" data={verdeOliva} colorHex="#556B2F" />
+                <OrderReviewTable title="Terracota" data={terracota} colorHex="#a35e47" />
+            </div>
+
             <div className="pt-4 border-t border-border-light flex justify-between items-center">
                <span className="text-lg font-black uppercase tracking-widest text-primary">Total a Pagar</span>
                <span className="text-3xl font-black text-text-primary">{totals.preco.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</span>
