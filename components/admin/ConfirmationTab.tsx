@@ -9,22 +9,25 @@ interface ConfirmationTabProps {
     confirmations: Confirmation[];
     isLoading: boolean;
     onEdit: (confirmation: Confirmation) => void;
+    onSync: () => void;
+    isSyncing: boolean;
+    searchText: string;
+    setSearchText: (text: string) => void;
 }
 
-export const ConfirmationTab: React.FC<ConfirmationTabProps> = ({ confirmations, isLoading, onEdit }) => {
+export const ConfirmationTab: React.FC<ConfirmationTabProps> = ({ confirmations, isLoading, onEdit, onSync, isSyncing, searchText, setSearchText }) => {
     const [filter, setFilter] = useState<FilterType>('Todos');
-    const [searchText, setSearchText] = useState('');
 
     const filteredConfirmations = useMemo(() => {
         return confirmations
             .filter(c => {
-                const searchLower = searchText.toLowerCase();
-                const matchesSearch = !searchLower || c.docId.toLowerCase().includes(searchLower);
+                // Search text filtering is now done on the server.
+                // We only apply the type filter client-side.
                 const matchesFilter = filter === 'Todos' || c.type === filter;
-                return matchesSearch && matchesFilter;
+                return matchesFilter;
             })
             .sort((a, b) => a.docId.localeCompare(b.docId));
-    }, [confirmations, filter, searchText]);
+    }, [confirmations, filter]);
 
     const statusStyles = {
         none: 'bg-surface border-border-light',
@@ -50,30 +53,43 @@ export const ConfirmationTab: React.FC<ConfirmationTabProps> = ({ confirmations,
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-end">
-                <div className="lg:col-span-2">
-                    <Input 
-                        label="Pesquisar por Setor ou Cidade" 
-                        placeholder="Ex: SETOR A, Dourados..." 
-                        value={searchText} 
-                        onChange={e => setSearchText(e.target.value)}
-                    />
-                </div>
-                <div className="flex flex-col gap-3">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-primary/70 px-1">Filtrar Local</label>
-                    <div className="flex gap-2">
-                        {(['Todos', 'Capital', 'Interior'] as FilterType[]).map(f => (
-                            <button 
-                                key={f} 
-                                onClick={() => setFilter(f)}
-                                className={`flex-1 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${filter === f ? 'bg-primary border-primary text-white' : 'border-border-light text-text-secondary hover:border-primary/30'}`}
-                            >
-                                {f}
-                            </button>
-                        ))}
+            <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-end">
+                    <div className="lg:col-span-2">
+                        <Input 
+                            label="Pesquisar por Setor ou Cidade" 
+                            placeholder="Ex: SETOR A, Dourados..." 
+                            value={searchText} 
+                            onChange={e => setSearchText(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex flex-col gap-3">
+                        <label className="text-[10px] uppercase font-black tracking-widest text-primary/70 px-1">Filtrar Local</label>
+                        <div className="flex gap-2">
+                            {(['Todos', 'Capital', 'Interior'] as FilterType[]).map(f => (
+                                <button 
+                                    key={f} 
+                                    onClick={() => setFilter(f)}
+                                    className={`flex-1 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${filter === f ? 'bg-primary border-primary text-white' : 'border-border-light text-text-secondary hover:border-primary/30'}`}
+                                >
+                                    {f}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
+                <div className="flex justify-end border-t border-border-light pt-4">
+                    <button 
+                        onClick={onSync} 
+                        disabled={isSyncing}
+                        className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary hover:text-text-primary disabled:opacity-50 transition-colors"
+                    >
+                        <i className={`fas fa-sync-alt ${isSyncing ? 'animate-spin' : ''}`}></i>
+                        {isSyncing ? 'Sincronizando...' : 'Sincronizar com Pedidos'}
+                    </button>
+                </div>
             </div>
+
 
             {filteredConfirmations.length === 0 ? (
                 <EmptyState />

@@ -5,33 +5,12 @@ import { DEFAULT_PRICE, INFANTIL_SIZES, ADULTO_SIZES } from '../constants';
 const CATEGORIES = ['infantil', 'babylook', 'unissex'] as const;
 const COLORS = ['verdeOliva', 'terracota'] as const;
 
-const getLogoBase64 = async (): Promise<string> => {
-    // Simple caching to avoid re-fetching on multiple PDF generations in the same session
-    if ((window as any).logoBase64) {
-        return (window as any).logoBase64;
-    }
-    const logoUrl = 'https://raw.githubusercontent.com/mblarson/sistema-pedidos-camisetas/main/50ANOS-black.png';
-    const response = await fetch(logoUrl);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const base64 = reader.result as string;
-            (window as any).logoBase64 = base64; // Cache it
-            resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
-};
-
 export const generateOrderPDF = async (order: Order) => {
   try {
     const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF();
 
-    const logoBase64 = await getLogoBase64();
-    doc.addImage(logoBase64, 'PNG', 14, 15, 20, 20);
+    // REMOVED: Logo image logic has been removed as requested to fix generation errors.
 
     const formatSetor = (order: Order) => {
       return order.local === 'Capital' && !order.setor.startsWith('SETOR') 
@@ -43,23 +22,24 @@ export const generateOrderPDF = async (order: Order) => {
     const primaryColor = '#2563EB'; // New Primary Blue
     const textColor = '#1A202C'; // Standard Dark Text for PDF Body
 
-    // Cabeçalho
+    // Cabeçalho - Positions adjusted after logo removal
     doc.setFontSize(20);
-    doc.setTextColor(textColor); // Use dark text for title
+    doc.setTextColor(textColor);
     doc.text("UMADEMATS - JUBILEU DE OURO", 105, 20, { align: "center" });
     
     doc.setFontSize(14);
     doc.setTextColor(textColor);
-    doc.text(`PEDIDO #${order.numPedido}`, 105, 30, { align: "center" });
+    doc.text(`PEDIDO #${order.numPedido}`, 105, 28, { align: "center" });
 
-    // Informações do Líder
+    // Informações do Líder - Positions adjusted after logo removal
+    const infoStartY = 40;
     doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
-    doc.text(`Líder: ${order.nome}`, 14, 45);
-    doc.text(`Localização: ${order.local} - ${formatSetor(order)}`, 14, 52);
-    doc.text(`E-mail: ${order.email}`, 14, 59);
-    doc.text(`Contato: ${order.contato}`, 14, 66);
-    doc.text(`Data: ${new Date(order.data).toLocaleDateString('pt-BR')}`, 14, 73);
+    doc.text(`Líder: ${order.nome}`, 14, infoStartY);
+    doc.text(`Localização: ${order.local} - ${formatSetor(order)}`, 14, infoStartY + 7);
+    doc.text(`E-mail: ${order.email}`, 14, infoStartY + 14);
+    doc.text(`Contato: ${order.contato}`, 14, infoStartY + 21);
+    doc.text(`Data: ${new Date(order.data).toLocaleDateString('pt-BR')}`, 14, infoStartY + 28);
 
     const tableData: any[] = [];
 
@@ -80,9 +60,9 @@ export const generateOrderPDF = async (order: Order) => {
     addRows("VERDE OLIVA", order.verdeOliva);
     addRows("TERRACOTA", order.terracota);
 
-    // Detalhamento do Pedido (Tabela)
+    // Detalhamento do Pedido (Tabela) - Positions adjusted after logo removal
     (doc as any).autoTable({
-      startY: 85,
+      startY: 75,
       head: [['Cor', 'Categoria', 'Tamanho', 'Qtd']],
       body: tableData,
       theme: 'striped',
@@ -156,8 +136,7 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
     const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF({ orientation: 'landscape' });
 
-    const logoBase64 = await getLogoBase64();
-    doc.addImage(logoBase64, 'PNG', 14, 15, 20, 20);
+    // REMOVED: Logo image logic has been removed as requested to fix generation errors.
 
     doc.setFontSize(18);
     doc.text("Relatório de Produção - Matriz de Tamanhos", 148.5, 22, { align: "center" });

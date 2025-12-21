@@ -8,7 +8,8 @@ import { analyzeSales } from '../services/aiService';
 import { 
   getAllOrders, deleteOrder, getGlobalConfig, updateGlobalConfig, 
   endEvent, getStats, recordPayment, cancelLastPayment, getOrderById, getPaymentHistoryForOrder, 
-  syncConfirmationsFromOrders, getConfirmations, updateConfirmationStatus
+  syncConfirmationsFromOrders, getConfirmations, updateConfirmationStatus, getPaginatedOrders,
+  searchOrders, searchConfirmations
 } from '../services/firebase';
 import { generateOrderPDF } from '../services/pdfService';
 import { DashboardTab } from './admin/DashboardTab';
@@ -58,10 +59,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
-  const [searchText, setSearchText] = useState('');
   
+  // Search and Debouncing
+  const [searchText, setSearchText] = useState('');
+  const [debouncedSearchText, setDebouncedSearchText] = useState('');
+  
+  const [lastVisibleOrder, setLastVisibleOrder] = useState<any | null>(null);
+  const [hasMoreOrders, setHasMoreOrders] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   const [confirmations, setConfirmations] = useState<Confirmation[]>([]);
   const [isLoadingConfirmations, setIsLoadingConfirmations] = useState(false);
+  const [isSyncingConfirmations, setIsSyncingConfirmations] = useState(false);
   const [editingConfirmation, setEditingConfirmation] = useState<Confirmation | null>(null);
   const [isUpdatingConfirmation, setIsUpdatingConfirmation] = useState(false);
 
@@ -78,21 +87,55 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
   const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
   const [newPrice, setNewPrice] = useState('');
 
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchText(searchText), 300);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
   useEffect(() => {
     const loadDataForTab = async () => {
+      // Clear previous data to avoid flashing old results
+      setOrders([]);
+      setConfirmations([]);
+
       if (tab === AdminTab.Dashboard) {
         const s = await getStats();
         setCurrentStats(s);
-      } else if (tab === AdminTab.Orders || tab === AdminTab.Payments || tab === AdminTab.Statistics) {
-        loadOrders();
+      } else if (tab === AdminTab.Orders) {
+        setIsLoadingOrders(true);
+        if (debouncedSearchText) {
+          const results = await searchOrders(debouncedSearchText);
+          setOrders(results);
+          setHasMoreOrders(false); // Disable pagination during search
+        } else {
+          loadInitialOrdersPage();
+        }
+        setIsLoadingOrders(false);
+      } else if (tab === AdminTab.Payments || tab === AdminTab.Statistics) {
+        setIsLoadingOrders(true);
+        if (debouncedSearchText) {
+          const results = await searchOrders(debouncedSearchText);
+          setOrders(results);
+        } else {
+          loadAllOrders();
+        }
+        setIsLoadingOrders(false);
       } else if (tab === AdminTab.Event) {
         loadConfig();
       } else if (tab === AdminTab.Confirmation) {
-        loadConfirmations();
+        setIsLoadingConfirmations(true);
+        if (debouncedSearchText) {
+          const results = await searchConfirmations(debouncedSearchText);
+          setConfirmations(results);
+        } else {
+          loadConfirmations();
+        }
+        setIsLoadingConfirmations(false);
       }
     };
     loadDataForTab();
-  }, [tab]);
+  }, [tab, debouncedSearchText]);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -113,26 +156,59 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
     setConfig(c);
   };
 
-  const loadOrders = async () => {
-    setIsLoadingOrders(true);
+  const loadAllOrders = async () => {
     const data = await getAllOrders();
     setOrders(data);
-    setIsLoadingOrders(false);
+  };
+  
+  const loadInitialOrdersPage = async () => {
+    setOrders([]);
+    const { orders: newOrders, lastVisible } = await getPaginatedOrders();
+    setOrders(newOrders);
+    setLastVisibleOrder(lastVisible);
+    setHasMoreOrders(lastVisible !== null);
+  };
+
+  const loadMoreOrders = async () => {
+    if (!lastVisibleOrder || !hasMoreOrders) return;
+    setIsLoadingMore(true);
+    const { orders: newOrders, lastVisible } = await getPaginatedOrders(lastVisibleOrder);
+    setOrders(prev => [...prev, ...newOrders]);
+    setLastVisibleOrder(lastVisible);
+    setHasMoreOrders(lastVisible !== null);
+    setIsLoadingMore(false);
   };
 
   const loadConfirmations = async () => {
-    setIsLoadingConfirmations(true);
-    await syncConfirmationsFromOrders();
     const data = await getConfirmations();
     setConfirmations(data);
-    setIsLoadingConfirmations(false);
+  };
+
+  const handleSyncConfirmations = async () => {
+    setIsSyncingConfirmations(true);
+    await syncConfirmationsFromOrders();
+    await loadConfirmations(); // Reload all after sync
+    setIsSyncingConfirmations(false);
   };
 
   const handleRefreshMetrics = async () => {
     setIsProcessingConfig(true);
     const s = await getStats();
     setCurrentStats(s);
-    if (tab === AdminTab.Payments || tab === AdminTab.Orders) await loadOrders();
+    // Refresh data for the current tab considering the search term
+    const currentSearch = debouncedSearchText;
+    if (tab === AdminTab.Payments || tab === AdminTab.Statistics) {
+      const data = currentSearch ? await searchOrders(currentSearch) : await getAllOrders();
+      setOrders(data);
+    }
+    if (tab === AdminTab.Orders) {
+      if (currentSearch) {
+        const data = await searchOrders(currentSearch);
+        setOrders(data);
+      } else {
+        await loadInitialOrdersPage();
+      }
+    }
     setTimeout(() => setIsProcessingConfig(false), 500);
   };
 
@@ -218,7 +294,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
       const updatedOrderFromServer = await getOrderById(registerPaymentOrder.docId);
       if (updatedOrderFromServer) setRegisterPaymentOrder(updatedOrderFromServer); 
       setPaymentAmount('');
-      loadOrders();
       handleRefreshMetrics();
       alert("Pagamento registrado com sucesso!");
     } else {
@@ -236,7 +311,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
         alert("Última liquidação cancelada com sucesso!");
         const updatedOrderFromServer = await getOrderById(orderId);
         if (updatedOrderFromServer) setRegisterPaymentOrder(updatedOrderFromServer); 
-        loadOrders();
         handleRefreshMetrics();
       } else {
         alert("Erro ao cancelar liquidação.");
@@ -318,14 +392,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
           isLoadingOrders={isLoadingOrders}
           orders={orders}
           setOrderToDelete={setOrderToDelete}
+          loadMoreOrders={loadMoreOrders}
+          hasMoreOrders={hasMoreOrders}
+          isLoadingMore={isLoadingMore}
         />
       )}
       
       {tab === AdminTab.Confirmation && (
         <ConfirmationTab 
+          searchText={searchText}
+          setSearchText={setSearchText}
           confirmations={confirmations}
           isLoading={isLoadingConfirmations}
           onEdit={setEditingConfirmation}
+          onSync={handleSyncConfirmations}
+          isSyncing={isSyncingConfirmations}
         />
       )}
 

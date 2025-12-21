@@ -2,7 +2,8 @@
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
 import { 
   getFirestore, initializeFirestore, collection, getDocs, query, where, 
-  doc, getDoc, setDoc, runTransaction, increment, limit, Firestore, updateDoc, orderBy, deleteDoc, writeBatch
+  doc, getDoc, setDoc, runTransaction, increment, limit, Firestore, updateDoc, orderBy, deleteDoc, writeBatch,
+  DocumentSnapshot, startAfter, documentId
 } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
 import { getAuth, signInAnonymously, Auth, User, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
 import { Order, Stats, PaymentHistory, ColorData, Confirmation } from '../types';
@@ -399,23 +400,11 @@ export const getStats = async (): Promise<Stats> => {
   const defaultStats: Stats = { qtd_pedidos: 0, qtd_camisetas: 0, valor_total: 0, total_recebido_real: 0, qtd_infantil: 0, qtd_babylook: 0, qtd_unissex: 0, pedidos_pagos: 0, pedidos_pendentes: 0, pedidos_parciais: 0 };
   try {
     await service.connect();
-    // Fetch both stats document and orders collection in parallel
-    const statsPromise = getDoc(doc(db, "configuracoes", "estatisticas"));
-    const ordersPromise = getDocs(collection(db, "pedidos"));
-
-    const [statsSnap, ordersSnap] = await Promise.all([statsPromise, ordersPromise]);
-    
-    const statsData = statsSnap.exists() ? statsSnap.data() as Stats : defaultStats;
-    
-    // Override qtd_pedidos with the actual document count for accuracy
-    statsData.qtd_pedidos = ordersSnap.size;
-
-    return statsData;
-
+    const statsSnap = await getDoc(doc(db, "configuracoes", "estatisticas"));
+    return statsSnap.exists() ? statsSnap.data() as Stats : defaultStats;
   } catch (e: any) { 
     service.handleFirebaseError(e); 
   }
-  // Return default stats on error
   return defaultStats;
 };
 
@@ -426,6 +415,81 @@ export const getAllOrders = async (): Promise<Order[]> => {
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ docId: d.id, ...d.data() } as Order));
   } catch (e: any) { service.handleFirebaseError(e); return []; }
+};
+
+const ORDERS_PAGE_SIZE = 50;
+
+export const getPaginatedOrders = async (lastVisible?: DocumentSnapshot): Promise<{ orders: Order[], lastVisible: DocumentSnapshot | null }> => {
+  try {
+    await service.connect();
+    const constraints = [
+      orderBy("data", "desc"),
+      limit(ORDERS_PAGE_SIZE)
+    ];
+
+    if (lastVisible) {
+      constraints.push(startAfter(lastVisible));
+    }
+
+    const q = query(collection(db, "pedidos"), ...constraints);
+    const snap = await getDocs(q);
+    
+    const orders = snap.docs.map(d => ({ docId: d.id, ...d.data() } as Order));
+    const lastVisibleDoc = snap.docs.length === ORDERS_PAGE_SIZE ? snap.docs[snap.docs.length - 1] : null;
+
+    return { orders, lastVisible: lastVisibleDoc };
+  } catch (e: any) {
+    service.handleFirebaseError(e);
+    return { orders: [], lastVisible: null };
+  }
+};
+
+export const searchOrders = async (searchTerm: string): Promise<Order[]> => {
+  try {
+    await service.connect();
+    const term = searchTerm.trim();
+
+    // Firestore doesn't support OR queries on different fields.
+    // We run multiple queries and merge the results client-side.
+    const numPedidoQuery = query(collection(db, "pedidos"), where("numPedido", "==", term.toUpperCase()));
+    
+    const nomeQuery = query(collection(db, "pedidos"), 
+      orderBy("nome"),
+      where("nome", ">=", term),
+      where("nome", "<=", term + '\uf8ff')
+    );
+    
+    const setorQuery = query(collection(db, "pedidos"),
+      orderBy("setor"),
+      where("setor", ">=", term),
+      where("setor", "<=", term + '\uf8ff')
+    );
+
+    const [numPedidoSnap, nomeSnap, setorSnap] = await Promise.all([
+      getDocs(numPedidoQuery),
+      getDocs(nomeQuery),
+      getDocs(setorQuery),
+    ]);
+    
+    const ordersMap = new Map<string, Order>();
+    const processSnapshot = (snap: any) => {
+      snap.docs.forEach((d: any) => {
+        if (!ordersMap.has(d.id)) {
+          ordersMap.set(d.id, { docId: d.id, ...d.data() } as Order);
+        }
+      });
+    };
+
+    processSnapshot(numPedidoSnap);
+    processSnapshot(nomeSnap);
+    processSnapshot(setorSnap);
+
+    return Array.from(ordersMap.values()).sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+
+  } catch (e: any) {
+    service.handleFirebaseError(e);
+    return [];
+  }
 };
 
 export const getOrderById = async (orderId: string): Promise<Order | null> => {
@@ -643,6 +707,26 @@ export const getConfirmations = async (): Promise<Confirmation[]> => {
   } catch (e: any) {
     service.handleFirebaseError(e);
     return [];
+  }
+};
+
+export const searchConfirmations = async (searchTerm: string): Promise<Confirmation[]> => {
+  try {
+    await service.connect();
+    const term = searchTerm.trim().toUpperCase();
+    
+    // The document ID is the searchable field. We can use a range query to simulate "starts with".
+    const q = query(collection(db, "confirmacoes"), 
+        orderBy(documentId()),
+        where(documentId(), ">=", term),
+        where(documentId(), "<=", term + '\uf8ff')
+    );
+    
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ docId: d.id, ...d.data() } as Confirmation));
+  } catch (e: any) {
+      service.handleFirebaseError(e);
+      return [];
   }
 };
 

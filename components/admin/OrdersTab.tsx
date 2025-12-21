@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Order, ColorData } from '../../types';
-import { Input } from '../UI';
+import { Button, Input } from '../UI';
 import { generateOrderPDF } from '../../services/pdfService';
 
 interface OrdersTabProps {
@@ -10,6 +10,9 @@ interface OrdersTabProps {
   isLoadingOrders: boolean;
   orders: Order[];
   setOrderToDelete: (order: Order | null) => void;
+  loadMoreOrders: () => void;
+  hasMoreOrders: boolean;
+  isLoadingMore: boolean;
 }
 
 const getShirtCount = (order: Order) => {
@@ -37,9 +40,19 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
   isLoadingOrders,
   orders,
   setOrderToDelete,
+  loadMoreOrders,
+  hasMoreOrders,
+  isLoadingMore
 }) => {
   const [localFilter, setLocalFilter] = useState<'Todos' | 'Capital' | 'Interior'>('Todos');
   const [expandedSector, setExpandedSector] = useState<string | null>(null);
+
+  const filteredOrders = orders.filter(o => {
+    // Search text filtering is now done on the server.
+    // We only apply the local filter client-side.
+    const matchesLocal = localFilter === 'Todos' || o.local === localFilter;
+    return matchesLocal;
+  });
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -71,15 +84,10 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
       <div className="space-y-4">
         {isLoadingOrders ? (
           <LoadingPulse />
-        ) : orders.length === 0 ? (
+        ) : filteredOrders.length === 0 ? (
           <EmptyState />
         ) : (
-          orders.filter(o => {
-            const searchLower = searchText.toLowerCase().trim();
-            const matchesSearch = !searchLower || o.numPedido.toLowerCase().includes(searchLower) || o.nome.toLowerCase().includes(searchLower) || o.setor.toLowerCase().includes(searchLower);
-            const matchesLocal = localFilter === 'Todos' || o.local === localFilter;
-            return matchesSearch && matchesLocal;
-          }).map(order => (
+          filteredOrders.map(order => (
             <OrderListItem 
               key={order.docId} 
               order={order} 
@@ -93,6 +101,14 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
           ))
         )}
       </div>
+
+      {hasMoreOrders && !searchText && (
+        <div className="mt-8 flex justify-center">
+            <Button onClick={loadMoreOrders} disabled={isLoadingMore} variant="outline" className="h-14">
+                {isLoadingMore ? "CARREGANDO..." : "CARREGAR MAIS PEDIDOS"}
+            </Button>
+        </div>
+      )}
     </div>
   );
 };
