@@ -188,10 +188,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
     setIsSyncingConfirmations(false);
   };
 
-  // UPDATED: Now performs a deep sync
   const handleRefreshMetrics = async () => {
     setIsProcessingConfig(true);
-    await syncAllStats(); // Manual recalculation of everything
+    await syncAllStats(); 
     const s = await getStats();
     setCurrentStats(s);
     
@@ -339,21 +338,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
 
   return (
     <div className="flex flex-col gap-6 animate-in slide-in-from-right-4 duration-500">
-      <div className="flex flex-col md:flex-row justify-between md:items-center gap-6 border-b-2 border-border-light pb-8">
-        <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-4 sm:gap-6">
-              <h2 className="font-black text-3xl md:text-4xl text-text-primary tracking-tight capitalize leading-none">{tab}</h2>
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-6 border-b border-border-light pb-6">
+        <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-3">
+              <h2 className="font-black text-2xl md:text-3xl text-text-primary tracking-tight capitalize leading-none">{tab}</h2>
               <button 
                 onClick={handleRefreshMetrics}
                 disabled={isProcessingConfig}
-                className="flex items-center gap-2 text-primary hover:text-text-primary transition-colors text-[10px] md:text-xs font-black uppercase tracking-widest whitespace-nowrap"
+                className="flex items-center gap-1.5 text-primary hover:text-text-primary transition-colors text-[9px] md:text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
               >
                 <i className={`fas fa-sync-alt ${isProcessingConfig ? 'fa-spin' : ''}`}></i>
-                <span className="hidden sm:inline">Sincronização Profunda</span>
-                <span className="sm:hidden">Sincronizar</span>
+                <span className="hidden sm:inline">SINCRONIZAR</span>
+                <span className="sm:hidden">SYNC</span>
               </button>
             </div>
-            <p className="text-[10px] md:text-xs text-text-secondary font-bold uppercase tracking-widest">
+            <p className="text-[9px] md:text-[10px] text-text-secondary font-bold uppercase tracking-widest">
                 {getTabDescription(tab)}
             </p>
         </div>
@@ -429,7 +428,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
         title="Liquidar Pagamento"
       >
         <div className="space-y-8">
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <CurrencyInput 
               label="VALOR PAGO"
               value={paymentAmount} 
@@ -444,7 +443,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
                 type="date" 
                 value={paymentDate} 
                 onChange={e => setPaymentDate(e.target.value)} 
-                className="w-full bg-surface border-2 border-border-light rounded-xl h-12 px-5 text-text-primary text-base font-bold focus:outline-none focus:ring-4 focus:ring-primary/20 transition-all"
+                className="w-full bg-surface border border-border-light rounded-xl h-14 px-4 text-text-primary text-base font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all text-center"
               />
             </div>
           </div>
@@ -457,29 +456,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
             {isProcessingPayment ? "PROCESSANDO..." : "CONFIRMAR PAGAMENTO"}
           </Button>
 
-          <div className="pt-8 border-t border-border-light space-y-6">
-            <h3 className="text-sm font-black uppercase tracking-widest text-text-secondary text-center">Histórico de Pagamentos</h3>
+          <div className="pt-4 space-y-4">
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-text-secondary text-center">Histórico de Pagamentos</h3>
             
-            <div className="overflow-hidden border border-border-light rounded-xl">
+            <div className="overflow-hidden rounded-xl border border-border-light/50">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border-light bg-slate-100">
-                    <th className="py-3 text-center w-1/2 font-black text-[10px] uppercase tracking-widest">DATA</th>
-                    <th className="py-3 text-center w-1/2 border-l border-border-light font-black text-[10px] uppercase tracking-widest">VALOR</th>
+                  <tr className="bg-slate-50 border-b border-border-light/50">
+                    <th className="py-3 text-center w-1/2 font-black text-[9px] uppercase tracking-widest text-text-secondary">DATA</th>
+                    <th className="py-3 text-center w-1/2 border-l border-border-light/50 font-black text-[9px] uppercase tracking-widest text-text-secondary">VALOR</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border-light text-center">
+                <tbody className="divide-y divide-border-light/30 text-center">
                   {isLoadingHistory ? (
-                    <tr><td colSpan={2} className="py-12 text-text-secondary/60 italic text-xs">Carregando histórico...</td></tr>
+                    <tr><td colSpan={2} className="py-8 text-text-secondary/60 italic text-xs">Sincronizando...</td></tr>
                   ) : (orderPaymentHistory.length === 0) ? (
                     <tr>
-                      <td colSpan={2} className="py-12 text-text-secondary/60 italic text-xs uppercase tracking-widest">Nenhum lançamento!</td>
+                      <td colSpan={2} className="py-8 text-text-secondary/60 italic text-xs uppercase tracking-widest">Sem lançamentos</td>
                     </tr>
                   ) : (
                     orderPaymentHistory.slice().reverse().map((h: PaymentHistory) => (
-                      <tr key={h.liquidacaoId} className="text-text-primary hover:bg-primary-light transition-colors font-bold">
-                        <td className="py-4 text-text-secondary">{h.data}</td>
-                        <td className="py-4 border-l border-border-light">{h.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                      <tr key={h.liquidacaoId} className="text-text-primary hover:bg-primary-light/30 transition-colors font-bold">
+                        <td className="py-3.5 text-text-secondary text-xs">{h.data}</td>
+                        <td className="py-3.5 border-l border-border-light/30 text-xs">{h.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                       </tr>
                     ))
                   )}
@@ -493,7 +492,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
                   onClick={() => handleCancelLastPayment(registerPaymentOrder!.docId)}
                   disabled={isProcessingPayment}
                   variant="danger"
-                  className="px-8 py-2 rounded-full text-[9px] flex items-center gap-2"
+                  className="px-6 py-2 rounded-full text-[9px] flex items-center gap-2 h-10"
                 >
                   {isProcessingPayment ? (
                     <>
@@ -501,7 +500,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
                       <span>Cancelando...</span>
                     </>
                   ) : (
-                    'CANCELAR ÚLTIMA'
+                    <>
+                      <i className="fas fa-undo"></i>
+                      <span>CANCELAR ÚLTIMA</span>
+                    </>
                   )}
                 </Button>
               </div>
