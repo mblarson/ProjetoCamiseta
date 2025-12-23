@@ -708,7 +708,7 @@ export const syncConfirmationsFromOrders = async () => {
   }
 };
 
-export const updateConfirmationStatus = async (docId: string, status: 'confirmed' | 'pending') => {
+export const updateConfirmationStatus = async (docId: string, status: 'none' | 'confirmed' | 'pending') => {
   try {
     await service.connect();
     const docRef = doc(db, "confirmacoes", docId);

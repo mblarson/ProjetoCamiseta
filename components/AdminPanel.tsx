@@ -318,7 +318,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
     }
   };
 
-  const handleUpdateConfirmationStatus = async (status: 'confirmed' | 'pending') => {
+  const handleUpdateConfirmationStatus = async (status: 'none' | 'confirmed' | 'pending') => {
     if (!editingConfirmation) return;
     setIsUpdatingConfirmation(true);
     const success = await updateConfirmationStatus(editingConfirmation.docId, status);
@@ -519,7 +519,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
       >
         <div className="space-y-6">
             <p className="text-center text-sm text-text-secondary font-bold uppercase tracking-wider">Selecione o novo status de confirmação.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+            <div className="grid grid-cols-1 gap-4 pt-4">
                 <Button 
                     onClick={() => handleUpdateConfirmationStatus('confirmed')} 
                     disabled={isUpdatingConfirmation}
@@ -533,6 +533,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
                     className="h-14 bg-yellow-500 hover:bg-yellow-600 text-white"
                 >
                     <i className="fas fa-clock"></i> Pendente
+                </Button>
+                <Button 
+                    onClick={() => handleUpdateConfirmationStatus('none')} 
+                    disabled={isUpdatingConfirmation}
+                    variant="outline"
+                    className="h-14"
+                >
+                    <i className="fas fa-question-circle"></i> Não Aplicável
                 </Button>
             </div>
             {isUpdatingConfirmation && (
@@ -578,7 +586,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
         <div className="space-y-6">
           <div className="p-8 bg-surface border border-primary/20 rounded-2xl text-center">
             <p className="text-sm text-text-secondary font-bold uppercase tracking-widest mb-6">Informe a senha mestre para confirmar:</p>
-            <Input type="password" placeholder="SENHA" autoFocus value={securityModal.password} onChange={e => setSecurityModal({...securityModal, password: e.target.value.toUpperCase()})} className="text-center tracking-[0.5em] text-xl" />
+            <Input type="text" placeholder="SENHA" autoFocus value={securityModal.password} onChange={e => setSecurityModal({...securityModal, password: e.target.value.toUpperCase()})} className="text-center tracking-[0.5em] text-xl" />
           </div>
           <div className="flex gap-4">
             <Button variant="outline" className="flex-1 h-14 text-sm" onClick={() => setSecurityModal({ type: null, password: '' })}>CANCELAR</Button>
