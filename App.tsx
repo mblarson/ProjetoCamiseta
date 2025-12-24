@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Section, Stats, Order } from './types';
 import { getStats, auth, connectFirebase, signOutUser, getGlobalConfig } from './services/firebase';
@@ -126,11 +125,11 @@ const App: React.FC = () => {
       />
       
       {showSizeMatrix ? (
-        <main className="container mx-auto px-4 sm:px-6 pt-32 animate-in fade-in duration-700">
+        <main className="container mx-auto px-4 sm:px-6 pt-28 animate-in fade-in duration-700">
           <SizeMatrix onClose={() => setShowSizeMatrix(false)} />
         </main>
       ) : (
-        <main className="container mx-auto px-4 sm:px-6 pt-32 animate-in fade-in duration-700">
+        <main className="container mx-auto px-4 sm:px-6 pt-28 animate-in fade-in duration-700">
           {connection === 'api-disabled' && (
             <div className="max-w-2xl mx-auto mb-10 p-10 card border-l-4 border-red-500 bg-red-500/5 animate-in slide-in-from-top-4">
               <div className="flex flex-col gap-6">
