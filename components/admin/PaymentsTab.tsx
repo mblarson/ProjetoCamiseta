@@ -64,7 +64,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
           placeholder="Buscar por Setor, Cidade, Líder ou Código..."
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
-          className="w-full h-14 md:h-20 bg-surface border border-border-light rounded-2xl pl-12 md:pl-16 pr-6 md:pr-8 text-sm md:text-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-text-secondary/60"
+          className="w-full h-12 md:h-16 bg-surface border border-border-light rounded-2xl pl-12 md:pl-16 pr-6 md:pr-8 text-sm md:text-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-text-secondary/60"
         />
       </div>
 

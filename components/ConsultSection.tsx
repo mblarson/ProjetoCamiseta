@@ -95,7 +95,7 @@ export const ConsultSection: React.FC<ConsultSectionProps> = ({ onEdit, isOrders
               value={id} 
               onChange={e => setId(e.target.value.toUpperCase())}
               disabled={loading}
-              className="text-center font-black tracking-widest uppercase h-12 md:h-16 text-lg md:text-2xl rounded-2xl"
+              className="text-center font-black tracking-widest uppercase h-12 md:h-16 text-base md:text-2xl rounded-2xl"
             />
             <Input 
               label="E-MAIL CADASTRADO" 
@@ -109,7 +109,7 @@ export const ConsultSection: React.FC<ConsultSectionProps> = ({ onEdit, isOrders
           </div>
 
           <Button 
-            className="w-full h-14 md:h-20 text-sm md:text-xl" 
+            className="w-full h-12 md:h-16 text-sm md:text-xl" 
             onClick={handleSearch}
             disabled={loading || (!id && !email)}
           >
@@ -172,7 +172,7 @@ export const ConsultSection: React.FC<ConsultSectionProps> = ({ onEdit, isOrders
                    <div className="flex flex-col sm:flex-row gap-4 md:gap-6">
                      <Button 
                         variant="outline" 
-                        className={`flex-1 h-14 md:h-16 text-[10px] md:text-xs ${!isOrdersOpen ? 'opacity-30 cursor-not-allowed' : ''}`} 
+                        className={`flex-1 h-12 md:h-16 text-[10px] md:text-xs ${!isOrdersOpen ? 'opacity-30 cursor-not-allowed' : ''}`} 
                         onClick={() => isOrdersOpen && onEdit?.(order)}
                         disabled={!isOrdersOpen}
                      >
@@ -180,7 +180,7 @@ export const ConsultSection: React.FC<ConsultSectionProps> = ({ onEdit, isOrders
                      </Button>
                      <Button 
                         variant="primary" 
-                        className="flex-1 h-14 md:h-16 text-[10px] md:text-xs" 
+                        className="flex-1 h-12 md:h-16 text-[10px] md:text-xs" 
                         onClick={() => generateOrderPDF(order)}
                      >
                        <i className="fas fa-file-pdf"></i> OBTER PDF DO PEDIDO

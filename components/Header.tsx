@@ -33,7 +33,7 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin, onAdminClick, onLogout,
           <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold tracking-[0.15em] uppercase mt-1">Igreja Evangélica Assembleia de Deus MS</span>
         </div>
       </div>
-      {/* Botão de sair removido conforme solicitado para simplificar o layout mobile */}
+      {/* Botão de sair removido conforme solicitado para simplificar o layout. */}
     </div>
   </header>
 );
