@@ -23,7 +23,7 @@ export const HomeMenu: React.FC<{ onNavigate: (s: Section) => void, isOrdersOpen
       </div>
 
       {/* Grid de botões com espaçamento ajustado */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 w-full max-w-[1400px] px-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 w-full max-w-[1400px] px-4">
         {isOrdersOpen ? (
           <HomeCard 
             icon="fa-cart-plus" 
@@ -57,23 +57,23 @@ export const HomeMenu: React.FC<{ onNavigate: (s: Section) => void, isOrdersOpen
 const HomeCard: React.FC<{ icon: string, title: string, onClick: () => void }> = ({ icon, title, onClick }) => (
   <MovingBorderButton
     onClick={onClick}
-    borderRadius="1rem"
+    borderRadius="1.25rem"
     duration={4000}
-    containerClassName="w-full h-20 md:h-32 group transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl"
+    containerClassName="w-full h-24 md:h-32 group transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl"
     borderClassName="bg-[radial-gradient(var(--primary)_40%,transparent_60%)]"
-    className="bg-white p-4 md:p-8 text-left justify-start gap-4 md:gap-6 border-transparent backdrop-blur-none"
+    className="bg-slate-50 p-5 md:p-8 text-left justify-start gap-5 md:gap-6 border-transparent backdrop-blur-none"
   >
-    {/* Ícone menor no mobile */}
-    <div className="w-10 h-10 md:w-16 md:h-16 rounded-xl md:rounded-2xl flex items-center justify-center text-lg md:text-3xl transition-all group-hover:scale-110 shrink-0 bg-primary-light text-primary border border-primary/10">
+    {/* Ícone levemente maior no mobile para equilibrar com o novo card */}
+    <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl flex items-center justify-center text-xl md:text-3xl transition-all group-hover:scale-110 shrink-0 bg-primary-light text-primary border border-primary/10">
       <i className={`fas ${icon}`}></i>
     </div>
     <div className="flex-1 overflow-hidden">
-      {/* Texto menor no mobile */}
-      <h3 className="text-sm md:text-xl lg:text-2xl font-black tracking-tight text-text-primary uppercase leading-none whitespace-nowrap">
+      {/* Fonte aumentada no mobile (text-base) e mantida proporcional no desktop */}
+      <h3 className="text-base md:text-xl lg:text-2xl font-black tracking-tight text-text-primary uppercase leading-none whitespace-nowrap overflow-visible">
         {title}
       </h3>
     </div>
-    <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 text-primary transform translate-x-[-10px] group-hover:translate-x-0">
+    <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 text-primary transform translate-x-[-10px] group-hover:translate-x-0 hidden sm:block">
       <i className="fas fa-arrow-right text-base md:text-xl"></i>
     </div>
   </MovingBorderButton>

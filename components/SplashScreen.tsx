@@ -15,9 +15,26 @@ const LOADING_MESSAGES = [
   "Quase pronto para o evento...",
 ];
 
+// List of font classes defined in tailwind config in index.html
+const FONT_CLASSES = [
+  "font-manrope",    // Default
+  "font-marker",     // Graffiti/Marker
+  "font-playfair",   // Elegant/Italic
+  "font-bungee",     // Display Bold
+  "font-creepster",  // Drip/Horror Graffiti
+  "font-satisfy",    // Script/Handwriting
+  "font-spacemono",  // Techy Monospace
+  "font-marker italic", // Italicized Marker
+];
+
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onAccess, loading }) => {
   const [progress, setProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
+
+  // Determine current font index based on progress
+  // We want to rotate through fonts every ~12.5% if there are 8 fonts
+  const currentFontIndex = Math.floor((progress / 100) * FONT_CLASSES.length);
+  const currentFontClass = FONT_CLASSES[Math.min(currentFontIndex, FONT_CLASSES.length - 1)];
 
   // Efeito para incrementar o progresso
   useEffect(() => {
@@ -63,7 +80,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onAccess, loading })
         {/* Textual Branding Section */}
         <div className="space-y-6 animate-in fade-in zoom-in-95 duration-1000">
           <div className="space-y-4">
-            <h1 className="text-7xl md:text-9xl font-black tracking-tighter leading-none text-white uppercase bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">
+            {/* Dynamic Font applied here */}
+            <h1 className={`${currentFontClass} text-5xl md:text-9xl font-black tracking-tighter leading-none text-white uppercase bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 transition-all duration-300 transform scale-100 hover:scale-105`}>
               UMADEMATS
             </h1>
             <div className="flex items-center justify-center gap-6">
