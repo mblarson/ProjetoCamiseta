@@ -84,12 +84,12 @@ export const Modal: React.FC<{ isOpen: boolean, onClose: () => void, title?: str
   if (!isOpen) return null;
   const sizeClass = size === 'large' ? 'max-w-7xl' : 'max-w-2xl';
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className={`card bg-surface w-full ${sizeClass} p-10 max-h-[90vh] overflow-y-auto relative animate-in zoom-in-95 duration-300 border-2 border-primary/30 shadow-2xl`}>
-        <button onClick={onClose} className="absolute top-6 right-6 text-text-secondary hover:text-text-primary transition-colors p-2">
-          <i className="fas fa-times text-2xl"></i>
+    <div className="fixed inset-0 z-[2000] flex items-start sm:items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 overflow-y-auto pt-12 sm:pt-6">
+      <div className={`card bg-surface w-full ${sizeClass} p-6 sm:p-10 max-h-[90vh] sm:max-h-[85vh] overflow-y-auto relative animate-in zoom-in-95 duration-300 border-2 border-primary/30 shadow-2xl`}>
+        <button onClick={onClose} className="absolute top-4 right-4 sm:top-6 sm:right-6 text-text-secondary hover:text-text-primary transition-colors p-2">
+          <i className="fas fa-times text-xl sm:text-2xl"></i>
         </button>
-        {title && <h2 className="text-3xl font-black mb-8 text-primary border-b border-border-light pb-5 uppercase tracking-tighter">{title}</h2>}
+        {title && <h2 className="text-xl sm:text-3xl font-black mb-6 sm:mb-8 text-primary border-b border-border-light pb-4 sm:pb-5 uppercase tracking-tighter">{title}</h2>}
         {children}
       </div>
     </div>

@@ -41,13 +41,13 @@ export const AdminMenu: React.FC<AdminMenuProps> = ({ activeTab, onSelectTab }) 
     <div className="relative w-full md:w-64" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full h-14 flex items-center justify-between px-6 bg-white border border-border-light rounded-2xl text-text-primary font-black uppercase tracking-widest text-[10px] transition-all hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-sm"
+        className="w-full h-14 flex items-center justify-between sm:justify-between px-6 bg-white border border-border-light rounded-2xl text-text-primary font-black uppercase tracking-widest text-[10px] transition-all hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-sm relative"
       >
-        <span className="flex items-center gap-3">
-            <i className={`fas ${tabIcons[activeTab]} text-primary`}></i>
-            {activeTab}
-        </span>
-        <i className={`fas fa-chevron-down transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}></i>
+        <div className="flex items-center gap-3 w-full justify-center sm:justify-start">
+            <i className={`fas ${tabIcons[activeTab]} text-primary absolute left-6 sm:static`}></i>
+            <span className="text-center sm:text-left">{activeTab}</span>
+        </div>
+        <i className={`fas fa-chevron-down transition-transform duration-300 absolute right-6 sm:static ${isOpen ? 'rotate-180' : ''}`}></i>
       </button>
 
       {isOpen && (

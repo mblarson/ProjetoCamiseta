@@ -57,14 +57,14 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="relative">
-        <i className="fas fa-search absolute left-6 top-1/2 -translate-y-1/2 text-text-secondary/50 text-base"></i>
+      <div className="relative max-w-2xl mx-auto">
+        <i className="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-text-secondary/50 text-base"></i>
         <input 
           type="text"
           placeholder="Buscar por Setor, Cidade, Líder ou Código..."
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
-          className="w-full h-20 bg-surface border border-border-light rounded-2xl pl-16 pr-8 text-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-text-secondary/60"
+          className="w-full h-14 md:h-20 bg-surface border border-border-light rounded-2xl pl-12 md:pl-16 pr-6 md:pr-8 text-sm md:text-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-text-secondary/60"
         />
       </div>
 

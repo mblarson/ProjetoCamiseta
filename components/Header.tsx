@@ -33,11 +33,7 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin, onAdminClick, onLogout,
           <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold tracking-[0.15em] uppercase mt-1">Igreja Evangélica Assembleia de Deus MS</span>
         </div>
       </div>
-      {isAdmin && isAtAdminPanel && (
-        <Button variant="danger" className="px-5 py-2 text-[11px] h-10" onClick={onLogout}>
-          <i className="fas fa-sign-out-alt"></i> SAIR
-        </Button>
-      )}
+      {/* Botão de sair removido conforme solicitado para simplificar o layout mobile */}
     </div>
   </header>
 );
