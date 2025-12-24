@@ -68,8 +68,8 @@ const HomeCard: React.FC<{ icon: string, title: string, onClick: () => void }> =
       <i className={`fas ${icon}`}></i>
     </div>
     <div className="flex-1 overflow-hidden">
-      {/* Fonte aumentada no mobile (text-base) e reduzida no desktop (lg:text-xl) */}
-      <h3 className="text-base md:text-xl lg:text-xl font-black tracking-tight text-text-primary uppercase leading-none whitespace-nowrap overflow-visible">
+      {/* Fonte ajustada para desktop e remoção de nowrap para evitar corte de texto */}
+      <h3 className="text-base md:text-base lg:text-lg font-black tracking-tight text-text-primary uppercase leading-snug">
         {title}
       </h3>
     </div>
