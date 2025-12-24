@@ -1,20 +1,31 @@
+
 /* Base Styles */
+html {
+  font-size: 18px; /* Aumentado de 17px */
+}
+
+@media (max-width: 768px) {
+  html {
+    font-size: 16px; /* Base sólida para mobile */
+  }
+}
+
 body {
   position: relative;
-  /* Fallback color if image fails to load */
   background-color: var(--background); 
   color: var(--text-primary);
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
 }
 
 /* Card Style (Glassmorphism) */
 .card {
   background: var(--surface);
-  border-radius: 1.5rem; /* 24px - More rounded */
+  border-radius: 1.5rem;
   border: 1px solid var(--border-light);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
@@ -22,7 +33,7 @@ body {
 /* Selection Color */
 ::selection {
   background-color: var(--primary);
-  color: #ffffff; /* Match dark background for contrast */
+  color: #ffffff;
 }
 
 /* Force Hide Number Input Spinners */
@@ -37,7 +48,7 @@ input[type=number] {
   appearance: none !important;
 }
 
-/* Scroll Customization (Light Theme) */
+/* Scroll Customization */
 ::-webkit-scrollbar {
   width: 10px;
 }
@@ -45,12 +56,8 @@ input[type=number] {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1; /* slate-300 */
+  background: #cbd5e1;
   border-radius: 10px;
   border: 2px solid transparent;
-  background-clip: content-box;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8; /* slate-400 */
   background-clip: content-box;
 }

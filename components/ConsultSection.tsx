@@ -7,9 +7,10 @@ import { Order, ColorData } from '../types';
 
 interface ConsultSectionProps {
   onEdit?: (order: Order) => void;
+  isOrdersOpen: boolean;
 }
 
-export const ConsultSection: React.FC<ConsultSectionProps> = ({ onEdit }) => {
+export const ConsultSection: React.FC<ConsultSectionProps> = ({ onEdit, isOrdersOpen }) => {
   const [id, setId] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,20 +47,20 @@ export const ConsultSection: React.FC<ConsultSectionProps> = ({ onEdit }) => {
     ['infantil', 'babylook', 'unissex'].forEach(cat => {
       const sizes = colorData[cat as keyof ColorData];
       Object.entries(sizes).forEach(([s, q]) => {
-        if (q > 0) items.push({ cat, size: s, qty: q });
+        if ((q as number) > 0) items.push({ cat, size: s, qty: q });
       });
     });
 
     if (items.length === 0) return null;
 
     return (
-      <div className="space-y-2">
-        <p className="text-[10px] font-black uppercase text-primary/60 tracking-widest">{label}</p>
-        <div className="grid grid-cols-1 gap-1">
+      <div className="space-y-4">
+        <p className="text-xs font-black uppercase text-primary/70 tracking-widest border-b-2 border-primary/10 pb-2">{label}</p>
+        <div className="grid grid-cols-1 gap-2">
           {items.map((it, idx) => (
-            <div key={idx} className="flex justify-between text-[11px] border-b border-border-light pb-1">
+            <div key={idx} className="flex justify-between text-base border-b border-border-light pb-2">
               <span className="text-text-secondary uppercase font-bold">{it.cat} ({it.size})</span>
-              <span className="text-text-primary font-black">{it.qty}</span>
+              <span className="text-text-primary font-black">{it.qty} un.</span>
             </div>
           ))}
         </div>
@@ -75,26 +76,26 @@ export const ConsultSection: React.FC<ConsultSectionProps> = ({ onEdit }) => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto animate-in zoom-in-95 duration-500">
-      <Card className="p-10 md:p-14 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -mr-16 -mt-16"></div>
+    <div className="max-w-5xl mx-auto animate-in zoom-in-95 duration-500">
+      <Card className="p-10 md:p-16 relative overflow-hidden shadow-2xl">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 rounded-bl-full -mr-24 -mt-24"></div>
         
-        <div className="text-center mb-8 relative z-10">
-          <h2 className="text-3xl md:text-5xl font-black mb-3 tracking-tighter text-text-primary uppercase">Consultar Pedido</h2>
-          <p className="text-text-secondary text-[11px] font-bold uppercase tracking-widest max-w-sm mx-auto leading-relaxed">
+        <div className="text-center mb-12 relative z-10">
+          <h2 className="text-4xl md:text-6xl font-black mb-5 tracking-tighter text-text-primary uppercase">Consultar Pedido</h2>
+          <p className="text-text-secondary text-base font-bold uppercase tracking-widest max-w-md mx-auto leading-relaxed opacity-60">
             Localize seu pedido usando o código ou seu e-mail de cadastro.
           </p>
         </div>
         
-        <div className="space-y-8 relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-10 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Input 
               label="CÓDIGO DO PEDIDO" 
               placeholder="PED-XXXXXX" 
               value={id} 
               onChange={e => setId(e.target.value.toUpperCase())}
               disabled={loading}
-              className="text-center font-black tracking-widest uppercase h-14 rounded-2xl"
+              className="text-center font-black tracking-widest uppercase h-16 text-2xl rounded-2xl"
             />
             <Input 
               label="E-MAIL CADASTRADO" 
@@ -103,66 +104,88 @@ export const ConsultSection: React.FC<ConsultSectionProps> = ({ onEdit }) => {
               value={email} 
               onChange={e => setEmail(e.target.value)}
               disabled={loading}
-              className="text-center font-bold h-14 rounded-2xl"
+              className="text-center font-bold h-16 text-lg rounded-2xl"
             />
           </div>
 
           <Button 
-            className="w-full h-16" 
+            className="w-full h-20 text-xl" 
             onClick={handleSearch}
             disabled={loading || (!id && !email)}
           >
-            {loading ? <i className="fas fa-circle-notch fa-spin text-xl"></i> : "LOCALIZAR PEDIDO AGORA"}
+            {loading ? <i className="fas fa-circle-notch fa-spin text-2xl"></i> : "LOCALIZAR PEDIDO AGORA"}
           </Button>
           
           {searched && !order && (
-            <div className="p-6 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-xs font-bold text-center animate-shake">
-              Nenhum pedido encontrado com os dados informados.
+            <div className="p-8 bg-red-500/5 border-2 border-red-500/20 rounded-3xl text-red-500 text-sm font-black text-center animate-shake uppercase tracking-widest">
+              <i className="fas fa-search-minus mr-3"></i> Nenhum pedido encontrado.
             </div>
           )}
 
           {order && (
-            <div className="animate-in fade-in slide-in-from-top-4 duration-500 pt-4">
-              <div className="p-8 bg-background rounded-3xl border border-primary/40 space-y-8 shadow-inner">
+            <div className="animate-in fade-in slide-in-from-top-6 duration-600 pt-6">
+              <div className="p-10 bg-white rounded-[2.5rem] border-2 border-primary/20 space-y-10 shadow-xl">
                 
-                <div className="grid grid-cols-1 gap-1">
-                    <p className="text-[9px] font-black text-text-secondary uppercase tracking-widest">Código do Pedido</p>
-                    <p className="text-text-primary font-black text-xl tracking-widest">{order.numPedido}</p>
+                <div className="flex flex-col md:flex-row justify-between gap-8">
+                  <div className="space-y-1.5">
+                      <p className="text-xs font-black text-text-secondary uppercase tracking-[0.2em]">Número Identificador</p>
+                      <p className="text-text-primary font-black text-4xl tracking-widest">{order.numPedido}</p>
+                  </div>
+                  <div className="space-y-1.5 text-left md:text-right">
+                      <p className="text-xs font-black text-text-secondary uppercase tracking-[0.2em]">Status de Pagamento</p>
+                      <span className={`inline-flex px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest border-2 ${order.statusPagamento === 'Pago' ? 'border-green-500 text-green-600 bg-green-50' : 'border-red-500 text-red-600 bg-red-50'}`}>
+                        {order.statusPagamento}
+                      </span>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-1">
-                    <p className="text-[9px] font-black text-text-secondary uppercase tracking-widest">Nome do Líder</p>
-                    <p className="text-text-primary font-black text-lg uppercase">{order.nome}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-border-light">
+                  <div className="space-y-1.5">
+                      <p className="text-xs font-black text-text-secondary uppercase tracking-[0.2em]">Responsável</p>
+                      <p className="text-text-primary font-black text-2xl uppercase tracking-tight">{order.nome}</p>
+                  </div>
+                  <div className="space-y-1.5">
+                      <p className="text-xs font-black text-text-secondary uppercase tracking-[0.2em]">Origem / Destino</p>
+                      <p className="text-primary font-black text-2xl uppercase tracking-tight">{order.local} • {formatSetor(order)}</p>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-1">
-                    <p className="text-[9px] font-black text-text-secondary uppercase tracking-widest">Localização - Setor</p>
-                    <p className="text-primary font-black text-sm uppercase">{order.local} - {formatSetor(order)}</p>
-                </div>
-
-                <div className="pt-4 border-t border-border-light">
-                   <p className="text-[10px] font-black text-text-primary uppercase tracking-[0.2em] mb-4">Detalhamento do Pedido</p>
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                      {renderTableData("Verde Oliva", order.verdeOliva)}
-                      {renderTableData("Terracota", order.terracota)}
+                <div className="pt-8 border-t border-border-light">
+                   <p className="text-sm font-black text-text-primary uppercase tracking-[0.3em] mb-8 flex items-center gap-3">
+                     <div className="w-3 h-3 bg-primary rounded-full shadow-lg shadow-primary/30"></div>
+                     Detalhamento das Camisetas
+                   </p>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
+                      {renderTableData("Opção: Verde Oliva", order.verdeOliva)}
+                      {renderTableData("Opção: Terracota", order.terracota)}
                    </div>
                 </div>
 
-                <div className="pt-6 border-t border-border-light flex flex-col sm:flex-row gap-4">
-                   <Button 
-                      variant="outline" 
-                      className="flex-1 h-12 text-[10px]" 
-                      onClick={() => onEdit?.(order)}
-                   >
-                     <i className="fas fa-edit"></i> EDITAR PEDIDO
-                   </Button>
-                   <Button 
-                      variant="primary" 
-                      className="flex-1 h-12 text-[10px]" 
-                      onClick={() => generateOrderPDF(order)}
-                   >
-                     <i className="fas fa-file-pdf"></i> BAIXAR PDF
-                   </Button>
+                <div className="pt-10 border-t border-border-light flex flex-col gap-6">
+                   {!isOrdersOpen && (
+                     <div className="p-5 bg-yellow-500/5 border-2 border-yellow-500/20 rounded-2xl text-center">
+                        <p className="text-sm font-black text-yellow-700 uppercase tracking-widest">
+                          <i className="fas fa-lock mr-2"></i> Alterações suspensas por encerramento do prazo.
+                        </p>
+                     </div>
+                   )}
+                   <div className="flex flex-col sm:flex-row gap-6">
+                     <Button 
+                        variant="outline" 
+                        className={`flex-1 h-16 text-xs ${!isOrdersOpen ? 'opacity-30 cursor-not-allowed' : ''}`} 
+                        onClick={() => isOrdersOpen && onEdit?.(order)}
+                        disabled={!isOrdersOpen}
+                     >
+                       <i className="fas fa-edit"></i> EDITAR MEU PEDIDO
+                     </Button>
+                     <Button 
+                        variant="primary" 
+                        className="flex-1 h-16 text-xs" 
+                        onClick={() => generateOrderPDF(order)}
+                     >
+                       <i className="fas fa-file-pdf"></i> OBTER PDF DO PEDIDO
+                     </Button>
+                   </div>
                 </div>
               </div>
             </div>

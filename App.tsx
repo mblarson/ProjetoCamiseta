@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Section, Stats, Order } from './types';
-import { getStats, auth, connectFirebase, signOutUser } from './services/firebase';
+import { getStats, auth, connectFirebase, signOutUser, getGlobalConfig } from './services/firebase';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
 
 // Components
@@ -12,22 +13,36 @@ import { ConsultSection } from './components/ConsultSection';
 import { AdminPanel } from './components/AdminPanel';
 import { LoginModal } from './components/LoginModal';
 import { SizeMatrix } from './components/SizeMatrix';
+import { SplashScreen } from './components/SplashScreen';
 
 type ConnectionState = 'connecting' | 'connected' | 'error' | 'api-disabled';
 
 const App: React.FC = () => {
   const [activeSection, setActiveSection] = useState<Section>(Section.Home);
   const [connection, setConnection] = useState<ConnectionState>('connecting');
+  const [showSplash, setShowSplash] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [showSizeMatrix, setShowSizeMatrix] = useState(false);
+  const [isOrdersOpen, setIsOrdersOpen] = useState(true);
+
+  const loadConfig = useCallback(async () => {
+    try {
+      const config = await getGlobalConfig();
+      setIsOrdersOpen(config.pedidosAbertos);
+    } catch (e) {
+      console.error("Failed to load config:", e);
+    }
+  }, []);
 
   const initFirebase = useCallback(async () => {
     try {
       await connectFirebase();
+      await loadConfig();
+      setConnection('connected');
     } catch (e: any) {
       console.error("Firebase Auth Error:", e);
       if (e.message === "API_DISABLED") {
@@ -37,7 +52,7 @@ const App: React.FC = () => {
         setErrorDetails(e.message);
       }
     }
-  }, []);
+  }, [loadConfig]);
 
   useEffect(() => {
     initFirebase();
@@ -47,17 +62,10 @@ const App: React.FC = () => {
         try {
           const s = await getStats();
           setStats(s);
-          setConnection('connected');
-          setErrorDetails(null);
           const isAdminUser = !user.isAnonymous && user.email === 'admin@umademats.com.br';
           setIsAdmin(isAdminUser);
         } catch (e: any) {
-          if (e.message === "API_DISABLED") {
-            setConnection('api-disabled');
-          } else {
-            setConnection('error');
-            setErrorDetails(e.message);
-          }
+          console.error("Stats/Auth update error:", e);
         }
       }
     });
@@ -69,10 +77,12 @@ const App: React.FC = () => {
     await signOutUser();
     setIsAdmin(false);
     setActiveSection(Section.Home);
+    loadConfig();
   };
 
   const handleNavigation = (section: Section) => {
     if (section === Section.Order) {
+      if (!isOrdersOpen && !isAdmin) return;
       setEditingOrder(null);
       setActiveSection(Section.Order);
     } else if (section === Section.Admin) {
@@ -87,6 +97,10 @@ const App: React.FC = () => {
   };
 
   const handleEdit = (order: Order) => {
+    if (!isOrdersOpen && !isAdmin) {
+      alert("O período de edição foi encerrado.");
+      return;
+    }
     setEditingOrder(order);
     setActiveSection(Section.Order);
   };
@@ -94,16 +108,13 @@ const App: React.FC = () => {
   const handleLoginSuccess = () => {
     setIsLoginModalOpen(false);
     setActiveSection(Section.Admin);
+    loadConfig();
   };
 
-  const handleShowSizeMatrix = () => {
-    setActiveSection(Section.Admin);
-    setShowSizeMatrix(true);
-  };
-
-  const handleCloseSizeMatrix = () => {
-    setShowSizeMatrix(false);
-  };
+  if (showSplash) {
+    // Agora passamos loading={connection !== 'connected'} para que o splash saiba quando parar de travar o progresso
+    return <SplashScreen loading={connection !== 'connected'} onAccess={() => setShowSplash(false)} />;
+  }
 
   return (
     <div className="min-h-screen pb-20 bg-background selection:bg-primary selection:text-white">
@@ -115,11 +126,11 @@ const App: React.FC = () => {
       />
       
       {showSizeMatrix ? (
-        <main className="container mx-auto px-4 sm:px-6 pt-24 animate-in fade-in duration-700">
-          <SizeMatrix onClose={handleCloseSizeMatrix} />
+        <main className="container mx-auto px-4 sm:px-6 pt-32 animate-in fade-in duration-700">
+          <SizeMatrix onClose={() => setShowSizeMatrix(false)} />
         </main>
       ) : (
-        <main className="container mx-auto px-4 sm:px-6 pt-24 animate-in fade-in duration-700">
+        <main className="container mx-auto px-4 sm:px-6 pt-32 animate-in fade-in duration-700">
           {connection === 'api-disabled' && (
             <div className="max-w-2xl mx-auto mb-10 p-10 card border-l-4 border-red-500 bg-red-500/5 animate-in slide-in-from-top-4">
               <div className="flex flex-col gap-6">
@@ -133,21 +144,20 @@ const App: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-4 text-sm text-text-secondary">
-                  <p>O Google Cloud exige que a API do Firestore seja ativada manualmente para este projeto.</p>
-                  <div className="pt-4 flex flex-col sm:flex-row gap-4">
-                    <Button className="flex-1 h-14" onClick={() => window.location.reload()}>
-                      <i className="fas fa-sync-alt"></i> JÁ ATIVEI, RECARREGAR SISTEMA
-                    </Button>
-                  </div>
+                  <p>O Google Cloud exige que a API do Firestore seja ativada manualmente.</p>
+                  <Button className="w-full h-14" onClick={() => window.location.reload()}>
+                    RECARREGAR SISTEMA
+                  </Button>
                 </div>
               </div>
             </div>
           )}
 
-          {connection === 'connecting' && (
-            <div className="flex flex-col items-center justify-center py-20 animate-pulse">
-              <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-6"></div>
-              <p className="text-primary font-black text-[10px] uppercase tracking-[0.4em]">Sincronizando com Servidor Premium...</p>
+          {connection === 'error' && (
+            <div className="max-w-2xl mx-auto mb-10 p-10 card border-l-4 border-red-500 bg-red-500/5">
+              <h3 className="text-xl font-black text-red-500 mb-2">ERRO DE CONEXÃO</h3>
+              <p className="text-sm text-text-secondary mb-4">{errorDetails || "Ocorreu um problema ao conectar com o banco de dados."}</p>
+              <Button onClick={() => window.location.reload()}>TENTAR NOVAMENTE</Button>
             </div>
           )}
 
@@ -156,7 +166,6 @@ const App: React.FC = () => {
               {activeSection !== Section.Home && (
                 <button 
                   onClick={() => {
-                    // SESSION FIX: Logout admin when they return to the main menu.
                     if (isAdmin && activeSection === Section.Admin) {
                         handleLogout();
                     } else {
@@ -164,20 +173,20 @@ const App: React.FC = () => {
                         setEditingOrder(null);
                     }
                   }} 
-                  className="mb-6 group flex items-center gap-3 text-text-secondary hover:text-primary transition-all font-black text-[10px] uppercase tracking-[0.2em]"
+                  className="mb-8 group flex items-center gap-4 text-text-secondary hover:text-primary transition-all font-black text-[11px] uppercase tracking-[0.2em]"
                 >
-                  <div className="w-8 h-8 rounded-full border border-border-light flex items-center justify-center group-hover:border-primary/50 transition-colors">
+                  <div className="w-10 h-10 rounded-full border border-border-light flex items-center justify-center group-hover:border-primary/50 transition-colors">
                     <i className="fas fa-arrow-left"></i>
                   </div>
-                  Menu Principal
+                  Voltar ao Menu Principal
                 </button>
               )}
 
               <div className="transition-all duration-500 ease-out">
-                {activeSection === Section.Home && <HomeMenu onNavigate={handleNavigation} />}
-                {activeSection === Section.Consult && <ConsultSection onEdit={handleEdit} />}
+                {activeSection === Section.Home && <HomeMenu onNavigate={handleNavigation} isOrdersOpen={isOrdersOpen} />}
+                {activeSection === Section.Consult && <ConsultSection onEdit={handleEdit} isOrdersOpen={isOrdersOpen} />}
                 {activeSection === Section.Order && <OrderSection initialOrder={editingOrder} onBackToHome={() => setActiveSection(Section.Home)} />}
-                {activeSection === Section.Admin && <AdminPanel stats={stats} onEditOrder={handleEdit} onShowSizeMatrix={handleShowSizeMatrix} />}
+                {activeSection === Section.Admin && <AdminPanel stats={stats} onEditOrder={handleEdit} onShowSizeMatrix={() => setShowSizeMatrix(true)} />}
               </div>
             </div>
           )}
@@ -190,8 +199,8 @@ const App: React.FC = () => {
         onSuccess={handleLoginSuccess}
       />
 
-      <footer className="mt-32 py-10 border-t border-border-light text-center">
-        <p className="text-text-secondary/60 text-[9px] font-bold uppercase tracking-[0.4em]">
+      <footer className="mt-32 py-12 border-t border-border-light text-center">
+        <p className="text-text-secondary/40 text-[10px] font-bold uppercase tracking-[0.4em]">
           &copy; 2025 UMADEMATS • Jubileu de Ouro
         </p>
       </footer>
