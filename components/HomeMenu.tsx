@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Section } from '../types';
 import { Button as MovingBorderButton } from './ui/moving-border';
@@ -11,6 +10,10 @@ export const HomeMenu: React.FC<{ onNavigate: (s: Section) => void, isOrdersOpen
         <h1 className="text-4xl md:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tighter leading-tight text-text-primary whitespace-nowrap overflow-visible">
           Gestão de <span className="text-primary">Pedidos</span>
         </h1>
+        
+        <p className="text-sm md:text-xl text-text-secondary font-bold max-w-3xl mx-auto leading-relaxed px-4">
+          Registre aqui os pedidos de camisetas para o Jubileu da Umademats 2026. <span className="text-primary font-black uppercase tracking-wider">AQUI JESUS REINA!</span>
+        </p>
         
         <div className="flex flex-col items-center gap-4">
           {!isOrdersOpen && (
