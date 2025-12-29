@@ -103,6 +103,10 @@ const getPaymentDocId = (order: Pick<Order, 'local' | 'setor'>): string => {
   return key;
 };
 
+const getConfirmationDocId = (local: 'Capital' | 'Interior', setor: string): string => {
+  return local === 'Capital' ? `SETOR ${setor.toUpperCase().trim()}` : setor.toUpperCase().trim();
+};
+
 const calculateShirtCount = (order: Partial<Order>) => {
   const calculate = (data?: ColorData) => {
     if (!data) return 0;
@@ -150,7 +154,6 @@ export const syncAllStats = async () => {
       pedidos_pagos: pagos,
       pedidos_parciais: parciais,
       pedidos_pendentes: pendentes,
-      // Reset modality counts to 0 or implement deeper logic if needed
       qtd_infantil: 0,
       qtd_babylook: 0,
       qtd_unissex: 0
@@ -180,7 +183,6 @@ export const recalculateTotalsAfterPriceChange = async (newPrice: number) => {
     });
 
     await batch.commit();
-    // After updating all orders, trigger a deep sync to fix the stats document
     await syncAllStats();
     return true;
   } catch (e: any) {
@@ -393,14 +395,37 @@ export const cancelLastPayment = async (orderId: string) => {
 export const endEvent = async () => {
   try {
     await service.connect();
-    const ordersSnap = await getDocs(collection(db, "pedidos"));
-    const paymentsSnap = await getDocs(collection(db, "pagamentos"));
-    const batch = writeBatch(db);
     
-    ordersSnap.docs.forEach(d => batch.delete(d.ref));
-    paymentsSnap.docs.forEach(d => batch.delete(d.ref));
+    // Obter referências de todos os documentos que precisam ser excluídos
+    const [ordersSnap, paymentsSnap, confirmationsSnap] = await Promise.all([
+      getDocs(collection(db, "pedidos")),
+      getDocs(collection(db, "pagamentos")),
+      getDocs(collection(db, "confirmacoes"))
+    ]);
+
+    const allDocs = [
+      ...ordersSnap.docs,
+      ...paymentsSnap.docs,
+      ...confirmationsSnap.docs
+    ];
+
+    // O Firestore permite no máximo 500 operações por batch.
+    // Vamos processar em lotes para evitar o erro "Batch limit exceeded".
+    const MAX_BATCH_SIZE = 500;
     
-    batch.set(doc(db, "configuracoes", "estatisticas"), {
+    for (let i = 0; i < allDocs.length; i += MAX_BATCH_SIZE) {
+      const batch = writeBatch(db);
+      const chunk = allDocs.slice(i, i + MAX_BATCH_SIZE);
+      
+      chunk.forEach(docSnap => {
+        batch.delete(docSnap.ref);
+      });
+      
+      await batch.commit();
+    }
+
+    // Reset das estatísticas após a limpeza
+    await setDoc(doc(db, "configuracoes", "estatisticas"), {
       qtd_pedidos: 0,
       qtd_camisetas: 0,
       valor_total: 0,
@@ -413,9 +438,12 @@ export const endEvent = async () => {
       pedidos_parciais: 0
     });
 
-    await batch.commit();
     return true;
-  } catch (e: any) { service.handleFirebaseError(e); return false; }
+  } catch (e: any) { 
+    console.error("Erro ao encerrar evento:", e);
+    service.handleFirebaseError(e); 
+    return false; 
+  }
 };
 
 export const getStats = async (): Promise<Stats> => {
@@ -532,6 +560,12 @@ export const deleteOrder = async (order: Order) => {
       }
       
       transaction.delete(orderRef);
+
+      // Sincronização automática: Remove o card de confirmação ao excluir o pedido
+      const confDocId = getConfirmationDocId(order.local, order.setor);
+      const confRef = doc(db, "confirmacoes", confDocId);
+      transaction.delete(confRef);
+
       return true;
     });
 
@@ -599,15 +633,31 @@ export const updateOrder = async (docId: string, orderData: Partial<Order>) => {
       const orderSnap = await transaction.get(orderRef);
       if (!orderSnap.exists()) throw new Error("Pedido não encontrado");
       
-      const oldOrderData = orderSnap.data() as Order;
+      const oldOrder = orderSnap.data() as Order;
       const newTotalValue = orderData.valorTotal!;
-      const valorPago = oldOrderData.valorPago;
+      const valorPago = oldOrder.valorPago;
       
       let newStatus: 'Pendente' | 'Parcial' | 'Pago' = 'Pendente';
       if (valorPago >= newTotalValue) newStatus = 'Pago';
       else if (valorPago > 0) newStatus = 'Parcial';
 
       transaction.update(orderRef, { ...orderData, statusPagamento: newStatus });
+
+      // Sincronização automática: Se mudar o setor/cidade, atualiza o ID do card de confirmação
+      const oldConfId = getConfirmationDocId(oldOrder.local, oldOrder.setor);
+      const newConfId = orderData.local && orderData.setor 
+        ? getConfirmationDocId(orderData.local, orderData.setor) 
+        : oldConfId;
+
+      if (oldConfId !== newConfId) {
+        transaction.delete(doc(db, "confirmacoes", oldConfId));
+        transaction.set(doc(db, "confirmacoes", newConfId), {
+          type: orderData.local || oldOrder.local,
+          status: 'none',
+          lastUpdated: ''
+        }, { merge: true });
+      }
+
       return true;
     });
 
@@ -636,6 +686,17 @@ export const createOrder = async (orderData: Partial<Order>, prefix: string = 'P
         statusPagamento: 'Pendente',
         valorPago: 0
       });
+
+      // Sincronização automática: Cria o card de confirmação ao criar o pedido
+      if (orderData.local && orderData.setor) {
+        const confDocId = getConfirmationDocId(orderData.local, orderData.setor);
+        const confRef = doc(db, "confirmacoes", confDocId);
+        transaction.set(confRef, {
+          type: orderData.local,
+          status: 'none',
+          lastUpdated: ''
+        }, { merge: true });
+      }
 
       return numPedido;
     });
@@ -683,7 +744,7 @@ export const syncConfirmationsFromOrders = async () => {
     const newConfirmationsMap = new Map<string, Omit<Confirmation, 'docId'>>();
 
     orders.forEach(order => {
-      const docId = order.local === 'Capital' ? `SETOR ${order.setor}` : order.setor;
+      const docId = getConfirmationDocId(order.local, order.setor);
       if (!existingIds.has(docId) && !newConfirmationsMap.has(docId)) {
         newConfirmationsMap.set(docId, {
           type: order.local,
