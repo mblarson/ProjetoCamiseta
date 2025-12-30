@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Button, Input, Card, Modal } from './UI';
+import { Button, Input, Card, Modal, TextArea } from './UI';
 import { checkExistingEmail, checkExistingSector, createOrder, updateOrder, getGlobalConfig } from '../services/firebase';
 import { SETORES_CAPITAL, INFANTIL_SIZES, ADULTO_SIZES, DEFAULT_PRICE } from '../constants';
 import { ColorType, CategoryType, SizeQuantities, ColorData, Order } from '../types';
@@ -18,13 +18,12 @@ const initialColorData = (): ColorData => ({
   unissex: {}
 });
 
-// Helper component for the summary screen
+// Componente auxiliar para a tabela de revisão no resumo
 const OrderReviewTable: React.FC<{ title: string, data: ColorData, colorHex: string }> = ({ title, data, colorHex }) => {
     const items: { category: string, size: string, quantity: number }[] = [];
     (['infantil', 'babylook', 'unissex'] as const).forEach(category => {
         const categoryData = data[category];
         if (categoryData) {
-            // FIX: Cast quantity to number to resolve "Operator '>' cannot be applied to types 'unknown' and 'number'" and assignment error.
             Object.entries(categoryData).forEach(([size, quantity]) => {
                 const q = quantity as number;
                 if (q > 0) {
@@ -34,25 +33,23 @@ const OrderReviewTable: React.FC<{ title: string, data: ColorData, colorHex: str
         }
     });
 
-    if (items.length === 0) {
-        return null;
-    }
+    if (items.length === 0) return null;
 
     return (
-        <div className="space-y-4">
-            <h4 className="flex items-center gap-3 text-sm font-black uppercase tracking-widest text-text-primary">
-                <div className="w-4 h-4 rounded-md shadow-inner" style={{ backgroundColor: colorHex }}></div>
+        <div className="space-y-4 animate-in fade-in duration-500">
+            <h4 className="flex items-center gap-3 text-xs font-black uppercase tracking-widest text-text-primary">
+                <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: colorHex }}></div>
                 {title}
             </h4>
-            <div className="grid grid-cols-3 gap-x-4 gap-y-2 text-xs border-t border-border-light pt-3">
+            <div className="grid grid-cols-3 gap-x-4 gap-y-2 text-[11px] border-t border-border-light pt-3">
                 <div className="font-bold text-text-secondary uppercase tracking-wider">Categoria</div>
-                <div className="font-bold text-text-secondary uppercase tracking-wider text-center">Tamanho</div>
+                <div className="font-bold text-text-secondary uppercase tracking-wider text-center">Tam.</div>
                 <div className="font-bold text-text-secondary uppercase tracking-wider text-right">Qtd.</div>
                 {items.map((item, index) => (
                     <React.Fragment key={index}>
-                        <div className="text-text-secondary capitalize">{item.category}</div>
+                        <div className="text-text-secondary font-medium capitalize">{item.category}</div>
                         <div className="text-text-primary font-bold text-center">{item.size}</div>
-                        <div className="text-text-primary font-bold text-right">{item.quantity}</div>
+                        <div className="text-text-primary font-black text-right">{item.quantity}</div>
                     </React.Fragment>
                 ))}
             </div>
@@ -69,7 +66,6 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
   const [validationError, setValidationError] = useState<string | null>(null);
   const [unitPrice, setUnitPrice] = useState(DEFAULT_PRICE);
   
-  // Form States
   const [info, setInfo] = useState({ 
     nome: '', local: 'Capital' as 'Capital' | 'Interior', 
     setor: '', email: '', contato: '', observacao: '' 
@@ -81,7 +77,6 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
 
   useEffect(() => {
     getGlobalConfig().then(c => setUnitPrice(c.valorCamiseta));
-    
     if (initialOrder) {
       setInfo({
         nome: initialOrder.nome,
@@ -123,20 +118,15 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
     if (step === 'info') {
       setErrorMsg('');
       setValidationError(null);
-
-      // Validation runs only for NEW orders.
       if (!initialOrder) {
         setIsSubmitting(true);
         try {
-          // 1. Validate Sector first
           const sectorResult = await checkExistingSector(info.local, info.setor);
           if (sectorResult.exists) {
             setValidationError(sectorResult.message);
             setIsSubmitting(false);
             return;
           }
-
-          // 2. Validate Email second
           const emailResult = await checkExistingEmail(info.email);
           if (emailResult.exists) {
             setValidationError(emailResult.message);
@@ -144,13 +134,11 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
             return;
           }
         } catch (err: any) {
-          setErrorMsg("Erro de conexão ao validar dados. Tente novamente.");
+          setErrorMsg("Erro de conexão ao validar dados.");
           setIsSubmitting(false);
           return;
         }
       }
-
-      // If validation passes or it's an edit, proceed to the next step.
       setStep('sizes');
       setIsSubmitting(false);
     }
@@ -165,7 +153,6 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
         terracota,
         valorTotal: totals.preco 
       };
-
       if (initialOrder) {
         await updateOrder(initialOrder.docId, orderData);
         setOrderId(initialOrder.numPedido);
@@ -173,12 +160,17 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
         const numPedido = await createOrder(orderData);
         setOrderId(numPedido!);
       }
-      
       setIsConfirmModalOpen(false);
       setStep('success');
     } catch (e) {
       setErrorMsg("Falha ao salvar pedido.");
     } finally { setIsSubmitting(false); }
+  };
+
+  const formatSetorDisplay = () => {
+    return info.local === 'Capital' && !info.setor.startsWith('SETOR') 
+      ? `SETOR ${info.setor}` 
+      : info.setor;
   };
 
   if (step === 'success') {
@@ -189,27 +181,13 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
         </div>
         <h2 className="text-2xl font-black mb-1 text-text-primary">{initialOrder ? "Pedido Atualizado!" : "Pedido Realizado!"}</h2>
         <p className="text-[9px] text-primary/50 uppercase tracking-[0.2em] font-bold mb-6">Código de acompanhamento:</p>
-        <div className="card p-5 mb-10">
+        <div className="card p-5 mb-10 border-2 border-primary/20">
           <span className="text-3xl font-black text-text-primary tracking-widest">{orderId}</span>
         </div>
-        <div className="flex justify-center w-full">
-          <Button 
-            onClick={() => onBackToHome ? onBackToHome() : window.location.reload()} 
-            variant="outline" 
-            className="h-12 text-[10px] px-8"
-          >
-            VOLTAR AO INÍCIO
-          </Button>
-        </div>
+        <Button onClick={() => onBackToHome ? onBackToHome() : window.location.reload()} variant="outline" className="h-12 text-[10px] w-full">VOLTAR AO INÍCIO</Button>
       </div>
     );
   }
-
-  const formatSetorDisplay = () => {
-    return info.local === 'Capital' && !info.setor.startsWith('SETOR') 
-      ? `SETOR ${info.setor}` 
-      : info.setor;
-  };
 
   return (
     <div className={`max-w-5xl mx-auto ${step === 'sizes' ? 'pb-48 sm:pb-72' : 'pb-20'}`}>
@@ -220,15 +198,8 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
         <StepIndicator num={3} active={step === 'summary'} done={false} label="Resumo" />
       </div>
 
-      {errorMsg && (
-        <div className="mb-10 p-6 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-sm flex items-center gap-4 animate-shake">
-          <i className="fas fa-exclamation-circle text-xl"></i>
-          <span className="font-bold uppercase tracking-widest">{errorMsg}</span>
-        </div>
-      )}
-
       {step === 'info' && (
-        <form onSubmit={handleNextStep} className="grid grid-cols-1 md:grid-cols-2 gap-10 animate-in slide-in-from-bottom-8">
+        <form onSubmit={handleNextStep} className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-bottom-8">
           <Input label="Nome Completo do Líder" required value={info.nome} onChange={e => setInfo({...info, nome: e.target.value})} />
           <div className="flex flex-col gap-3">
             <label className="text-[10px] uppercase font-black tracking-[0.2em] text-primary">Localidade</label>
@@ -240,7 +211,7 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
           {info.local === 'Capital' ? (
             <div className="flex flex-col gap-3">
               <label className="text-[10px] uppercase font-black tracking-[0.2em] text-primary">Setor</label>
-              <select required className="bg-background border border-border-light rounded-xl px-4 py-4 text-text-primary focus:outline-none focus:border-primary transition-all font-bold appearance-none h-[50px]" value={info.setor} onChange={e => setInfo({...info, setor: e.target.value})}>
+              <select required className="bg-background border-2 border-border-light rounded-2xl px-5 py-4 text-text-primary focus:outline-none focus:border-primary transition-all font-bold h-[62px]" value={info.setor} onChange={e => setInfo({...info, setor: e.target.value})}>
                 <option value="">-- Selecione --</option>
                 {SETORES_CAPITAL.map(s => <option key={s} value={s}>{`SETOR ${s}`}</option>)}
               </select>
@@ -248,10 +219,9 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
           ) : <Input label="Cidade" required value={info.setor} onChange={e => setInfo({...info, setor: e.target.value})} />}
           <Input label="E-mail" type="email" required value={info.email} onChange={e => setInfo({...info, email: e.target.value})} />
           <Input label="WhatsApp" required value={info.contato} onChange={e => setInfo({...info, contato: maskPhone(e.target.value)})} />
-          <div className="md:col-span-2 flex justify-center pt-8">
-            <Button type="submit" className="min-w-[300px] h-14" disabled={isSubmitting}>
-              {isSubmitting ? <i className="fas fa-spinner fa-spin"></i> : "Avançar para Tamanhos"}
-            </Button>
+          
+          <div className="md:col-span-2 flex justify-center pt-6">
+            <Button type="submit" className="min-w-[300px] h-14" disabled={isSubmitting}>AVANÇAR PARA TAMANHOS</Button>
           </div>
         </form>
       )}
@@ -266,16 +236,21 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
             <SizeGrid title="Infantil" sizes={INFANTIL_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.infantil : terracota.infantil} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, infantil: { ...prev.infantil, [sz]: val } }))} />
             <SizeGrid title="Babylook (Feminina)" sizes={ADULTO_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.babylook : terracota.babylook} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, babylook: { ...prev.babylook, [sz]: val } }))} />
             <SizeGrid title="Unissex (Masculina)" sizes={ADULTO_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.unissex : terracota.unissex} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, unissex: { ...prev.unissex, [sz]: val } }))} />
+            
+            <div className="pt-4">
+              <TextArea label="Observações do Pedido" placeholder="Ex: Tamanhos especiais, solicitações de entrega, etc." value={info.observacao} onChange={e => setInfo({...info, observacao: e.target.value})} />
+            </div>
           </div>
-          <div className="fixed bottom-0 inset-x-0 bg-surface/80 backdrop-blur-lg p-3 sm:p-7 z-[200] animate-in slide-in-from-bottom-full duration-500 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] border-t border-border-light">
-            <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-10">
-              <div className="flex flex-row items-center justify-around sm:justify-start gap-6 sm:gap-14 w-full sm:w-auto text-text-primary">
-                <div className="flex flex-col items-center sm:items-start">
-                  <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Valor Total</span>
-                  <span className="text-2xl sm:text-4xl font-black leading-none tracking-tighter">{totals.preco.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</span>
-                </div>
+          <div className="fixed bottom-0 inset-x-0 bg-surface/90 backdrop-blur-xl p-4 sm:p-8 z-[200] border-t border-border-light shadow-2xl">
+            <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+              <div className="flex flex-col items-center sm:items-start">
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Valor Total</span>
+                <span className="text-3xl sm:text-4xl font-black text-text-primary tracking-tighter">{totals.preco.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</span>
               </div>
-              <Button className="w-full sm:w-auto h-14 sm:h-16 min-w-[250px] font-black uppercase tracking-[0.2em] text-[10px]" onClick={() => setStep('summary')} disabled={totals.total === 0}>CONTINUAR</Button>
+              <div className="flex gap-4 w-full sm:w-auto">
+                <Button variant="outline" className="flex-1 h-14 px-8" onClick={() => setStep('info')}>VOLTAR</Button>
+                <Button className="flex-2 h-14 px-12" onClick={() => setStep('summary')} disabled={totals.total === 0}>RESUMO DO PEDIDO</Button>
+              </div>
             </div>
           </div>
         </div>
@@ -283,70 +258,92 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
 
       {step === 'summary' && (
         <div className="max-w-3xl mx-auto animate-in zoom-in-95 duration-500 pb-20">
-          <Card className="p-10">
-            <h3 className="text-2xl font-black mb-8 border-b border-border-light pb-4 text-text-primary">Resumo do Pedido</h3>
-            <div className="grid grid-cols-2 gap-8 mb-10">
-              <div>
-                <p className="text-[10px] text-primary font-black uppercase tracking-widest mb-1">Responsável</p>
-                <p className="font-bold text-text-primary">{info.nome}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-primary font-black uppercase tracking-widest mb-1">Setor / Local</p>
-                <p className="font-bold text-text-primary">{formatSetorDisplay()} ({info.local})</p>
-              </div>
+          <Card className="p-8 sm:p-12 border-2 border-primary/10">
+            <h3 className="text-2xl font-black mb-10 border-b-2 border-border-light pb-6 text-text-primary flex items-center gap-4">
+              <i className="fas fa-file-invoice text-primary opacity-30"></i>
+              Resumo do Pedido
+            </h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 mb-12">
+              <SummaryItem label="Responsável" value={info.nome} />
+              <SummaryItem label="Setor / Local" value={`${formatSetorDisplay()} (${info.local})`} />
+              <SummaryItem label="E-mail" value={info.email} />
+              <SummaryItem label="WhatsApp" value={info.contato} />
             </div>
             
-            <div className="space-y-8 my-10">
+            <div className="space-y-10 my-10 bg-background/50 p-6 rounded-3xl border border-border-light">
                 <OrderReviewTable title="Verde Oliva" data={verdeOliva} colorHex="#556B2F" />
                 <OrderReviewTable title="Terracota" data={terracota} colorHex="#a35e47" />
             </div>
 
-            <div className="pt-4 border-t border-border-light flex justify-between items-center">
-               <span className="text-lg font-black uppercase tracking-widest text-primary">Total a Pagar</span>
-               <span className="text-3xl font-black text-text-primary">{totals.preco.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</span>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-6 mt-8">
-              <Button variant="outline" className="flex-1 h-14" onClick={() => setStep('sizes')}>Voltar</Button>
-              <Button className="flex-2 h-14" onClick={() => setIsConfirmModalOpen(true)}>Confirmar e Finalizar</Button>
+            {/* SEÇÃO DE OBSERVAÇÃO COM DESTAQUE NA ETAPA 3 */}
+            {info.observacao ? (
+              <div className="mb-10 p-6 bg-primary-light/30 border-2 border-primary/10 rounded-[2rem] relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-full -mr-12 -mt-12 transition-transform group-hover:scale-110"></div>
+                <div className="flex items-start gap-4 relative z-10">
+                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm shrink-0">
+                    <i className="fas fa-comment-dots"></i>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] text-primary font-black uppercase tracking-[0.2em] mb-2">Observações Adicionais</p>
+                    <p className="text-sm text-text-primary font-medium leading-relaxed italic">
+                      "{info.observacao}"
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-10 p-5 border-2 border-dashed border-border-light rounded-[2rem] text-center">
+                 <p className="text-[10px] text-text-secondary/40 font-black uppercase tracking-widest">Nenhuma observação informada</p>
+              </div>
+            )}
+
+            <div className="pt-8 border-t-2 border-border-light flex flex-col sm:flex-row justify-between items-center gap-6">
+               <div className="text-center sm:text-left">
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary block mb-1">Total Final</span>
+                  <span className="text-4xl font-black text-text-primary tracking-tighter">{totals.preco.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</span>
+               </div>
+               <div className="flex gap-4 w-full sm:w-auto">
+                 <Button variant="outline" className="flex-1 sm:px-8 h-14" onClick={() => setStep('sizes')}>VOLTAR</Button>
+                 <Button className="flex-2 sm:px-12 h-14" onClick={() => setIsConfirmModalOpen(true)}>CONFIRMAR</Button>
+               </div>
             </div>
           </Card>
         </div>
       )}
 
       <Modal isOpen={isConfirmModalOpen} onClose={() => setIsConfirmModalOpen(false)} title="Confirmar Pedido">
-        <div className="space-y-6">
-          <p className="text-[12px] text-text-secondary font-bold uppercase tracking-[0.2em] mb-4">Deseja realmente finalizar este pedido?</p>
+        <div className="space-y-6 text-center">
+          <p className="text-sm text-text-secondary font-bold uppercase tracking-wider mb-6">Ao confirmar, o pedido será enviado para o sistema central da UMADEMATS.</p>
           <Button className="w-full h-14" onClick={finalizeOrder} disabled={isSubmitting}>
-            {isSubmitting ? "ENVIANDO..." : "SIM, CONFIRMAR AGORA"}
+            {isSubmitting ? <i className="fas fa-spinner fa-spin"></i> : "ENVIAR PEDIDO AGORA"}
           </Button>
         </div>
       </Modal>
 
-      <Modal
-        isOpen={!!validationError}
-        onClose={() => setValidationError(null)}
-        title="Ação Bloqueada"
-      >
+      <Modal isOpen={!!validationError} onClose={() => setValidationError(null)} title="Ação Bloqueada">
         <div className="text-center space-y-6">
             <p className="text-base text-text-secondary font-bold">{validationError}</p>
-            <Button
-                onClick={() => setValidationError(null)}
-                className="w-full h-12"
-            >
-                ENTENDI
-            </Button>
+            <Button onClick={() => setValidationError(null)} className="w-full h-12">ENTENDI</Button>
         </div>
       </Modal>
     </div>
   );
 };
 
+const SummaryItem: React.FC<{ label: string, value: string }> = ({ label, value }) => (
+  <div className="space-y-1">
+    <p className="text-[10px] text-primary font-black uppercase tracking-widest opacity-60">{label}</p>
+    <p className="font-black text-text-primary text-lg truncate" title={value}>{value}</p>
+  </div>
+);
+
 const StepIndicator: React.FC<{ num: number, active: boolean, done: boolean, label: string }> = ({ num, active, done, label }) => (
   <div className="flex-1 flex flex-col items-center gap-3 relative z-10 bg-background px-2">
-    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center font-black transition-all ${done ? 'bg-primary/80 text-white' : active ? 'bg-primary text-white shadow-[0_0_20px_rgba(107,70,193,0.5)] scale-110' : 'bg-surface border border-border-light text-primary/50'}`}>
+    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center font-black transition-all ${done ? 'bg-primary/80 text-white' : active ? 'bg-primary text-white shadow-xl scale-110' : 'bg-surface border-2 border-border-light text-primary/30'}`}>
       {done ? <i className="fas fa-check"></i> : num}
     </div>
-    <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-center ${active ? 'text-primary' : 'text-text-secondary/50'}`}>{label}</span>
+    <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-center ${active ? 'text-primary' : 'text-text-secondary/40'}`}>{label}</span>
   </div>
 );
 
@@ -355,38 +352,31 @@ const LocOption: React.FC<{ label: string, checked: boolean, onClick: () => void
     <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${checked ? 'border-primary' : 'border-border-light'}`}>
       {checked && <div className="w-2 h-2 rounded-full bg-primary animate-in zoom-in"></div>}
     </div>
-    <span className="text-xs font-black uppercase tracking-widest">{label}</span>
+    <span className="text-[11px] font-black uppercase tracking-widest">{label}</span>
   </div>
 );
 
 const ColorTab: React.FC<{ color: ColorType, active: boolean, label: string, onClick: () => void }> = ({ color, active, label, onClick }) => (
-  <button onClick={onClick} className={`px-4 sm:px-8 py-3 sm:py-4 rounded-2xl border-2 transition-all flex items-center gap-3 sm:gap-4 ${active ? 'border-primary bg-primary/10 shadow-lg text-text-primary' : 'border-border-light bg-surface text-text-secondary hover:border-primary/50'}`}>
-    <div className={`w-4 h-4 sm:w-6 sm:h-6 rounded-lg shadow-sm ${color === 'verdeOliva' ? 'bg-[#3b4a3c]' : 'bg-[#a35e47]'}`}></div>
-    <span className="font-black text-[10px] sm:text-xs uppercase tracking-widest">{label}</span>
+  <button onClick={onClick} className={`px-6 py-4 rounded-2xl border-2 transition-all flex items-center gap-4 ${active ? 'border-primary bg-primary/10 shadow-lg text-text-primary' : 'border-border-light bg-surface text-text-secondary hover:border-primary/50'}`}>
+    <div className={`w-5 h-5 rounded-lg shadow-sm ${color === 'verdeOliva' ? 'bg-[#3b4a3c]' : 'bg-[#a35e47]'}`}></div>
+    <span className="font-black text-xs uppercase tracking-widest">{label}</span>
   </button>
 );
 
 const SizeGrid: React.FC<{ title: string, sizes: string[], data: SizeQuantities, onChange: (sz: string, val: number) => void }> = ({ title, sizes, data, onChange }) => (
-  <div className="card p-6 sm:p-10">
+  <div className="card p-8 sm:p-10 border-2 border-border-light/50">
     <h4 className="text-sm sm:text-lg font-black uppercase tracking-[0.2em] text-primary mb-8 flex items-center gap-4">
-      <div className="w-2 h-2 rounded-full bg-primary shadow-sm"></div> {title}
+      <div className="w-2 h-6 bg-primary rounded-full"></div> {title}
     </h4>
     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-8 gap-4 sm:gap-6">
       {sizes.map(sz => (
         <div key={sz} className="flex flex-col gap-2">
-          <span className="text-xs sm:text-sm font-black text-center text-text-secondary/60 uppercase tracking-widest">{sz}</span>
+          <span className="text-xs font-black text-center text-text-secondary/60 uppercase tracking-widest">{sz}</span>
           <input 
-            type="text"
-            pattern="[0-9]*"
-            min="0" 
-            inputMode="numeric" 
-            placeholder="0" 
-            className="w-full bg-background border border-border-light rounded-xl p-3 sm:p-4 text-center font-black focus:border-primary transition-all text-text-primary placeholder:text-text-secondary/30 text-lg sm:text-xl h-14 sm:h-16" 
+            type="text" pattern="[0-9]*" inputMode="numeric" placeholder="0" 
+            className="w-full bg-background border-2 border-border-light rounded-xl p-3 text-center font-black focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all text-text-primary placeholder:text-text-secondary/20 text-xl h-14" 
             value={data[sz] || ''} 
-            onChange={e => {
-              const value = e.target.value.replace(/[^0-9]/g, '');
-              onChange(sz, parseInt(value) || 0)
-            }} 
+            onChange={e => onChange(sz, parseInt(e.target.value.replace(/\D/g, '')) || 0)} 
           />
         </div>
       ))}

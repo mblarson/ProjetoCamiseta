@@ -44,6 +44,16 @@ export const Input: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { lab
   </div>
 );
 
+export const TextArea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string }> = ({ label, ...props }) => (
+  <div className="flex flex-col gap-2.5 w-full text-left">
+    {label && <label className="text-sm uppercase font-black tracking-widest text-primary/80 ml-1">{label}</label>}
+    <textarea 
+      {...props} 
+      className={`bg-surface border-2 border-border-light rounded-2xl px-5 py-4 text-lg text-text-primary focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-secondary/40 disabled:bg-background disabled:text-text-secondary min-h-[120px] resize-none ${props.className || ''}`}
+    />
+  </div>
+);
+
 export const CurrencyInput: React.FC<{
   label?: string;
   value: string;

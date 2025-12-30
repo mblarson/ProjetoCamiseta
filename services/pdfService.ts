@@ -116,22 +116,36 @@ export const generateOrderPDF = async (order: Order) => {
     }
 
     // Rodapé de Valores
-    if (currentY > 260) {
+    if (currentY > 240) {
       doc.addPage();
       currentY = 20;
+    } else {
+      currentY += 5;
     }
 
+    // Valor Total
     doc.setFontSize(12);
     doc.setTextColor(textColor);
     doc.setFont(undefined, 'bold');
     doc.text(`VALOR TOTAL DO PEDIDO: ${order.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, currentY);
+    currentY += 10;
 
+    // Observações com suporte a quebra de linha
     if (order.observacao) {
+      if (currentY > 260) {
+        doc.addPage();
+        currentY = 20;
+      }
       doc.setFontSize(10);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(textColor);
+      doc.text("OBSERVAÇÕES DO PEDIDO:", 14, currentY);
+      currentY += 6;
+      
       doc.setFont(undefined, 'normal');
-      doc.setTextColor(100);
-      const splitObs = doc.splitTextToSize(`OBSERVAÇÕES: ${order.observacao}`, 180);
-      doc.text(splitObs, 14, currentY + 10);
+      doc.setTextColor(80, 80, 80);
+      const splitObs = doc.splitTextToSize(order.observacao, 180);
+      doc.text(splitObs, 14, currentY);
     }
 
     doc.save(`Pedido_${order.numPedido}.pdf`);

@@ -161,6 +161,15 @@ export const ConsultSection: React.FC<ConsultSectionProps> = ({ onEdit, isOrders
                    </div>
                 </div>
 
+                {order.observacao && (
+                  <div className="pt-8 md:pt-10 border-t border-border-light">
+                    <p className="text-[10px] md:text-xs font-black text-text-secondary uppercase tracking-[0.2em] mb-3">Observações Adicionais</p>
+                    <div className="p-5 bg-surface rounded-2xl border border-border-light italic text-text-primary text-sm">
+                      "{order.observacao}"
+                    </div>
+                  </div>
+                )}
+
                 <div className="pt-8 md:pt-10 border-t border-border-light flex flex-col gap-5 md:gap-6">
                    {!isOrdersOpen && (
                      <div className="p-4 md:p-5 bg-yellow-500/5 border-2 border-yellow-500/20 rounded-2xl text-center">
