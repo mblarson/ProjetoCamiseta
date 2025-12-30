@@ -20,7 +20,7 @@ interface StatHighlightCardProps {
     value: string;
     subValue: string;
     icon: string;
-    color: 'green' | 'red';
+    color: 'green' | 'red' | 'blue';
 }
 
 const StatHighlightCard: React.FC<StatHighlightCardProps> = ({ title, value, subValue, icon, color }) => {
@@ -39,6 +39,13 @@ const StatHighlightCard: React.FC<StatHighlightCardProps> = ({ title, value, sub
             iconText: 'text-red-500',
             valueText: 'text-red-600',
         },
+        blue: {
+            bg: 'bg-blue-500/5',
+            border: 'border-blue-500/20',
+            iconBg: 'bg-blue-500/10',
+            iconText: 'text-blue-500',
+            valueText: 'text-blue-600',
+        },
     };
     const currentTheme = colorClasses[color];
 
@@ -51,7 +58,7 @@ const StatHighlightCard: React.FC<StatHighlightCardProps> = ({ title, value, sub
                 </div>
             </div>
             <div className="text-right mt-auto">
-                <p className="text-4xl font-black tracking-tighter text-text-primary">{value}</p>
+                <p className="text-3xl font-black tracking-tighter text-text-primary uppercase truncate">{value}</p>
                 <p className={`text-sm font-bold ${currentTheme.valueText}`}>{subValue}</p>
             </div>
         </Card>
@@ -65,25 +72,29 @@ export const StatisticsTab: React.FC<{ orders: Order[], isLoading: boolean }> = 
             topSectorShirts: { name: 'N/D', count: 0, totalValue: 0 },
             topCityDebt: { name: 'N/D', debt: 0 },
             topSectorDebt: { name: 'N/D', debt: 0 },
+            topCityPaid: { name: 'N/D', paid: 0 },
+            topSectorPaid: { name: 'N/D', paid: 0 },
         };
 
         if (!orders || orders.length === 0) {
             return initialResult;
         }
 
-        const cityData: { [key: string]: { count: number, totalValue: number, debt: number } } = {};
-        const sectorData: { [key: string]: { count: number, totalValue: number, debt: number } } = {};
+        const cityData: { [key: string]: { count: number, totalValue: number, paid: number, debt: number } } = {};
+        const sectorData: { [key: string]: { count: number, totalValue: number, paid: number, debt: number } } = {};
 
         orders.forEach(order => {
             const key = order.setor;
             const shirtCount = getShirtCount(order);
-            const debt = order.valorTotal - (order.valorPago || 0);
+            const paid = order.valorPago || 0;
+            const debt = order.valorTotal - paid;
             const targetData = order.local === 'Interior' ? cityData : sectorData;
 
-            if (!targetData[key]) targetData[key] = { count: 0, totalValue: 0, debt: 0 };
+            if (!targetData[key]) targetData[key] = { count: 0, totalValue: 0, paid: 0, debt: 0 };
             
             targetData[key].count += shirtCount;
             targetData[key].totalValue += order.valorTotal;
+            targetData[key].paid += paid;
             targetData[key].debt += debt > 0 ? debt : 0;
         });
 
@@ -101,17 +112,28 @@ export const StatisticsTab: React.FC<{ orders: Order[], isLoading: boolean }> = 
                 return top;
             }, { name: 'N/D', debt: 0 });
         };
+
+        const findTopPaid = (data: typeof cityData) => {
+            return Object.entries(data).reduce((top, [name, values]) => {
+                if (values.paid > top.paid) return { name, paid: values.paid };
+                return top;
+            }, { name: 'N/D', paid: 0 });
+        };
         
         const topCityShirts = findTopShirts(cityData);
         const topSectorShirts = findTopShirts(sectorData);
         const topCityDebt = findTopDebt(cityData);
         const topSectorDebt = findTopDebt(sectorData);
+        const topCityPaid = findTopPaid(cityData);
+        const topSectorPaid = findTopPaid(sectorData);
 
         return {
             topCityShirts: { name: topCityShirts.name, count: topCityShirts.count, totalValue: topCityShirts.totalValue },
             topSectorShirts: { name: topSectorShirts.name !== 'N/D' ? `SETOR ${topSectorShirts.name}` : 'N/D', count: topSectorShirts.count, totalValue: topSectorShirts.totalValue },
             topCityDebt: { name: topCityDebt.name, debt: topCityDebt.debt },
             topSectorDebt: { name: topSectorDebt.name !== 'N/D' ? `SETOR ${topSectorDebt.name}` : 'N/D', debt: topSectorDebt.debt },
+            topCityPaid: { name: topCityPaid.name, paid: topCityPaid.paid },
+            topSectorPaid: { name: topSectorPaid.name !== 'N/D' ? `SETOR ${topSectorPaid.name}` : 'N/D', paid: topSectorPaid.paid },
         };
     }, [orders]);
 
@@ -136,7 +158,7 @@ export const StatisticsTab: React.FC<{ orders: Order[], isLoading: boolean }> = 
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in duration-500">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
             <StatHighlightCard
                 title="Cidade que Mais Pediu"
                 icon="fa-trophy"
@@ -150,6 +172,20 @@ export const StatisticsTab: React.FC<{ orders: Order[], isLoading: boolean }> = 
                 color="green"
                 value={stats.topSectorShirts.name}
                 subValue={`${stats.topSectorShirts.count} camisetas • ${stats.topSectorShirts.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`}
+            />
+            <StatHighlightCard
+                title="Setor com Maior Valor Pago"
+                icon="fa-hand-holding-dollar"
+                color="blue"
+                value={stats.topSectorPaid.name}
+                subValue={stats.topSectorPaid.paid.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            />
+            <StatHighlightCard
+                title="Cidade com Maior Valor Pago"
+                icon="fa-hand-holding-dollar"
+                color="blue"
+                value={stats.topCityPaid.name}
+                subValue={stats.topCityPaid.paid.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             />
             <StatHighlightCard
                 title="Setor com Mais Débitos"
