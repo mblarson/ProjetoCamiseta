@@ -20,14 +20,13 @@ body {
   line-height: 1.5;
 }
 
-/* Card Style (Glassmorphism) */
+/* Card Style (Glassmorphism Light - Optimized) */
 .card {
-  background: var(--surface);
+  /* THEME CHANGE: Removed backdrop-filter to prevent interface freezing on mobile/medium devices */
+  background: #ffffff; /* Sólido para performance máxima */
   border-radius: 1.5rem;
   border: 1px solid var(--border-light);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
 }
 
 /* Selection Color */

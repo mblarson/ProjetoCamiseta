@@ -1,8 +1,8 @@
+
 "use client";
 import React from "react";
 import {
   motion,
-  useAnimationFrame,
   useMotionTemplate,
   useMotionValue,
   useTransform,
@@ -10,7 +10,6 @@ import {
 import { useRef } from "react";
 import { cn } from "../../lib/utils";
 
-// FIX: Moved MovingBorder component definition before Button component to fix type inference issue.
 export const MovingBorder = ({
   children,
   duration = 2000,
@@ -18,7 +17,6 @@ export const MovingBorder = ({
   ry,
   ...otherProps
 }: {
-  // FIX: Made children prop optional to fix type inference issue.
   children?: React.ReactNode;
   duration?: number;
   rx?: string;
@@ -26,23 +24,18 @@ export const MovingBorder = ({
   [key: string]: any;
 }) => {
   const pathRef = useRef<any>(null);
+  
+  // PERFORMANCE FIX: Disabled useAnimationFrame to stop high CPU usage from continuous rendering
+  // The progress is now static, acting as a decorative highlight instead of a moving animation
   const progress = useMotionValue<number>(0);
-
-  useAnimationFrame((time) => {
-    const length = pathRef.current?.getTotalLength();
-    if (length) {
-      const pxPerMillisecond = length / duration;
-      progress.set((time * pxPerMillisecond) % length);
-    }
-  });
 
   const x = useTransform(
     progress,
-    (val) => pathRef.current?.getPointAtLength(val).x
+    (val) => pathRef.current?.getPointAtLength(val).x || 0
   );
   const y = useTransform(
     progress,
-    (val) => pathRef.current?.getPointAtLength(val).y
+    (val) => pathRef.current?.getPointAtLength(val).y || 0
   );
 
   const transform = useMotionTemplate`translateX(${x}px) translateY(${y}px) translateX(-50%) translateY(-50%)`;
@@ -92,7 +85,6 @@ export function Button({
   ...otherProps
 }: {
   borderRadius?: string;
-  // FIX: Made children prop optional to fix type inference issue.
   children?: React.ReactNode;
   as?: any;
   containerClassName?: string;
@@ -119,7 +111,7 @@ export function Button({
         <MovingBorder duration={duration} rx="30%" ry="30%">
           <div
             className={cn(
-              "h-20 w-20 opacity-[0.8] bg-[radial-gradient(var(--sky-500)_40%,transparent_60%)]",
+              "h-20 w-20 opacity-[0.3] bg-[radial-gradient(var(--sky-500)_40%,transparent_60%)]",
               borderClassName
             )}
           />
@@ -128,7 +120,7 @@ export function Button({
 
       <div
         className={cn(
-          "relative bg-background/[0.8] border border-border-light backdrop-blur-xl text-text-primary flex items-center justify-center w-full h-full text-sm antialiased",
+          "relative bg-background border border-border-light text-text-primary flex items-center justify-center w-full h-full text-sm antialiased",
           className
         )}
         style={{
