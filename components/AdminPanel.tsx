@@ -9,7 +9,7 @@ import {
   getAllOrders, deleteOrder, getGlobalConfig, updateGlobalConfig, 
   endEvent, getStats, recordPayment, cancelLastPayment, getOrderById, getPaymentHistoryForOrder, 
   syncConfirmationsFromOrders, getConfirmations, updateConfirmationStatus, getPaginatedOrders,
-  searchOrders, searchConfirmations, syncAllStats
+  searchOrders, searchConfirmations, syncAllStats, fetchFullBackup
 } from '../services/firebase';
 import { generateOrderPDF } from '../services/pdfService';
 import { DashboardTab } from './admin/DashboardTab';
@@ -222,6 +222,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
     setSearchText('');
   };
 
+  const downloadJSONBackup = (data: any) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `BACKUP_UMADEMATS_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleSecurityAction = async () => {
     if (!securityModal.password) {
       alert("A senha é necessária para verificação.");
@@ -249,10 +261,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
         alert("Falha ao atualizar os valores.");
       }
     } else if (securityModal.type === 'end') {
-      success = await endEvent();
-      if (success) {
-        alert("Evento encerrado com sucesso. Todos os dados foram resetados.");
-        window.location.reload();
+      try {
+        alert("Iniciando backup completo antes da exclusão...");
+        const backupData = await fetchFullBackup();
+        downloadJSONBackup(backupData);
+        
+        // Aguarda um pequeno delay para garantir que o download iniciou
+        await new Promise(r => setTimeout(r, 2000));
+        
+        if (confirm("Backup baixado com sucesso! Deseja prosseguir com a exclusão TOTAL dos dados do banco?")) {
+           success = await endEvent();
+           if (success) {
+             alert("Evento encerrado com sucesso. Todos os dados foram resetados.");
+             window.location.reload();
+           }
+        } else {
+          alert("Exclusão cancelada. Seus dados continuam no banco, e você já possui o backup salvo.");
+        }
+      } catch (e) {
+        alert("Falha crítica ao gerar backup. A exclusão foi abortada por segurança.");
       }
     }
 

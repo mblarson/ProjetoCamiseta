@@ -166,6 +166,30 @@ export const syncAllStats = async () => {
   }
 };
 
+export const fetchFullBackup = async () => {
+  try {
+    await service.connect();
+    const [ordersSnap, paymentsSnap, confirmationsSnap, statsSnap] = await Promise.all([
+      getDocs(collection(db, "pedidos")),
+      getDocs(collection(db, "pagamentos")),
+      getDocs(collection(db, "confirmacoes")),
+      getDoc(doc(db, "configuracoes", "estatisticas"))
+    ]);
+
+    return {
+      backupDate: new Date().toISOString(),
+      evento: "UMADEMATS - JUBILEU DE OURO",
+      pedidos: ordersSnap.docs.map(d => ({ docId: d.id, ...d.data() })),
+      pagamentos: paymentsSnap.docs.map(d => ({ docId: d.id, ...d.data() })),
+      confirmacoes: confirmationsSnap.docs.map(d => ({ docId: d.id, ...d.data() })),
+      estatisticasFinal: statsSnap.exists() ? statsSnap.data() : null
+    };
+  } catch (e: any) {
+    console.error("Erro ao gerar backup:", e);
+    throw e;
+  }
+};
+
 export const recalculateTotalsAfterPriceChange = async (newPrice: number) => {
   try {
     await service.connect();
