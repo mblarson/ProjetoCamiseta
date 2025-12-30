@@ -81,7 +81,7 @@ const StatCard: React.FC<{ label: string, value: number, isMoney?: boolean, icon
           </div>
           <p className="text-[10px] text-text-secondary/70 font-bold uppercase tracking-widest">{description}</p>
         </div>
-        <p className={`text-5xl font-black tracking-tighter ${accentColor}`}>
+        <p className={`text-3xl font-black tracking-tighter ${accentColor}`}>
           {isMoney ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : value}
         </p>
       </div>
