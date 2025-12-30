@@ -41,7 +41,7 @@ export const AdminMenu: React.FC<AdminMenuProps> = ({ activeTab, onSelectTab }) 
     <div className="relative w-full md:w-64" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full h-14 flex items-center justify-center sm:justify-between px-6 bg-white border border-border-light rounded-2xl text-text-primary font-black uppercase tracking-widest text-[10px] transition-all hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-sm relative"
+        className="w-full h-14 flex items-center justify-center sm:justify-between px-6 bg-white border border-border-light rounded-2xl text-text-primary font-black uppercase tracking-widest text-[15px] transition-all hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-sm relative"
       >
         <div className="flex items-center gap-3 w-full justify-center sm:justify-start">
             <i className={`fas ${tabIcons[activeTab]} text-primary absolute left-6 sm:static`}></i>
@@ -57,7 +57,7 @@ export const AdminMenu: React.FC<AdminMenuProps> = ({ activeTab, onSelectTab }) 
               <li key={tab}>
                 <button
                   onClick={() => handleSelect(tab)}
-                  className={`w-full flex items-center justify-center gap-4 px-4 py-4 text-center text-[10px] font-bold uppercase tracking-[0.2em] transition-colors ${
+                  className={`w-full flex items-center justify-center gap-4 px-4 py-4 text-center text-[15px] font-bold uppercase tracking-[0.2em] transition-colors ${
                     activeTab === tab
                       ? 'bg-primary/5 text-primary'
                       : 'text-text-secondary hover:bg-slate-50 hover:text-text-primary'
