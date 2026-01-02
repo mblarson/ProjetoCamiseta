@@ -49,6 +49,15 @@ const StatHighlightCard: React.FC<StatHighlightCardProps> = ({ title, value, sub
     };
     const currentTheme = colorClasses[color];
 
+    // Lógica de ajuste dinâmico de fonte baseada no comprimento do texto
+    const getFontSizeClass = (text: string) => {
+        const len = text.length;
+        if (len <= 10) return "text-3xl";
+        if (len <= 15) return "text-2xl";
+        if (len <= 20) return "text-xl";
+        return "text-lg"; // Para nomes extremamente longos
+    };
+
     return (
         <Card className={`p-8 flex flex-col justify-between gap-6 h-full ${currentTheme.bg} ${currentTheme.border}`}>
             <div className="flex items-start justify-between">
@@ -58,7 +67,9 @@ const StatHighlightCard: React.FC<StatHighlightCardProps> = ({ title, value, sub
                 </div>
             </div>
             <div className="text-right mt-auto">
-                <p className="text-3xl font-black tracking-tighter text-text-primary uppercase truncate">{value}</p>
+                <p className={`${getFontSizeClass(value)} font-black tracking-tighter text-text-primary uppercase leading-tight break-words`}>
+                    {value}
+                </p>
                 <p className={`text-sm font-bold ${currentTheme.valueText}`}>{subValue}</p>
             </div>
         </Card>
