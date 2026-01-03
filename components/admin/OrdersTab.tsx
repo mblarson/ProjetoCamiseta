@@ -29,6 +29,7 @@ const getShirtCount = (order: Order) => {
 
 const formatSetor = (order: Order | null) => {
   if (!order) return '';
+  if (order.setor === 'UMADEMATS') return 'UMADEMATS';
   return order.local === 'Capital' && !order.setor.toUpperCase().startsWith('SETOR') 
     ? `SETOR ${order.setor}` 
     : order.setor;

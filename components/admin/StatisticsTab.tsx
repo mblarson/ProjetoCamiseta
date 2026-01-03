@@ -140,11 +140,11 @@ export const StatisticsTab: React.FC<{ orders: Order[], isLoading: boolean }> = 
 
         return {
             topCityShirts: { name: topCityShirts.name, count: topCityShirts.count, totalValue: topCityShirts.totalValue },
-            topSectorShirts: { name: topSectorShirts.name !== 'N/D' ? `SETOR ${topSectorShirts.name}` : 'N/D', count: topSectorShirts.count, totalValue: topSectorShirts.totalValue },
+            topSectorShirts: { name: topSectorShirts.name !== 'N/D' ? (topSectorShirts.name === 'UMADEMATS' ? 'UMADEMATS' : `SETOR ${topSectorShirts.name}`) : 'N/D', count: topSectorShirts.count, totalValue: topSectorShirts.totalValue },
             topCityDebt: { name: topCityDebt.name, debt: topCityDebt.debt },
-            topSectorDebt: { name: topSectorDebt.name !== 'N/D' ? `SETOR ${topSectorDebt.name}` : 'N/D', debt: topSectorDebt.debt },
+            topSectorDebt: { name: topSectorDebt.name !== 'N/D' ? (topSectorDebt.name === 'UMADEMATS' ? 'UMADEMATS' : `SETOR ${topSectorDebt.name}`) : 'N/D', debt: topSectorDebt.debt },
             topCityPaid: { name: topCityPaid.name, paid: topCityPaid.paid },
-            topSectorPaid: { name: topSectorPaid.name !== 'N/D' ? `SETOR ${topSectorPaid.name}` : 'N/D', paid: topSectorPaid.paid },
+            topSectorPaid: { name: topSectorPaid.name !== 'N/D' ? (topSectorPaid.name === 'UMADEMATS' ? 'UMADEMATS' : `SETOR ${topSectorPaid.name}`) : 'N/D', paid: topSectorPaid.paid },
         };
     }, [orders]);
 

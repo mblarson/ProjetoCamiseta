@@ -97,13 +97,14 @@ export interface GlobalConfig {
 
 const getPaymentDocId = (order: Pick<Order, 'local' | 'setor'>): string => {
   let key = order.setor.toUpperCase().trim();
-  if (order.local === 'Capital' && !key.startsWith('SETOR')) {
+  if (order.local === 'Capital' && !key.startsWith('SETOR') && key !== 'UMADEMATS') {
     key = `SETOR ${key}`;
   }
   return key;
 };
 
 const getConfirmationDocId = (local: 'Capital' | 'Interior', setor: string): string => {
+  if (setor.toUpperCase().trim() === 'UMADEMATS') return 'UMADEMATS';
   return local === 'Capital' ? `SETOR ${setor.toUpperCase().trim()}` : setor.toUpperCase().trim();
 };
 
@@ -620,7 +621,7 @@ export const checkExistingSector = async (local: 'Capital' | 'Interior', setor: 
 
     let message = "";
     if (!snap.empty) {
-      const displaySetor = local === 'Capital' ? `SETOR ${setor}` : setor;
+      const displaySetor = (local === 'Capital' && setor !== 'UMADEMATS') ? `SETOR ${setor}` : setor;
       message = local === 'Capital' ? `O ${displaySetor} já possui um pedido registrado.` : `A cidade de ${setor} já possui um pedido registrado.`;
     }
 

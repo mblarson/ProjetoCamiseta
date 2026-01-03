@@ -11,6 +11,7 @@ export const generateOrderPDF = async (order: Order) => {
     const doc = new jsPDF();
 
     const formatSetor = (order: Order) => {
+      if (order.setor === 'UMADEMATS') return 'UMADEMATS';
       return order.local === 'Capital' && !order.setor.startsWith('SETOR') 
         ? `SETOR ${order.setor}` 
         : order.setor;

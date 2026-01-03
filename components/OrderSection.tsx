@@ -168,6 +168,7 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
   };
 
   const formatSetorDisplay = () => {
+    if (info.setor === 'UMADEMATS') return 'UMADEMATS';
     return info.local === 'Capital' && !info.setor.startsWith('SETOR') 
       ? `SETOR ${info.setor}` 
       : info.setor;
@@ -213,7 +214,7 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
               <label className="text-[10px] uppercase font-black tracking-[0.2em] text-primary">Setor</label>
               <select required className="bg-background border-2 border-border-light rounded-2xl px-5 py-4 text-text-primary focus:outline-none focus:border-primary transition-all font-bold h-[62px]" value={info.setor} onChange={e => setInfo({...info, setor: e.target.value})}>
                 <option value="">-- Selecione --</option>
-                {SETORES_CAPITAL.map(s => <option key={s} value={s}>{`SETOR ${s}`}</option>)}
+                {SETORES_CAPITAL.map(s => <option key={s} value={s}>{s === 'UMADEMATS' ? s : `SETOR ${s}`}</option>)}
               </select>
             </div>
           ) : <Input label="Cidade" required value={info.setor} onChange={e => setInfo({...info, setor: e.target.value})} />}
