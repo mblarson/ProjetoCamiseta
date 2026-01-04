@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Order, ColorData } from '../../types';
 import { Button, Input } from '../UI';
 import { generateOrderPDF } from '../../services/pdfService';
+import { getGlobalConfig } from '../../services/firebase';
 
 interface OrdersTabProps {
   searchText: string;
@@ -46,18 +47,27 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
   isLoadingMore
 }) => {
   const [localFilter, setLocalFilter] = useState<'Todos' | 'Capital' | 'Interior'>('Todos');
+  const [loteFilter, setLoteFilter] = useState<number | 'Todos'>('Todos');
   const [expandedSector, setExpandedSector] = useState<string | null>(null);
+  const [availableBatches, setAvailableBatches] = useState<number[]>([1]);
+
+  useEffect(() => {
+    getGlobalConfig().then(c => {
+        const batches = Array.from({length: c.currentBatch}, (_, i) => i + 1);
+        setAvailableBatches(batches);
+        setLoteFilter(c.currentBatch); // Default to current batch
+    });
+  }, []);
 
   const filteredOrders = orders.filter(o => {
-    // Search text filtering is now done on the server.
-    // We only apply the local filter client-side.
     const matchesLocal = localFilter === 'Todos' || o.local === localFilter;
-    return matchesLocal;
+    const matchesLote = loteFilter === 'Todos' || (o.lote || 1) === loteFilter;
+    return matchesLocal && matchesLote;
   });
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-end">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-end">
         <div className="lg:col-span-2">
           <Input 
             label="Pesquisar por Líder, Código ou Setor" 
@@ -66,14 +76,37 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
             onChange={e => setSearchText(e.target.value)}
           />
         </div>
-        <div className="flex flex-col gap-3">
+        
+        {/* Filtro Lote */}
+        <div className="flex flex-col gap-3 items-center lg:items-start">
+            <label className="text-[10px] uppercase font-black tracking-widest text-primary/70 px-1">Lote</label>
+            <div className="flex gap-2 overflow-x-auto pb-1 w-full justify-center lg:justify-start">
+                <button 
+                    onClick={() => setLoteFilter('Todos')}
+                    className={`px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${loteFilter === 'Todos' ? 'bg-primary border-primary text-[#0A192F]' : 'border-border-light text-text-secondary hover:border-primary/30'}`}
+                >
+                    Todos
+                </button>
+                {availableBatches.map(b => (
+                    <button 
+                        key={b} 
+                        onClick={() => setLoteFilter(b)}
+                        className={`px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${loteFilter === b ? 'bg-primary border-primary text-[#0A192F]' : 'border-border-light text-text-secondary hover:border-primary/30'}`}
+                    >
+                        Lote {b}
+                    </button>
+                ))}
+            </div>
+        </div>
+
+        <div className="flex flex-col gap-3 items-center lg:items-start">
           <label className="text-[10px] uppercase font-black tracking-widest text-primary/70 px-1">Filtrar Local</label>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full justify-center lg:justify-start">
             {['Todos', 'Capital', 'Interior'].map(loc => (
               <button 
                 key={loc} 
                 onClick={() => setLocalFilter(loc as any)}
-                className={`flex-1 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${localFilter === loc ? 'bg-primary border-primary text-[#0A192F]' : 'border-border-light text-text-secondary hover:border-primary/30'}`}
+                className={`flex-1 px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${localFilter === loc ? 'bg-primary border-primary text-[#0A192F]' : 'border-border-light text-text-secondary hover:border-primary/30'}`}
               >
                 {loc}
               </button>
@@ -127,11 +160,14 @@ const OrderListItem: React.FC<{
   const whatsappUrl = `https://wa.me/${order.contato.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMessage)}`;
 
   return (
-    <div className={`card bg-surface overflow-hidden transition-all duration-300 border border-primary/20 ${isExpanded ? 'ring-2 ring-primary/40 shadow-lg' : 'hover:-translate-y-1 hover:shadow-lg hover:border-primary/40'}`}>
+    <div className={`card bg-surface overflow-hidden transition-all duration-300 border border-primary/20 rounded-[2.5rem] ${isExpanded ? 'ring-2 ring-primary/40 shadow-lg' : 'hover:-translate-y-1 hover:shadow-lg hover:border-primary/40'}`}>
       <div className="p-6 cursor-pointer relative" onClick={onToggle}>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="space-y-3 w-full">
-            <h3 className="text-base font-black text-text-primary tracking-widest uppercase leading-none">Pedido #{order.numPedido}</h3>
+            <div className="flex items-center gap-3">
+                <span className="bg-primary/10 text-primary text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-widest border border-primary/20">Lote {order.lote || 1}</span>
+                <h3 className="text-base font-black text-text-primary tracking-widest uppercase leading-none">Pedido #{order.numPedido}</h3>
+            </div>
             <p className="text-primary font-black text-xs uppercase tracking-[0.2em] opacity-80">
               {shirtCount} peças • {order.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>

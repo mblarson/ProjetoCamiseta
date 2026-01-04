@@ -1,7 +1,8 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Confirmation } from '../../types';
 import { Card, Input } from '../UI';
+import { getGlobalConfig } from '../../services/firebase';
 
 type FilterType = 'Todos' | 'Capital' | 'Interior';
 
@@ -17,17 +18,26 @@ interface ConfirmationTabProps {
 
 export const ConfirmationTab: React.FC<ConfirmationTabProps> = ({ confirmations, isLoading, onEdit, onSync, isSyncing, searchText, setSearchText }) => {
     const [filter, setFilter] = useState<FilterType>('Todos');
+    const [loteFilter, setLoteFilter] = useState<number | 'Todos'>('Todos');
+    const [availableBatches, setAvailableBatches] = useState<number[]>([1]);
+
+    useEffect(() => {
+        getGlobalConfig().then(c => {
+            const batches = Array.from({length: c.currentBatch}, (_, i) => i + 1);
+            setAvailableBatches(batches);
+            setLoteFilter(c.currentBatch);
+        });
+    }, []);
 
     const filteredConfirmations = useMemo(() => {
         return confirmations
             .filter(c => {
-                // Search text filtering is now done on the server.
-                // We only apply the type filter client-side.
                 const matchesFilter = filter === 'Todos' || c.type === filter;
-                return matchesFilter;
+                const matchesLote = loteFilter === 'Todos' || (c.lote || 1) === loteFilter;
+                return matchesFilter && matchesLote;
             })
             .sort((a, b) => a.docId.localeCompare(b.docId));
-    }, [confirmations, filter]);
+    }, [confirmations, filter, loteFilter]);
 
     const statusStyles = {
         none: 'bg-surface border-border-light',
@@ -54,7 +64,7 @@ export const ConfirmationTab: React.FC<ConfirmationTabProps> = ({ confirmations,
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <div className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-end">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-end">
                     <div className="lg:col-span-2">
                         <Input 
                             label="Pesquisar por Setor ou Cidade" 
@@ -63,14 +73,35 @@ export const ConfirmationTab: React.FC<ConfirmationTabProps> = ({ confirmations,
                             onChange={e => setSearchText(e.target.value)}
                         />
                     </div>
-                    <div className="flex flex-col gap-3">
+                    {/* Filtro Lote */}
+                    <div className="flex flex-col gap-3 items-center lg:items-start">
+                        <label className="text-[10px] uppercase font-black tracking-widest text-primary/70 px-1">Lote</label>
+                        <div className="flex gap-2 overflow-x-auto pb-1 w-full justify-center lg:justify-start">
+                            <button 
+                                onClick={() => setLoteFilter('Todos')}
+                                className={`px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${loteFilter === 'Todos' ? 'bg-primary border-primary text-[#0A192F]' : 'border-border-light text-text-secondary hover:border-primary/30'}`}
+                            >
+                                Todos
+                            </button>
+                            {availableBatches.map(b => (
+                                <button 
+                                    key={b} 
+                                    onClick={() => setLoteFilter(b)}
+                                    className={`px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${loteFilter === b ? 'bg-primary border-primary text-[#0A192F]' : 'border-border-light text-text-secondary hover:border-primary/30'}`}
+                                >
+                                    Lote {b}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-3 items-center lg:items-start">
                         <label className="text-[10px] uppercase font-black tracking-widest text-primary/70 px-1">Filtrar Local</label>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 w-full justify-center lg:justify-start">
                             {(['Todos', 'Capital', 'Interior'] as FilterType[]).map(f => (
                                 <button 
                                     key={f} 
                                     onClick={() => setFilter(f)}
-                                    className={`flex-1 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${filter === f ? 'bg-primary border-primary text-white' : 'border-border-light text-text-secondary hover:border-primary/30'}`}
+                                    className={`flex-1 px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${filter === f ? 'bg-primary border-primary text-white' : 'border-border-light text-text-secondary hover:border-primary/30'}`}
                                 >
                                     {f}
                                 </button>
@@ -99,11 +130,14 @@ export const ConfirmationTab: React.FC<ConfirmationTabProps> = ({ confirmations,
                         <Card 
                             key={c.docId} 
                             onClick={() => onEdit(c)}
-                            className={`p-6 flex flex-col gap-4 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-lg hover:border-primary/40 ${statusStyles[c.status]}`}
+                            className={`p-6 flex flex-col gap-4 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-lg hover:border-primary/40 rounded-[2.5rem] ${statusStyles[c.status]}`}
                         >
                             <div className="flex-grow">
-                                <p className="text-[9px] font-bold uppercase tracking-widest text-text-secondary">{c.type}</p>
-                                <h3 className="text-lg font-black text-text-primary uppercase tracking-tight">{c.docId}</h3>
+                                <div className="flex justify-between items-start mb-2">
+                                    <p className="text-[9px] font-bold uppercase tracking-widest text-text-secondary">{c.type}</p>
+                                    <span className="text-[8px] bg-primary/10 text-primary px-1.5 rounded border border-primary/20 font-black uppercase">LOTE {c.lote || 1}</span>
+                                </div>
+                                <h3 className="text-lg font-black text-text-primary uppercase tracking-tight">{c.docId.replace(/LOTE_\d+_/, '')}</h3>
                             </div>
                             <div className="border-t border-border-light pt-4 mt-auto flex items-center justify-between">
                                 <div className="flex items-center gap-2">

@@ -53,7 +53,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [currentStats, setCurrentStats] = useState<Stats | null>(initialStats);
   
-  const [config, setConfig] = useState<{ pedidosAbertos: boolean, valorCamiseta: number }>({ pedidosAbertos: true, valorCamiseta: 30.00 });
+  const [config, setConfig] = useState<{ pedidosAbertos: boolean, valorCamiseta: number, currentBatch: number }>({ pedidosAbertos: true, valorCamiseta: 30.00, currentBatch: 1 });
   const [isProcessingConfig, setIsProcessingConfig] = useState(false);
   const [securityModal, setSecurityModal] = useState<{ type: 'lock' | 'unlock' | 'end' | 'price' | null, password: string, newValue?: any }>({ type: null, password: '' });
 
@@ -542,7 +542,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
       <Modal 
         isOpen={!!editingConfirmation} 
         onClose={() => setEditingConfirmation(null)} 
-        title={`Alterar Status: ${editingConfirmation?.docId}`}
+        title={`Alterar Status: ${editingConfirmation?.docId.replace(/LOTE_\d+_/, '')}`}
       >
         <div className="space-y-6">
             <p className="text-center text-sm text-text-secondary font-bold uppercase tracking-wider">Selecione o novo status de confirmação.</p>

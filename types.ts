@@ -22,6 +22,7 @@ export interface PaymentHistory {
 export interface Order {
   docId: string;
   numPedido: string;
+  lote: number; // Novo campo
   nome: string;
   local: 'Capital' | 'Interior';
   setor: string;
@@ -42,19 +43,26 @@ export interface Order {
   unissex?: SizeQuantities;
 }
 
-export interface Stats {
+export interface BatchStats {
   qtd_pedidos: number;
   qtd_camisetas: number;
+  valor_total: number;
+}
+
+export interface Stats {
+  qtd_pedidos: number; // Global
+  qtd_camisetas: number; // Global
   qtd_infantil: number;
   qtd_babylook: number;
   qtd_unissex: number;
-  valor_total: number;
-  total_recebido_real: number;
+  valor_total: number; // Global Previsto
+  total_recebido_real: number; // Global Recebido
   // Novos campos para o Dashboard detalhado
   pedidos_pagos: number;
   pedidos_pendentes: number;
   pedidos_parciais: number;
-  [key: string]: number; 
+  batches?: Record<number, BatchStats>; // Estatísticas por lote
+  [key: string]: any; 
 }
 
 export interface Confirmation {
@@ -62,6 +70,7 @@ export interface Confirmation {
   type: 'Capital' | 'Interior';
   status: 'none' | 'confirmed' | 'pending';
   lastUpdated: string; // ISO string
+  lote: number; // Novo campo
 }
 
 export enum Section {

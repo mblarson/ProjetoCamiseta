@@ -84,7 +84,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
               {expandedSector === group.name && (
                 <div className="space-y-3 animate-in slide-in-from-top-4 duration-500 pl-4 border-l-2 border-primary/30">
                   {group.orders.map(order => (
-                    <div key={order.docId} className="card bg-surface p-6 flex justify-between items-center hover:border-primary/30 transition-all border border-primary/20">
+                    <div key={order.docId} className="card bg-surface p-6 flex justify-between items-center hover:border-primary/30 transition-all border border-primary/20 rounded-[2.5rem]">
                       <div className="flex flex-col gap-1.5">
                         <span className="text-xs font-black text-primary uppercase tracking-[0.2em] opacity-80">Valor do Pedido</span>
                         <span className="text-xl font-black text-text-primary tracking-tighter">
@@ -119,7 +119,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
 const PaymentGroupCard: React.FC<{ group: PaymentGroup, isExpanded: boolean, onToggle: () => void }> = ({ group, isExpanded, onToggle }) => (
   <button 
     onClick={onToggle}
-    className={`w-full card bg-surface p-7 text-left flex flex-col gap-7 group transition-all duration-300 hover:shadow-xl active:scale-[0.98] border border-primary/20 ${isExpanded ? 'ring-2 ring-primary' : 'hover:border-primary/40 hover:-translate-y-1'}`}
+    className={`w-full card bg-surface p-7 text-left flex flex-col gap-7 group transition-all duration-300 hover:shadow-xl active:scale-[0.98] border border-primary/20 rounded-[2.5rem] ${isExpanded ? 'ring-2 ring-primary' : 'hover:border-primary/40 hover:-translate-y-1'}`}
   >
     <div className="flex justify-between items-start">
       <div className="flex items-center gap-4">

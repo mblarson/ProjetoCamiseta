@@ -156,7 +156,7 @@ export const generateOrderPDF = async (order: Order) => {
   }
 };
 
-export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, stats: Stats | null) => {
+export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, stats: Stats | null, batchNumber: number = 1) => {
   try {
     const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF({ orientation: 'landscape' });
@@ -166,6 +166,12 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
     doc.setFontSize(11);
     doc.setTextColor(100);
     doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 148.5, 29, { align: "center" });
+    
+    // Identificação do Lote
+    doc.setFontSize(12);
+    doc.setTextColor(30); // Dark gray
+    doc.setFont(undefined, 'bold');
+    doc.text(`LOTE ${batchNumber}`, 148.5, 36, { align: "center" });
 
     const data: any = {};
     const columnTotals: { [size: string]: number } = {};
@@ -223,7 +229,7 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
     });
 
     (doc as any).autoTable({
-        startY: 40,
+        startY: 42, // Adjusted slightly to fit the batch number
         head: head,
         body: body,
         theme: 'striped',
@@ -234,7 +240,7 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
         columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
     });
 
-    doc.save(`Matriz_de_Tamanhos_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`Matriz_de_Tamanhos_Lote_${batchNumber}_${new Date().toISOString().slice(0, 10)}.pdf`);
   } catch (error) {
     console.error("Erro ao gerar matriz:", error);
     alert("Erro ao gerar PDF da Matriz de Tamanhos.");

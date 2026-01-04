@@ -65,6 +65,7 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
   const [errorMsg, setErrorMsg] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [unitPrice, setUnitPrice] = useState(DEFAULT_PRICE);
+  const [currentBatch, setCurrentBatch] = useState(1);
   
   const [info, setInfo] = useState({ 
     nome: '', local: 'Capital' as 'Capital' | 'Interior', 
@@ -76,7 +77,11 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
   const [activeColor, setActiveColor] = useState<ColorType>('verdeOliva');
 
   useEffect(() => {
-    getGlobalConfig().then(c => setUnitPrice(c.valorCamiseta));
+    getGlobalConfig().then(c => {
+        setUnitPrice(c.valorCamiseta);
+        setCurrentBatch(c.currentBatch);
+    });
+    
     if (initialOrder) {
       setInfo({
         nome: initialOrder.nome,
@@ -121,13 +126,13 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
       if (!initialOrder) {
         setIsSubmitting(true);
         try {
-          const sectorResult = await checkExistingSector(info.local, info.setor);
+          const sectorResult = await checkExistingSector(info.local, info.setor, currentBatch);
           if (sectorResult.exists) {
             setValidationError(sectorResult.message);
             setIsSubmitting(false);
             return;
           }
-          const emailResult = await checkExistingEmail(info.email);
+          const emailResult = await checkExistingEmail(info.email, currentBatch);
           if (emailResult.exists) {
             setValidationError(emailResult.message);
             setIsSubmitting(false);
@@ -201,6 +206,11 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
 
       {step === 'info' && (
         <form onSubmit={handleNextStep} className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-bottom-8">
+          <div className="md:col-span-2 flex justify-end">
+              <span className="bg-primary/10 text-primary px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border border-primary/20">
+                Lote Atual: {currentBatch}
+              </span>
+          </div>
           <Input label="Nome Completo do Líder" required value={info.nome} onChange={e => setInfo({...info, nome: e.target.value})} />
           <div className="flex flex-col gap-3">
             <label className="text-[10px] uppercase font-black tracking-[0.2em] text-primary">Localidade</label>
