@@ -715,15 +715,21 @@ export const deleteOrder = async (order: Order) => {
 export const checkExistingEmail = async (email: string, currentBatch: number) => {
   try {
     await service.connect();
-    // Validate only within current batch
+    // Validate email across DB first
     const q = query(
         collection(db, "pedidos"), 
-        where("email", "==", email.toLowerCase().trim()), 
-        where("lote", "==", currentBatch),
-        limit(1)
+        where("email", "==", email.toLowerCase().trim())
     );
     const snap = await getDocs(q);
-    return { exists: !snap.empty, message: !snap.empty ? `Já existe um pedido registrado com este e-mail no Lote ${currentBatch}.` : "" };
+
+    // Client-side filtering to handle legacy data (lote undefined => 1)
+    const duplicate = snap.docs.find(d => {
+        const data = d.data();
+        const recordBatch = data.lote || 1;
+        return recordBatch === currentBatch;
+    });
+
+    return { exists: !!duplicate, message: duplicate ? `Já existe um pedido registrado com este e-mail no Lote ${currentBatch}.` : "" };
   } catch (e: any) { 
     service.handleFirebaseError(e); 
     return { exists: false, message: "Erro ao verificar o e-mail." };
@@ -733,23 +739,29 @@ export const checkExistingEmail = async (email: string, currentBatch: number) =>
 export const checkExistingSector = async (local: 'Capital' | 'Interior', setor: string, currentBatch: number) => {
   try {
     await service.connect();
-    // Validate only within current batch
+    // Validate sector across DB first
     const q = query(
         collection(db, "pedidos"), 
         where("local", "==", local), 
         where("setor", "==", setor), 
-        where("lote", "==", currentBatch),
-        limit(1)
+        limit(10) // Small limit, usually just need to find one
     );
     const snap = await getDocs(q);
 
+    // Client-side filtering to handle legacy data (lote undefined => 1)
+    const duplicate = snap.docs.find(d => {
+        const data = d.data();
+        const recordBatch = data.lote || 1;
+        return recordBatch === currentBatch;
+    });
+
     let message = "";
-    if (!snap.empty) {
+    if (duplicate) {
       const displaySetor = (local === 'Capital' && setor !== 'UMADEMATS') ? `SETOR ${setor}` : setor;
       message = local === 'Capital' ? `O ${displaySetor} já possui um pedido registrado no Lote ${currentBatch}.` : `A cidade de ${setor} já possui um pedido registrado no Lote ${currentBatch}.`;
     }
 
-    return { exists: !snap.empty, message };
+    return { exists: !!duplicate, message };
   } catch (e: any) {
     service.handleFirebaseError(e);
     return { exists: false, message: "Erro ao verificar o setor/cidade." };
