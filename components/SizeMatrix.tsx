@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { Order, Stats } from '../types';
-import { Card, Button } from './UI';
+import { Card, Button, Modal } from './UI';
 import { INFANTIL_SIZES, ADULTO_SIZES, DEFAULT_PRICE } from '../constants';
 import { generateSizeMatrixPDF } from '../services/pdfService';
 import { getAllOrders, getGlobalConfig, getStats } from '../services/firebase';
@@ -13,12 +13,20 @@ interface SizeMatrixProps {
 const CATEGORIES = ['unissex', 'babylook', 'infantil'] as const;
 const COLORS = ['verdeOliva', 'terracota'] as const;
 
+interface SelectedCellInfo {
+  category: string;
+  color: string;
+  size: string;
+  total: number;
+}
+
 export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [unitPrice, setUnitPrice] = useState(DEFAULT_PRICE);
   const [currentBatch, setCurrentBatch] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [selectedCell, setSelectedCell] = useState<SelectedCellInfo | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -88,6 +96,30 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
 
     return { data, grandTotal, totalVerde, totalTerracota };
   }, [orders, currentBatch]);
+
+  const contributors = useMemo(() => {
+    if (!selectedCell) return [];
+    
+    return orders
+      .filter(o => (o.lote || 1) === currentBatch)
+      .map(o => {
+        const colorData = o[selectedCell.color as keyof Order] as any;
+        const qty = colorData?.[selectedCell.category]?.[selectedCell.size] || 0;
+        
+        const displaySetor = o.setor === 'UMADEMATS' ? o.setor : (o.local === 'Capital' ? `Setor ${o.setor}` : o.setor);
+
+        return {
+          id: o.docId,
+          numPedido: o.numPedido,
+          nome: o.nome,
+          setor: displaySetor,
+          local: o.local,
+          qty
+        };
+      })
+      .filter(c => c.qty > 0)
+      .sort((a, b) => b.qty - a.qty);
+  }, [selectedCell, orders, currentBatch]);
 
   const handleDownloadPDF = () => {
     const activeBatchOrders = orders.filter(o => (o.lote || 1) === currentBatch);
@@ -179,11 +211,18 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
                             </thead>
                             <tbody>
                               <tr>
-                                {relevantSizes.map(size => (
-                                  <td key={size} className={`text-center font-bold text-lg py-4 px-2 ${colorData[size] > 0 ? 'text-text-primary' : 'text-text-secondary/20'}`}>
-                                    {colorData[size] || '-'}
-                                  </td>
-                                ))}
+                                {relevantSizes.map(size => {
+                                  const val = colorData[size] || 0;
+                                  return (
+                                    <td 
+                                      key={size} 
+                                      className={`text-center font-bold text-lg py-4 px-2 ${val > 0 ? 'text-text-primary cursor-pointer hover:bg-primary/5 transition-colors' : 'text-text-secondary/20'}`}
+                                      onClick={() => val > 0 && setSelectedCell({ category, color, size, total: val })}
+                                    >
+                                      {val || '-'}
+                                    </td>
+                                  );
+                                })}
                               </tr>
                             </tbody>
                           </table>
@@ -217,6 +256,46 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
             </div>
           </div>
       </div>
+
+      <Modal 
+        isOpen={!!selectedCell} 
+        onClose={() => setSelectedCell(null)}
+        title="Auditoria de Pedidos"
+      >
+        <div className="space-y-6">
+          <div className="p-4 bg-primary-light/50 border border-primary/20 rounded-2xl">
+            <div className="flex justify-between items-center mb-1">
+              <p className="text-[10px] font-black uppercase tracking-widest text-primary">Composição da Célula</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Total: {selectedCell?.total}</p>
+            </div>
+            <h4 className="text-sm font-black uppercase tracking-tight text-text-primary">
+              {selectedCell?.color === 'verdeOliva' ? 'Verde Oliva' : 'Terracota'} • {selectedCell?.category} • Tamanho {selectedCell?.size}
+            </h4>
+          </div>
+
+          <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+            {contributors.map((c, idx) => (
+              <div key={c.id} className="flex justify-between items-center p-4 border border-border-light rounded-xl bg-surface hover:bg-white transition-colors">
+                <div>
+                  <p className="text-xs font-black text-text-primary uppercase tracking-tight">{c.nome}</p>
+                  <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{c.setor}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-black text-primary tracking-tighter">{c.qty}</p>
+                  <p className="text-[8px] font-black text-text-secondary/40 uppercase">unidades</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-4 border-t border-border-light flex justify-between items-center">
+            <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Soma Verificada</p>
+            <p className="text-xl font-black text-text-primary tracking-tighter">{selectedCell?.total}</p>
+          </div>
+          
+          <Button onClick={() => setSelectedCell(null)} variant="outline" className="w-full h-12 rounded-xl text-[10px]">FECHAR AUDITORIA</Button>
+        </div>
+      </Modal>
     </div>
   );
 };
