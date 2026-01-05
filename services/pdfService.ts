@@ -5,6 +5,34 @@ import { DEFAULT_PRICE, INFANTIL_SIZES, ADULTO_SIZES } from '../constants';
 const CATEGORIES = ['infantil', 'babylook', 'unissex'] as const;
 const COLORS = ['verdeOliva', 'terracota'] as const;
 
+/**
+ * Helper para salvar ou compartilhar o PDF baseado na capacidade do dispositivo
+ */
+const saveOrShare = async (doc: any, filename: string) => {
+  const blob = doc.output('blob');
+  const file = new File([blob], filename, { type: 'application/pdf' });
+
+  // Verifica se o navegador suporta compartilhamento de arquivos (comumente em dispositivos móveis)
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: filename,
+        text: 'Segue relação de pedidos em PDF'
+      });
+      return; // Sucesso no compartilhamento
+    } catch (err) {
+      // Se o usuário cancelar ou houver erro, tentamos o download normal como fallback
+      if ((err as Error).name !== 'AbortError') {
+        console.error('Falha no compartilhamento:', err);
+      }
+    }
+  }
+
+  // Fallback para download tradicional (Desktop ou navegadores sem suporte a Share API)
+  doc.save(filename);
+};
+
 export const generateOrderPDF = async (order: Order) => {
   try {
     const { jsPDF } = (window as any).jspdf;
@@ -149,7 +177,8 @@ export const generateOrderPDF = async (order: Order) => {
       doc.text(splitObs, 14, currentY);
     }
 
-    doc.save(`Pedido_${order.numPedido}.pdf`);
+    // Utiliza a função inteligente de salvar/compartilhar
+    await saveOrShare(doc, `Pedido_${order.numPedido}.pdf`);
   } catch (error) {
     console.error("Erro ao gerar PDF:", error);
     alert(`Erro ao gerar PDF do pedido #${order.numPedido}.`);
@@ -254,7 +283,9 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
     const footerText = `TOTAL GERAL DE PEDIDOS: ${grandTotal.toLocaleString('pt-BR')} CAMISETAS`;
     doc.text(footerText, 280, currentY + 5, { align: "right" });
 
-    doc.save(`Matriz_de_Tamanhos_Lote_${batchNumber}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    // Utiliza a função inteligente de salvar/compartilhar
+    const matrixFilename = `Matriz_de_Tamanhos_Lote_${batchNumber}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    await saveOrShare(doc, matrixFilename);
   } catch (error) {
     console.error("Erro ao gerar matriz:", error);
     alert("Erro ao gerar PDF da Matriz de Tamanhos.");
