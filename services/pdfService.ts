@@ -161,20 +161,22 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
     const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF({ orientation: 'landscape' });
 
+    // Título atualizado conforme solicitação
     doc.setFontSize(18);
-    doc.text("Relatório de Produção - Matriz de Tamanhos", 148.5, 22, { align: "center" });
+    doc.text("Relatório de Produção - Matriz de Tamanhos - UMADEMATS - Jubileu de Ouro", 148.5, 22, { align: "center" });
+    
     doc.setFontSize(11);
     doc.setTextColor(100);
     doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 148.5, 29, { align: "center" });
     
     // Identificação do Lote
     doc.setFontSize(12);
-    doc.setTextColor(30); // Dark gray
+    doc.setTextColor(30);
     doc.setFont(undefined, 'bold');
     doc.text(`LOTE ${batchNumber}`, 148.5, 36, { align: "center" });
 
+    // Processamento de dados
     const data: any = {};
-    const columnTotals: { [size: string]: number } = {};
     let grandTotal = 0;
     const allSizes = [...INFANTIL_SIZES, ...ADULTO_SIZES];
 
@@ -200,7 +202,6 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
                   data[cat][color][size] += qty;
                   data[cat][color].subTotal += qty;
                   data[cat].rowTotal += qty;
-                  columnTotals[size] = (columnTotals[size] || 0) + qty;
                   grandTotal += qty;
                 }
               });
@@ -210,35 +211,48 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
       });
     });
 
-    const head = [['Categoria / Cor', ...allSizes, 'TOTAL']];
-    const body: any[] = [];
+    let currentY = 42;
     const primaryColor = '#0ea5e9';
 
-    CATEGORIES.forEach(cat => {
-        body.push([{ content: cat.toUpperCase(), colSpan: allSizes.length + 2, styles: { fontStyle: 'bold', fillColor: '#DFDFDF', textColor: '#1E293B' } }]);
+    // Gerar 3 Tabelas Distintas
+    CATEGORIES.forEach((cat) => {
+        const relevantSizes = cat === 'infantil' ? INFANTIL_SIZES : ADULTO_SIZES;
+        const head = [[`TABELA — ${cat.toUpperCase()}`, ...relevantSizes, 'TOTAL']];
+        const body: any[] = [];
         
         COLORS.forEach(color => {
-            const rowData = [ color === 'verdeOliva' ? '  Verde Oliva' : '  Terracota' ];
-            allSizes.forEach(size => {
+            const rowData = [ color === 'verdeOliva' ? 'Verde Oliva' : 'Terracota' ];
+            relevantSizes.forEach(size => {
                 const value = data[cat][color][size];
-                rowData.push(value > 0 ? value.toString() : '-');
+                rowData.push(value > 0 ? value.toLocaleString('pt-BR') : '-');
             });
-            rowData.push(data[cat][color].subTotal.toString());
+            rowData.push(data[cat][color].subTotal.toLocaleString('pt-BR'));
             body.push(rowData);
         });
+
+        (doc as any).autoTable({
+            startY: currentY,
+            head: head,
+            body: body,
+            theme: 'striped',
+            headStyles: { fillColor: primaryColor, textColor: '#FFFFFF', fontStyle: 'bold' },
+            // Adição de rodapé para totalizador de categoria com formatação de milhar
+            foot: [['TOTAL CATEGORIA', ...relevantSizes.map(() => ''), data[cat].rowTotal.toLocaleString('pt-BR')]],
+            footStyles: { fillColor: '#F1F5F9', textColor: '#1E293B', fontStyle: 'bold' },
+            styles: { halign: 'center', cellPadding: 2, fontSize: 9 },
+            columnStyles: { 0: { halign: 'left', fontStyle: 'bold', cellWidth: 40 } },
+            margin: { left: 14, right: 14 },
+        });
+
+        currentY = (doc as any).lastAutoTable.finalY + 10;
     });
 
-    (doc as any).autoTable({
-        startY: 42, // Adjusted slightly to fit the batch number
-        head: head,
-        body: body,
-        theme: 'striped',
-        headStyles: { fillColor: primaryColor, textColor: '#FFFFFF', fontStyle: 'bold' },
-        foot: [ ['TOTAL GERAL', ...allSizes.map(() => ''), grandTotal.toString()] ],
-        footStyles: { fillColor: '#1e293b', textColor: '#FFFFFF', fontStyle: 'bold', fontSize: 12 },
-        styles: { halign: 'center', cellPadding: 2, fontSize: 9 },
-        columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
-    });
+    // Rodapé com Total Geral no final da página - Incluindo formatação de milhar
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(30);
+    const footerText = `TOTAL GERAL DE PEDIDOS: ${grandTotal.toLocaleString('pt-BR')} CAMISETAS`;
+    doc.text(footerText, 280, currentY + 5, { align: "right" });
 
     doc.save(`Matriz_de_Tamanhos_Lote_${batchNumber}_${new Date().toISOString().slice(0, 10)}.pdf`);
   } catch (error) {
