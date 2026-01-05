@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button, Input, Card, Modal, TextArea } from './UI';
 import { checkExistingEmail, checkExistingSector, createOrder, updateOrder, getGlobalConfig } from '../services/firebase';
-import { SETORES_CAPITAL, INFANTIL_SIZES, ADULTO_SIZES, DEFAULT_PRICE } from '../constants';
+import { SETORES_CAPITAL, INFANTIL_SIZES, BABYLOOK_SIZES, UNISSEX_SIZES, DEFAULT_PRICE } from '../constants';
 import { ColorType, CategoryType, SizeQuantities, ColorData, Order } from '../types';
 
 type OrderStep = 'info' | 'sizes' | 'summary' | 'success';
@@ -245,8 +245,8 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
           </div>
           <div className="space-y-12">
             <SizeGrid title="Infantil" sizes={INFANTIL_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.infantil : terracota.infantil} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, infantil: { ...prev.infantil, [sz]: val } }))} />
-            <SizeGrid title="Babylook (Feminina)" sizes={ADULTO_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.babylook : terracota.babylook} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, babylook: { ...prev.babylook, [sz]: val } }))} />
-            <SizeGrid title="Unissex (Masculina)" sizes={ADULTO_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.unissex : terracota.unissex} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, unissex: { ...prev.unissex, [sz]: val } }))} />
+            <SizeGrid title="Babylook (Feminina)" sizes={BABYLOOK_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.babylook : terracota.babylook} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, babylook: { ...prev.babylook, [sz]: val } }))} />
+            <SizeGrid title="Unissex (Masculina)" sizes={UNISSEX_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.unissex : terracota.unissex} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, unissex: { ...prev.unissex, [sz]: val } }))} />
             
             <div className="pt-4">
               <TextArea label="Observações do Pedido" placeholder="Ex: Tamanhos especiais, solicitações de entrega, etc." value={info.observacao} onChange={e => setInfo({...info, observacao: e.target.value})} />
@@ -379,10 +379,12 @@ const SizeGrid: React.FC<{ title: string, sizes: string[], data: SizeQuantities,
     <h4 className="text-sm sm:text-lg font-black uppercase tracking-[0.2em] text-primary mb-8 flex items-center gap-4">
       <div className="w-2 h-6 bg-primary rounded-full"></div> {title}
     </h4>
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-8 gap-4 sm:gap-6">
+    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-8 gap-4 sm:gap-6 items-end">
       {sizes.map(sz => (
         <div key={sz} className="flex flex-col gap-2">
-          <span className="text-xs font-black text-center text-text-secondary/60 uppercase tracking-widest">{sz}</span>
+          <span className="text-[10px] sm:text-xs font-black text-center text-text-secondary/60 uppercase tracking-widest leading-tight min-h-[2.5rem] flex items-center justify-center px-1">
+            {sz}
+          </span>
           <input 
             type="text" pattern="[0-9]*" inputMode="numeric" placeholder="0" 
             className="w-full bg-background border-2 border-border-light rounded-xl p-3 text-center font-black focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all text-text-primary placeholder:text-text-secondary/20 text-xl h-14" 

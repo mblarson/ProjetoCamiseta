@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Order, Stats } from '../types';
 import { Card, Button, Modal } from './UI';
-import { INFANTIL_SIZES, ADULTO_SIZES, DEFAULT_PRICE } from '../constants';
+import { INFANTIL_SIZES, BABYLOOK_SIZES, UNISSEX_SIZES, DEFAULT_PRICE } from '../constants';
 import { generateSizeMatrixPDF } from '../services/pdfService';
 import { getAllOrders, getGlobalConfig, getStats } from '../services/firebase';
 
@@ -56,14 +56,14 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
     let grandTotal = 0;
     let totalVerde = 0;
     let totalTerracota = 0;
-    const allSizes = [...INFANTIL_SIZES, ...ADULTO_SIZES];
+    const allUniqueSizes = Array.from(new Set([...INFANTIL_SIZES, ...BABYLOOK_SIZES, ...UNISSEX_SIZES]));
 
     // Inicializa estrutura
     CATEGORIES.forEach(cat => {
       data[cat] = {};
       COLORS.forEach(color => {
         data[cat][color] = { subTotal: 0 };
-        allSizes.forEach(size => {
+        allUniqueSizes.forEach(size => {
           data[cat][color][size] = 0;
         });
       });
@@ -80,8 +80,8 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
               const categoryData = colorData[cat];
               if (categoryData) {
                 Object.entries(categoryData).forEach(([size, qty]) => {
-                  if (typeof qty === 'number' && allSizes.includes(size)) {
-                    data[cat][color][size] += qty;
+                  if (typeof qty === 'number') {
+                    data[cat][color][size] = (data[cat][color][size] || 0) + qty;
                     data[cat][color].subTotal += qty;
                     grandTotal += qty;
                     if (color === 'verdeOliva') totalVerde += qty;
@@ -173,7 +173,10 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
             const categoryHasData = COLORS.some(color => data[category][color].subTotal > 0);
             if (!categoryHasData) return null;
 
-            const relevantSizes = category === 'infantil' ? INFANTIL_SIZES : ADULTO_SIZES;
+            let relevantSizes: string[];
+            if (category === 'infantil') relevantSizes = INFANTIL_SIZES;
+            else if (category === 'babylook') relevantSizes = BABYLOOK_SIZES;
+            else relevantSizes = UNISSEX_SIZES;
             
             return (
               <div key={category}>

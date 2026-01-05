@@ -1,6 +1,6 @@
 
 import { Order, Stats } from '../types';
-import { DEFAULT_PRICE, INFANTIL_SIZES, ADULTO_SIZES } from '../constants';
+import { DEFAULT_PRICE, INFANTIL_SIZES, BABYLOOK_SIZES, UNISSEX_SIZES } from '../constants';
 
 const CATEGORIES = ['infantil', 'babylook', 'unissex'] as const;
 const COLORS = ['verdeOliva', 'terracota'] as const;
@@ -207,13 +207,13 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
     // Processamento de dados
     const data: any = {};
     let grandTotal = 0;
-    const allSizes = [...INFANTIL_SIZES, ...ADULTO_SIZES];
+    const allUniqueSizes = Array.from(new Set([...INFANTIL_SIZES, ...BABYLOOK_SIZES, ...UNISSEX_SIZES]));
 
     CATEGORIES.forEach(cat => {
       data[cat] = { rowTotal: 0 };
       COLORS.forEach(color => {
         data[cat][color] = { subTotal: 0 };
-        allSizes.forEach(size => {
+        allUniqueSizes.forEach(size => {
           data[cat][color][size] = 0;
         });
       });
@@ -227,8 +227,8 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
             const categoryData = colorData[cat];
             if (categoryData) {
               Object.entries(categoryData).forEach(([size, qty]) => {
-                if (typeof qty === 'number' && allSizes.includes(size)) {
-                  data[cat][color][size] += qty;
+                if (typeof qty === 'number') {
+                  data[cat][color][size] = (data[cat][color][size] || 0) + qty;
                   data[cat][color].subTotal += qty;
                   data[cat].rowTotal += qty;
                   grandTotal += qty;
@@ -245,7 +245,11 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
 
     // Gerar 3 Tabelas Distintas
     CATEGORIES.forEach((cat) => {
-        const relevantSizes = cat === 'infantil' ? INFANTIL_SIZES : ADULTO_SIZES;
+        let relevantSizes: string[];
+        if (cat === 'infantil') relevantSizes = INFANTIL_SIZES;
+        else if (cat === 'babylook') relevantSizes = BABYLOOK_SIZES;
+        else relevantSizes = UNISSEX_SIZES;
+
         const head = [[`TABELA — ${cat.toUpperCase()}`, ...relevantSizes, 'TOTAL']];
         const body: any[] = [];
         

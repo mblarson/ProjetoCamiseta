@@ -104,7 +104,6 @@ const getPaymentDocId = (order: Pick<Order, 'local' | 'setor'>): string => {
   return key;
 };
 
-// Modificado para suportar Lotes. Se lote > 1, prefixa o ID.
 const getConfirmationDocId = (local: 'Capital' | 'Interior', setor: string, lote: number = 1): string => {
   let baseId = setor.toUpperCase().trim();
   if (baseId === 'UMADEMATS') baseId = 'UMADEMATS';
@@ -128,13 +127,11 @@ const calculateShirtCount = (order: Partial<Order>) => {
   return calculate(order.verdeOliva) + calculate(order.terracota);
 };
 
-// DEEP SYNC FUNCTION - Atualizada para Lotes
 export const syncAllStats = async () => {
   try {
     await service.connect();
     const ordersSnap = await getDocs(collection(db, "pedidos"));
     
-    // Globais
     let totalCamisetas = 0;
     let totalPrevisto = 0;
     let totalRecebido = 0;
@@ -143,12 +140,11 @@ export const syncAllStats = async () => {
     let parciais = 0;
     let pendentes = 0;
 
-    // Por Lote
     const batches: Record<number, { qtd_pedidos: number, qtd_camisetas: number, valor_total: number }> = {};
 
     ordersSnap.forEach(doc => {
       const data = doc.data() as Order;
-      const lote = data.lote || 1; // Default lote 1
+      const lote = data.lote || 1;
 
       if (!batches[lote]) {
         batches[lote] = { qtd_pedidos: 0, qtd_camisetas: 0, valor_total: 0 };
@@ -157,12 +153,10 @@ export const syncAllStats = async () => {
       const shirts = calculateShirtCount(data);
       const valTotal = data.valorTotal || 0;
 
-      // Incrementa Lote
       batches[lote].qtd_pedidos++;
       batches[lote].qtd_camisetas += shirts;
       batches[lote].valor_total += valTotal;
 
-      // Incrementa Global
       totalPedidos++;
       totalCamisetas += shirts;
       totalPrevisto += valTotal;
@@ -182,7 +176,7 @@ export const syncAllStats = async () => {
       pedidos_pagos: pagos,
       pedidos_parciais: parciais,
       pedidos_pendentes: pendentes,
-      batches: batches, // Salva estatísticas detalhadas por lote
+      batches: batches,
       qtd_infantil: 0,
       qtd_babylook: 0,
       qtd_unissex: 0
@@ -272,7 +266,6 @@ export const getGlobalConfig = async (): Promise<GlobalConfig> => {
     const snap = await getDoc(doc(db, "configuracoes", "geral"));
     if (snap.exists()) {
         const data = snap.data() as GlobalConfig;
-        // Garante que currentBatch exista
         return { ...data, currentBatch: data.currentBatch || 1 };
     }
   } catch (e: any) { service.handleFirebaseError(e); }
@@ -295,12 +288,9 @@ export const updateGlobalConfig = async (data: Partial<GlobalConfig>) => {
   }
 };
 
-// FUNÇÃO PARA CRIAR NOVO LOTE
 export const createNewBatch = async (newBatchNumber: number) => {
     try {
         await service.connect();
-        // Apenas atualiza o número do lote no config. 
-        // Os pedidos anteriores ficam com lote undefined (implícito 1) ou seu número já salvo.
         await updateGlobalConfig({ currentBatch: newBatchNumber });
         await syncAllStats();
         return true;
@@ -310,7 +300,6 @@ export const createNewBatch = async (newBatchNumber: number) => {
     }
 };
 
-// FUNÇÃO PARA EXCLUIR ÚLTIMO LOTE (REVERSÃO)
 export const deleteLastBatch = async () => {
     try {
         await service.connect();
@@ -319,23 +308,17 @@ export const deleteLastBatch = async () => {
 
         if (batchToDelete <= 1) return false;
 
-        // 1. Busca todos pedidos do lote atual para deletar
         const ordersQuery = query(collection(db, "pedidos"), where("lote", "==", batchToDelete));
         const ordersSnap = await getDocs(ordersQuery);
         
-        // 2. Busca confirmações do lote atual
         const confQuery = query(collection(db, "confirmacoes"), where("lote", "==", batchToDelete));
         const confSnap = await getDocs(confQuery);
 
         const batch = writeBatch(db);
 
-        // Deleta pedidos
         ordersSnap.forEach(d => batch.delete(d.ref));
-        
-        // Deleta confirmações
         confSnap.forEach(d => batch.delete(d.ref));
         
-        // Volta config para lote anterior
         const configRef = doc(db, "configuracoes", "geral");
         batch.update(configRef, { currentBatch: batchToDelete - 1 });
 
@@ -414,15 +397,8 @@ export const recordPayment = async (orderId: string, amount: number, date?: stri
       }
 
       if (statsSnap.exists()) {
-        // Atualiza global e por lote
-        const currentStats = statsSnap.data() as Stats;
-        const batchStats = currentStats.batches?.[lote] || { qtd_pedidos: 0, qtd_camisetas: 0, valor_total: 0 };
-
         const statsUpdate: any = {
           total_recebido_real: increment(amount),
-          // Não atualizamos valores monetários dentro do objeto 'batches' aqui pois o prompt pediu 
-          // "Remover 'Total Recebido' de dentro dos lotes" no Dashboard, mantendo global.
-          // Mas se quiséssemos, seria aqui.
         };
 
         if (oldStatus !== newStatus) {
@@ -517,7 +493,6 @@ export const endEvent = async () => {
   try {
     await service.connect();
     
-    // Obter referências de todos os documentos que precisam ser excluídos
     const [ordersSnap, paymentsSnap, confirmationsSnap] = await Promise.all([
       getDocs(collection(db, "pedidos")),
       getDocs(collection(db, "pagamentos")),
@@ -543,7 +518,6 @@ export const endEvent = async () => {
       await batch.commit();
     }
 
-    // Reset das estatísticas após a limpeza
     await setDoc(doc(db, "configuracoes", "estatisticas"), {
       qtd_pedidos: 0,
       qtd_camisetas: 0,
@@ -558,7 +532,6 @@ export const endEvent = async () => {
       batches: {} 
     });
     
-    // Reset config to batch 1
     await updateGlobalConfig({ currentBatch: 1 });
 
     return true;
@@ -586,7 +559,6 @@ export const getAllOrders = async (): Promise<Order[]> => {
     await service.connect();
     const q = query(collection(db, "pedidos"), orderBy("data", "desc"));
     const snap = await getDocs(q);
-    // Garante lote 1 se undefined
     return snap.docs.map(d => {
         const data = d.data();
         return { docId: d.id, ...data, lote: data.lote || 1 } as Order;
@@ -628,36 +600,54 @@ export const getPaginatedOrders = async (lastVisible?: DocumentSnapshot, loteFil
   }
 };
 
+/**
+ * Busca de Pedidos Corrigida:
+ * Agora realiza filtragem parcial (CONTAINS) e Case-Insensitive.
+ * Inclui o nome formatado do setor (ex: "SETOR F") para garantir que o usuário encontre
+ * exatamente o que vê na interface, independentemente de maiúsculas ou minúsculas.
+ */
 export const searchOrders = async (searchTerm: string): Promise<Order[]> => {
   try {
     await service.connect();
-    const term = searchTerm.trim();
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return [];
 
-    const numPedidoQuery = query(collection(db, "pedidos"), where("numPedido", "==", term.toUpperCase()));
-    const nomeQuery = query(collection(db, "pedidos"), orderBy("nome"), where("nome", ">=", term), where("nome", "<=", term + '\uf8ff'));
-    const setorQuery = query(collection(db, "pedidos"), orderBy("setor"), where("setor", ">=", term), where("setor", "<=", term + '\uf8ff'));
-
-    const [numPedidoSnap, nomeSnap, setorSnap] = await Promise.all([
-      getDocs(numPedidoQuery),
-      getDocs(nomeQuery),
-      getDocs(setorQuery),
-    ]);
+    // Recuperamos todos os pedidos para permitir busca por "Contém" (Firestore nativo não suporta substrings centrais)
+    const snap = await getDocs(collection(db, "pedidos"));
+    const results: Order[] = [];
     
-    const ordersMap = new Map<string, Order>();
-    const processSnapshot = (snap: any) => {
-      snap.docs.forEach((d: any) => {
-        if (!ordersMap.has(d.id)) {
-          const data = d.data();
-          ordersMap.set(d.id, { docId: d.id, ...data, lote: data.lote || 1 } as Order);
-        }
-      });
-    };
+    snap.forEach(d => {
+      const data = d.data();
+      const order = { docId: d.id, ...data, lote: data.lote || 1 } as Order;
+      
+      // Gera o nome do setor exatamente como o usuário o vê na tela
+      const displaySetor = (order.setor === 'UMADEMATS') 
+        ? 'UMADEMATS' 
+        : (order.local === 'Capital' && !order.setor.toUpperCase().startsWith('SETOR') 
+            ? `SETOR ${order.setor}` 
+            : order.setor);
 
-    processSnapshot(numPedidoSnap);
-    processSnapshot(nomeSnap);
-    processSnapshot(setorSnap);
+      // Normalização dos campos para comparação Case-Insensitive e Substring
+      const searchableFields = [
+        order.numPedido,
+        order.nome,
+        order.setor,
+        displaySetor, // Compara com o texto formatado (ex: SETOR F)
+        order.local,
+        order.email,
+        order.contato
+      ].map(f => (f || "").toLowerCase());
 
-    return Array.from(ordersMap.values()).sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+      // Verifica se o termo está contido em qualquer um dos campos
+      const isMatch = searchableFields.some(f => f.includes(term));
+
+      if (isMatch) {
+        results.push(order);
+      }
+    });
+
+    // Mantém a ordenação cronológica decrescente
+    return results.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
   } catch (e: any) {
     service.handleFirebaseError(e);
     return [];
@@ -697,7 +687,6 @@ export const deleteOrder = async (order: Order) => {
       
       transaction.delete(orderRef);
 
-      // Sincronização automática: Remove o card de confirmação ao excluir o pedido
       const confDocId = getConfirmationDocId(order.local, order.setor, order.lote);
       const confRef = doc(db, "confirmacoes", confDocId);
       transaction.delete(confRef);
@@ -715,14 +704,12 @@ export const deleteOrder = async (order: Order) => {
 export const checkExistingEmail = async (email: string, currentBatch: number) => {
   try {
     await service.connect();
-    // Validate email across DB first
     const q = query(
         collection(db, "pedidos"), 
         where("email", "==", email.toLowerCase().trim())
     );
     const snap = await getDocs(q);
 
-    // Client-side filtering to handle legacy data (lote undefined => 1)
     const duplicate = snap.docs.find(d => {
         const data = d.data();
         const recordBatch = data.lote || 1;
@@ -739,16 +726,14 @@ export const checkExistingEmail = async (email: string, currentBatch: number) =>
 export const checkExistingSector = async (local: 'Capital' | 'Interior', setor: string, currentBatch: number) => {
   try {
     await service.connect();
-    // Validate sector across DB first
     const q = query(
         collection(db, "pedidos"), 
         where("local", "==", local), 
         where("setor", "==", setor), 
-        limit(10) // Small limit, usually just need to find one
+        limit(10)
     );
     const snap = await getDocs(q);
 
-    // Client-side filtering to handle legacy data (lote undefined => 1)
     const duplicate = snap.docs.find(d => {
         const data = d.data();
         const recordBatch = data.lote || 1;
@@ -782,13 +767,12 @@ export const findOrder = async (id: string) => {
 export const findOrderByEmail = async (email: string): Promise<Order[]> => {
   try {
     await service.connect();
-    // Now returns all orders for that email (across batches)
     const q = query(collection(db, "pedidos"), where("email", "==", email.toLowerCase().trim()));
     const snap = await getDocs(q);
     return snap.docs.map(d => {
         const data = d.data();
         return { docId: d.id, ...data, lote: data.lote || 1 } as Order;
-    }).sort((a, b) => b.lote - a.lote); // Sort by Batch Descending
+    }).sort((a, b) => b.lote - a.lote);
   } catch (e: any) { service.handleFirebaseError(e); return []; }
 };
 
@@ -811,7 +795,6 @@ export const updateOrder = async (docId: string, orderData: Partial<Order>) => {
 
       transaction.update(orderRef, { ...orderData, statusPagamento: newStatus });
 
-      // Sincronização automática: Se mudar o setor/cidade, atualiza o ID do card de confirmação
       const oldConfId = getConfirmationDocId(oldOrder.local, oldOrder.setor, lote);
       const newConfId = orderData.local && orderData.setor 
         ? getConfirmationDocId(orderData.local, orderData.setor, lote) 
@@ -844,7 +827,6 @@ export const createOrder = async (orderData: Partial<Order>, prefix: string = 'P
   try {
     await service.connect();
     
-    // Pega lote atual
     const config = await getGlobalConfig();
     const currentBatch = config.currentBatch;
 
@@ -859,10 +841,9 @@ export const createOrder = async (orderData: Partial<Order>, prefix: string = 'P
         data: new Date().toISOString(),
         statusPagamento: 'Pendente',
         valorPago: 0,
-        lote: currentBatch // Salva o lote
+        lote: currentBatch
       });
 
-      // Sincronização automática: Cria o card de confirmação ao criar o pedido
       if (orderData.local && orderData.setor) {
         const confDocId = getConfirmationDocId(orderData.local, orderData.setor, currentBatch);
         const confRef = doc(db, "confirmacoes", confDocId);

@@ -60,6 +60,10 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
   }, []);
 
   const filteredOrders = orders.filter(o => {
+    // Se estiver pesquisando, ignora os filtros de Lote e Local para busca GLOBAL
+    const isSearching = searchText.trim() !== '';
+    if (isSearching) return true;
+
     const matchesLocal = localFilter === 'Todos' || o.local === localFilter;
     const matchesLote = loteFilter === 'Todos' || (o.lote || 1) === loteFilter;
     return matchesLocal && matchesLote;

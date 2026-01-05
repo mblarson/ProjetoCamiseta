@@ -93,8 +93,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
 
   useEffect(() => {
     const loadDataForTab = async () => {
-      setOrders([]);
-      setConfirmations([]);
+      // Evita limpar o estado imediatamente se estiver apenas filtrando para manter a interface reativa
+      if (!debouncedSearchText) {
+          setOrders([]);
+          setConfirmations([]);
+      }
 
       if (tab === AdminTab.Dashboard) {
         const s = await getStats();
@@ -106,7 +109,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
           setOrders(results);
           setHasMoreOrders(false);
         } else {
-          loadInitialOrdersPage();
+          await loadInitialOrdersPage();
         }
         setIsLoadingOrders(false);
       } else if (tab === AdminTab.Payments || tab === AdminTab.Statistics) {
@@ -115,18 +118,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
           const results = await searchOrders(debouncedSearchText);
           setOrders(results);
         } else {
-          loadAllOrders();
+          await loadAllOrders();
         }
         setIsLoadingOrders(false);
       } else if (tab === AdminTab.Event) {
-        loadConfig();
+        await loadConfig();
       } else if (tab === AdminTab.Confirmation) {
         setIsLoadingConfirmations(true);
         if (debouncedSearchText) {
           const results = await searchConfirmations(debouncedSearchText);
           setConfirmations(results);
         } else {
-          loadConfirmations();
+          await loadConfirmations();
         }
         setIsLoadingConfirmations(false);
       }
@@ -159,7 +162,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
   };
   
   const loadInitialOrdersPage = async () => {
-    setOrders([]);
     const { orders: newOrders, lastVisible } = await getPaginatedOrders();
     setOrders(newOrders);
     setLastVisibleOrder(lastVisible);
