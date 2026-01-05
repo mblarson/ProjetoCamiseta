@@ -46,6 +46,8 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
   const activeBatchData = useMemo(() => {
     const data: any = {};
     let grandTotal = 0;
+    let totalVerde = 0;
+    let totalTerracota = 0;
     const allSizes = [...INFANTIL_SIZES, ...ADULTO_SIZES];
 
     // Inicializa estrutura
@@ -74,6 +76,8 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
                     data[cat][color][size] += qty;
                     data[cat][color].subTotal += qty;
                     grandTotal += qty;
+                    if (color === 'verdeOliva') totalVerde += qty;
+                    if (color === 'terracota') totalTerracota += qty;
                   }
                 });
               }
@@ -82,7 +86,7 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
         });
       });
 
-    return { data, grandTotal };
+    return { data, grandTotal, totalVerde, totalTerracota };
   }, [orders, currentBatch]);
 
   const handleDownloadPDF = () => {
@@ -103,7 +107,7 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
     );
   }
 
-  const { data, grandTotal } = activeBatchData;
+  const { data, grandTotal, totalVerde, totalTerracota } = activeBatchData;
 
   return (
     <div className="animate-in fade-in duration-500 pb-20">
@@ -196,9 +200,21 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
             );
           })}
 
-          <div className="mt-8 pt-6 border-t border-border-light flex justify-end items-center gap-6">
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-text-secondary">Total Camisetas (Lote {currentBatch})</span>
-            <span className="text-4xl font-black text-primary tracking-tighter">{grandTotal}</span>
+          <div className="mt-8 pt-6 border-t border-border-light flex flex-col sm:flex-row justify-between items-center gap-6">
+            <div className="flex gap-6">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#556B2F]"></div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">VERDE: {totalVerde}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#a35e47]"></div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">TERRACOTA: {totalTerracota}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-6">
+              <span className="text-xs font-bold uppercase tracking-[0.2em] text-text-secondary">Total Camisetas (Lote {currentBatch})</span>
+              <span className="text-4xl font-black text-primary tracking-tighter">{grandTotal}</span>
+            </div>
           </div>
       </div>
     </div>
