@@ -31,7 +31,7 @@ export const handlePdfOutput = async (doc: any, filename: string, action: 'view'
         await navigator.share({
           files: [file],
           title: filename,
-          text: 'Segue relação de pedidos em PDF' // Texto padrão obrigatório
+          text: 'Segue relação de pedidos em PDF' // Texto padrão obrigatório conforme solicitado
         });
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
@@ -193,7 +193,7 @@ export const generateOrderPDF = async (order: Order) => {
       doc.text(splitObs, 14, currentY);
     }
 
-    // Em vez de salvar ou compartilhar automaticamente, aciona o modal de escolha
+    // Aciona o modal de escolha
     triggerPdfActionModal(doc, `Pedido_${order.numPedido}.pdf`);
   } catch (error) {
     console.error("Erro ao gerar PDF:", error);
@@ -322,7 +322,7 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
 
     const matrixFilename = `Matriz_de_Tamanhos_Lote_${batchNumber}_${new Date().toISOString().slice(0, 10)}.pdf`;
     
-    // Em vez de salvar ou compartilhar automaticamente, aciona o modal de escolha
+    // Aciona o modal de escolha
     triggerPdfActionModal(doc, matrixFilename);
   } catch (error) {
     console.error("Erro ao gerar matriz:", error);
