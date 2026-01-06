@@ -317,7 +317,7 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
           />
           <div className="flex gap-4">
             <Button variant="outline" className="flex-1 h-12 text-[10px]" onClick={() => setIsCommentModalOpen(false)}>CANCELAR</Button>
-            <Button className="flex-1 h-12 text-[10px]" onClick={handleDownloadPDF}>GERAR PDF AGORA</Button>
+            <Button className="flex-1 h-12 text-[10px]" onClick={handleDownloadPDF}>GERAR PDF</Button>
           </div>
         </div>
       </Modal>
