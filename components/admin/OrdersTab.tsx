@@ -10,6 +10,7 @@ interface OrdersTabProps {
   setSearchText: (text: string) => void;
   isLoadingOrders: boolean;
   orders: Order[];
+  onEditOrder: (order: Order) => void;
   setOrderToDelete: (order: Order | null) => void;
   loadMoreOrders: () => void;
   hasMoreOrders: boolean;
@@ -41,6 +42,7 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
   setSearchText,
   isLoadingOrders,
   orders,
+  onEditOrder,
   setOrderToDelete,
   loadMoreOrders,
   hasMoreOrders,
@@ -131,6 +133,7 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
               order={order} 
               isExpanded={expandedSector === order.docId}
               onToggle={() => setExpandedSector(expandedSector === order.docId ? null : order.docId)}
+              onEdit={() => onEditOrder(order)}
               onPDF={() => generateOrderPDF(order)}
               onDelete={() => setOrderToDelete(order)}
               shirtCount={getShirtCount(order)}
@@ -155,11 +158,12 @@ const OrderListItem: React.FC<{
   order: Order, 
   isExpanded: boolean, 
   onToggle: () => void,
+  onEdit: () => void,
   onPDF: () => void,
   onDelete: () => void,
   shirtCount: number,
   displaySetor: string
-}> = ({ order, isExpanded, onToggle, onPDF, onDelete, shirtCount, displaySetor }) => {
+}> = ({ order, isExpanded, onToggle, onEdit, onPDF, onDelete, shirtCount, displaySetor }) => {
   const whatsappMessage = "Prezado lider, segue em anexo o último relatório de seu pedido de camisetas para o Jubileu da Umademats. Por gentileza, analise o mesmo e nos confirme se está correto para que possamos encaminhar para Produção.";
   const whatsappUrl = `https://wa.me/${order.contato.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMessage)}`;
 
@@ -221,23 +225,33 @@ const OrderListItem: React.FC<{
                 <p className="text-sm text-text-secondary italic">"{order.observacao}"</p>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-4 pt-6 border-t border-border-light">
+            <div className="flex flex-col gap-4 pt-6 border-t border-border-light">
               <button 
-                onClick={(e) => { e.stopPropagation(); onDelete(); }} 
-                className="flex items-center justify-center gap-2 px-4 py-4 rounded-full bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] font-black uppercase hover:bg-red-500 hover:text-white transition-all w-full"
+                onClick={(e) => { e.stopPropagation(); onEdit(); }} 
+                className="flex items-center justify-center gap-2 px-4 py-4 rounded-full bg-primary-light text-primary border border-primary/20 text-[10px] font-black uppercase hover:bg-primary hover:text-white transition-all w-full h-14"
               >
-                <i className="fas fa-trash-alt"></i>
-                <span className="hidden sm:inline">Excluir Pedido</span>
-                <span className="sm:hidden text-[8px]">Excluir</span>
+                <i className="fas fa-edit"></i>
+                <span>EDITAR PEDIDO</span>
               </button>
-              <button 
-                onClick={(e) => { e.stopPropagation(); onPDF(); }} 
-                className="flex items-center justify-center gap-2 px-4 py-4 rounded-full bg-primary text-[#0A192F] text-[10px] font-black uppercase hover:brightness-95 transition-all w-full"
-              >
-                <i className="fas fa-file-pdf"></i>
-                <span className="hidden sm:inline">Baixar Pedido (PDF)</span>
-                <span className="sm:hidden text-[8px]">PDF</span>
-              </button>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onDelete(); }} 
+                  className="flex items-center justify-center gap-2 px-4 py-4 rounded-full bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] font-black uppercase hover:bg-red-500 hover:text-white transition-all w-full h-14"
+                >
+                  <i className="fas fa-trash-alt"></i>
+                  <span className="hidden sm:inline">Excluir Pedido</span>
+                  <span className="sm:hidden text-[8px]">Excluir</span>
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onPDF(); }} 
+                  className="flex items-center justify-center gap-2 px-4 py-4 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase hover:brightness-95 transition-all w-full h-14"
+                >
+                  <i className="fas fa-file-pdf"></i>
+                  <span className="hidden sm:inline">Baixar Pedido (PDF)</span>
+                  <span className="sm:hidden text-[8px]">PDF</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

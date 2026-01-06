@@ -415,6 +415,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
           setSearchText={setSearchText}
           isLoadingOrders={isLoadingOrders}
           orders={orders}
+          onEditOrder={onEditOrder}
           setOrderToDelete={setOrderToDelete}
           loadMoreOrders={loadMoreOrders}
           hasMoreOrders={hasMoreOrders}

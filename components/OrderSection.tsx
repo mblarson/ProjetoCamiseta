@@ -246,7 +246,7 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
           <div className="space-y-12">
             <SizeGrid title="Infantil" sizes={INFANTIL_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.infantil : terracota.infantil} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, infantil: { ...prev.infantil, [sz]: val } }))} />
             <SizeGrid title="Babylook (Feminina)" sizes={BABYLOOK_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.babylook : terracota.babylook} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, babylook: { ...prev.babylook, [sz]: val } }))} />
-            <SizeGrid title="Unissex (Masculina)" sizes={UNISSEX_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.unissex : terracota.unissex} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, unissex: { ...prev.unissex, [sz]: val } }))} />
+            <SizeGrid title="Unissex" sizes={UNISSEX_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.unissex : terracota.unissex} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, unissex: { ...prev.unissex, [sz]: val } }))} />
             
             <div className="pt-4">
               <TextArea label="Observações do Pedido" placeholder="Ex: Tamanhos especiais, solicitações de entrega, etc." value={info.observacao} onChange={e => setInfo({...info, observacao: e.target.value})} />

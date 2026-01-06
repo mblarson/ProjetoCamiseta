@@ -185,7 +185,7 @@ export const generateOrderPDF = async (order: Order) => {
   }
 };
 
-export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, stats: Stats | null, batchNumber: number = 1) => {
+export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, stats: Stats | null, batchNumber: number = 1, comment?: string) => {
   try {
     const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF({ orientation: 'landscape' });
@@ -280,12 +280,36 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
         currentY = (doc as any).lastAutoTable.finalY + 10;
     });
 
-    // Rodapé com Total Geral no final da página - Incluindo formatação de milhar
+    // Rodapé com Total Geral - Incluindo formatação de milhar
+    if (currentY > 180) {
+        doc.addPage();
+        currentY = 20;
+    }
     doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
     doc.setTextColor(30);
     const footerText = `TOTAL GERAL DE PEDIDOS: ${grandTotal.toLocaleString('pt-BR')} CAMISETAS`;
     doc.text(footerText, 280, currentY + 5, { align: "right" });
+    
+    currentY += 15;
+
+    // Comentário opcional do admin
+    if (comment) {
+        if (currentY > 185) {
+            doc.addPage();
+            currentY = 20;
+        }
+        doc.setFontSize(11);
+        doc.setTextColor(50);
+        doc.setFont(undefined, 'bold');
+        doc.text("OBSERVAÇÕES GERAIS:", 14, currentY);
+        currentY += 6;
+        
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(10);
+        const splitComment = doc.splitTextToSize(comment, 260);
+        doc.text(splitComment, 14, currentY);
+    }
 
     // Utiliza a função inteligente de salvar/compartilhar
     const matrixFilename = `Matriz_de_Tamanhos_Lote_${batchNumber}_${new Date().toISOString().slice(0, 10)}.pdf`;

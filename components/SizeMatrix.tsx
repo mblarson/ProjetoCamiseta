@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { Order, Stats } from '../types';
-import { Card, Button, Modal } from './UI';
+import { Card, Button, Modal, TextArea } from './UI';
 import { INFANTIL_SIZES, BABYLOOK_SIZES, UNISSEX_SIZES, DEFAULT_PRICE } from '../constants';
 import { generateSizeMatrixPDF } from '../services/pdfService';
 import { getAllOrders, getGlobalConfig, getStats } from '../services/firebase';
@@ -27,6 +27,9 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
   const [currentBatch, setCurrentBatch] = useState(1);
   const [loading, setLoading] = useState(true);
   const [selectedCell, setSelectedCell] = useState<SelectedCellInfo | null>(null);
+  
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const [reportComment, setReportComment] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -123,7 +126,9 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
 
   const handleDownloadPDF = () => {
     const activeBatchOrders = orders.filter(o => (o.lote || 1) === currentBatch);
-    generateSizeMatrixPDF(activeBatchOrders, unitPrice, stats, currentBatch);
+    generateSizeMatrixPDF(activeBatchOrders, unitPrice, stats, currentBatch, reportComment);
+    setIsCommentModalOpen(false);
+    setReportComment('');
   };
 
   if (loading) {
@@ -160,7 +165,7 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
         <div className="w-full sm:w-auto">
           <Button 
               variant="outline" 
-              onClick={handleDownloadPDF}
+              onClick={() => setIsCommentModalOpen(true)}
               className="w-full text-[10px] h-12 rounded-2xl"
           >
               <i className="fas fa-file-pdf"></i> Baixar PDF (Lote {currentBatch})
@@ -297,6 +302,23 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
           </div>
           
           <Button onClick={() => setSelectedCell(null)} variant="outline" className="w-full h-12 rounded-xl text-[10px]">FECHAR AUDITORIA</Button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={isCommentModalOpen} onClose={() => setIsCommentModalOpen(false)} title="Observações do Relatório">
+        <div className="space-y-6">
+          <p className="text-[11px] text-text-secondary font-bold uppercase tracking-widest text-center">
+            Adicione uma nota opcional para constar no PDF da Matriz de Produção.
+          </p>
+          <TextArea 
+            placeholder="Ex: Instruções de separação, observações de prazo, etc." 
+            value={reportComment}
+            onChange={e => setReportComment(e.target.value)}
+          />
+          <div className="flex gap-4">
+            <Button variant="outline" className="flex-1 h-12 text-[10px]" onClick={() => setIsCommentModalOpen(false)}>CANCELAR</Button>
+            <Button className="flex-1 h-12 text-[10px]" onClick={handleDownloadPDF}>GERAR PDF AGORA</Button>
+          </div>
         </div>
       </Modal>
     </div>
