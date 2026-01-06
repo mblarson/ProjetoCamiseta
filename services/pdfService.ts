@@ -12,6 +12,9 @@ const saveOrShare = async (doc: any, filename: string) => {
   const blob = doc.output('blob');
   const blobURL = URL.createObjectURL(blob);
   
+  // Identifica se é dispositivo móvel para aplicar lógica de automação
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
   // 1. Visualização: Abre em nova aba primeiro (Preview)
   const previewWindow = window.open(blobURL, '_blank');
 
@@ -21,22 +24,23 @@ const saveOrShare = async (doc: any, filename: string) => {
   // Verifica se o navegador suporta compartilhamento de arquivos
   if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
-      // 3. Compartilhamento automático aparece "por cima" ou após a visualização
+      // 3. Compartilhamento automático
+      // REMOÇÃO DO TEXTO: O campo 'text' foi removido para evitar mensagens automáticas no WhatsApp
       await navigator.share({
         files: [file],
-        title: filename,
-        text: 'Segue relação de pedidos em PDF'
+        title: filename
       });
-      return; 
     } catch (err) {
+      // Se falhar por restrição de gesto ou cancelamento, apenas logamos.
+      // A visualização já foi aberta acima (previewWindow).
       if ((err as Error).name !== 'AbortError') {
-        console.error('Falha no compartilhamento:', err);
+        console.warn('O compartilhamento automático foi bloqueado pelo navegador ou falhou, mas a visualização está disponível.', err);
       }
     }
   }
 
-  // Fallback: Se não houver suporte a share e a janela foi bloqueada, salva o arquivo
-  if (!previewWindow) {
+  // Fallback: Se a janela de preview foi bloqueada pelo navegador e o share falhou ou não existe
+  if (!previewWindow && (!navigator.share || !isMobile)) {
     doc.save(filename);
   }
 };
@@ -107,13 +111,11 @@ export const generateOrderPDF = async (order: Order) => {
 
       if (rows.length === 0) return false;
 
-      // Verificar se a tabela cabe na página
       if (currentY > 240) {
         doc.addPage();
         currentY = 20;
       }
 
-      // Título da Tabela
       doc.setFontSize(11);
       doc.setTextColor(headerColor);
       doc.setFont(undefined, 'bold');
@@ -167,7 +169,6 @@ export const generateOrderPDF = async (order: Order) => {
       currentY += 5;
     }
 
-    // Valor Total + Soma de Camisetas
     doc.setFontSize(12);
     doc.setTextColor(textColor);
     doc.setFont(undefined, 'bold');
