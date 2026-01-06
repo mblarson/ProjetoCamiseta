@@ -6,42 +6,42 @@ const CATEGORIES = ['infantil', 'babylook', 'unissex'] as const;
 const COLORS = ['verdeOliva', 'terracota'] as const;
 
 /**
- * Helper para visualizar o PDF primeiro e depois oferecer compartilhamento
+ * Dispara um evento global para abrir o modal de escolha de ação do PDF
  */
-const saveOrShare = async (doc: any, filename: string) => {
+const triggerPdfActionModal = (doc: any, filename: string) => {
+  const event = new CustomEvent('show-pdf-modal', { detail: { doc, filename } });
+  window.dispatchEvent(event);
+};
+
+/**
+ * Executa a ação escolhida pelo usuário (Visualizar ou Compartilhar)
+ */
+export const handlePdfOutput = async (doc: any, filename: string, action: 'view' | 'share') => {
   const blob = doc.output('blob');
-  const blobURL = URL.createObjectURL(blob);
   
-  // Identifica se é dispositivo móvel para aplicar lógica de automação
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-  // 1. Visualização: Abre em nova aba primeiro (Preview)
-  const previewWindow = window.open(blobURL, '_blank');
-
-  // 2. Preparação para compartilhamento
-  const file = new File([blob], filename, { type: 'application/pdf' });
-
-  // Verifica se o navegador suporta compartilhamento de arquivos
-  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-    try {
-      // 3. Compartilhamento automático
-      // REMOÇÃO DO TEXTO: O campo 'text' foi removido para evitar mensagens automáticas no WhatsApp
-      await navigator.share({
-        files: [file],
-        title: filename
-      });
-    } catch (err) {
-      // Se falhar por restrição de gesto ou cancelamento, apenas logamos.
-      // A visualização já foi aberta acima (previewWindow).
-      if ((err as Error).name !== 'AbortError') {
-        console.warn('O compartilhamento automático foi bloqueado pelo navegador ou falhou, mas a visualização está disponível.', err);
+  if (action === 'view') {
+    const blobURL = URL.createObjectURL(blob);
+    window.open(blobURL, '_blank');
+  } else if (action === 'share') {
+    const file = new File([blob], filename, { type: 'application/pdf' });
+    
+    // Verifica se o navegador suporta compartilhamento de arquivos
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: filename,
+          text: 'Segue relação de pedidos em PDF' // Texto padrão obrigatório
+        });
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          console.error('Falha no compartilhamento:', err);
+          doc.save(filename); // Fallback: download direto se falhar
+        }
       }
+    } else {
+      doc.save(filename); // Fallback: download direto se não houver suporte
     }
-  }
-
-  // Fallback: Se a janela de preview foi bloqueada pelo navegador e o share falhou ou não existe
-  if (!previewWindow && (!navigator.share || !isMobile)) {
-    doc.save(filename);
   }
 };
 
@@ -193,7 +193,8 @@ export const generateOrderPDF = async (order: Order) => {
       doc.text(splitObs, 14, currentY);
     }
 
-    await saveOrShare(doc, `Pedido_${order.numPedido}.pdf`);
+    // Em vez de salvar ou compartilhar automaticamente, aciona o modal de escolha
+    triggerPdfActionModal(doc, `Pedido_${order.numPedido}.pdf`);
   } catch (error) {
     console.error("Erro ao gerar PDF:", error);
     alert(`Erro ao gerar PDF do pedido #${order.numPedido}.`);
@@ -320,7 +321,9 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
     }
 
     const matrixFilename = `Matriz_de_Tamanhos_Lote_${batchNumber}_${new Date().toISOString().slice(0, 10)}.pdf`;
-    await saveOrShare(doc, matrixFilename);
+    
+    // Em vez de salvar ou compartilhar automaticamente, aciona o modal de escolha
+    triggerPdfActionModal(doc, matrixFilename);
   } catch (error) {
     console.error("Erro ao gerar matriz:", error);
     alert("Erro ao gerar PDF da Matriz de Tamanhos.");

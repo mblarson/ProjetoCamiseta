@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Section, Stats, Order } from './types';
 import { getStats, auth, connectFirebase, signOutUser, getGlobalConfig } from './services/firebase';
@@ -13,6 +14,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { LoginModal } from './components/LoginModal';
 import { SizeMatrix } from './components/SizeMatrix';
 import { SplashScreen } from './components/SplashScreen';
+import { PdfActionModal } from './components/PdfActionModal';
 
 type ConnectionState = 'connecting' | 'connected' | 'error' | 'api-disabled';
 
@@ -27,6 +29,9 @@ const App: React.FC = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [showSizeMatrix, setShowSizeMatrix] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(true);
+  
+  // Estado para gerenciar o modal de ação do PDF
+  const [pdfToAction, setPdfToAction] = useState<{ doc: any, filename: string } | null>(null);
 
   const loadConfig = useCallback(async () => {
     try {
@@ -71,6 +76,13 @@ const App: React.FC = () => {
 
     return () => unsubscribe();
   }, [initFirebase]);
+
+  // Listener global para disparar o modal de ação do PDF
+  useEffect(() => {
+    const handler = (e: any) => setPdfToAction(e.detail);
+    window.addEventListener('show-pdf-modal', handler);
+    return () => window.removeEventListener('show-pdf-modal', handler);
+  }, []);
   
   const handleLogout = async () => {
     await signOutUser();
@@ -111,7 +123,6 @@ const App: React.FC = () => {
   };
 
   if (showSplash) {
-    // Agora passamos loading={connection !== 'connected'} para que o splash saiba quando parar de travar o progresso
     return <SplashScreen loading={connection !== 'connected'} onAccess={() => setShowSplash(false)} />;
   }
 
@@ -196,6 +207,12 @@ const App: React.FC = () => {
         isOpen={isLoginModalOpen} 
         onClose={() => setIsLoginModalOpen(false)}
         onSuccess={handleLoginSuccess}
+      />
+
+      {/* Modal de escolha de ação do PDF */}
+      <PdfActionModal 
+        pdfData={pdfToAction} 
+        onClose={() => setPdfToAction(null)} 
       />
 
       <footer className="mt-32 py-12 border-t border-border-light text-center">
