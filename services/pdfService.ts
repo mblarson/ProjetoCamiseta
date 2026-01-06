@@ -1,36 +1,44 @@
 
-import { Order, Stats } from '../types';
+import { Order, Stats, ColorData } from '../types';
 import { DEFAULT_PRICE, INFANTIL_SIZES, BABYLOOK_SIZES, UNISSEX_SIZES } from '../constants';
 
 const CATEGORIES = ['infantil', 'babylook', 'unissex'] as const;
 const COLORS = ['verdeOliva', 'terracota'] as const;
 
 /**
- * Helper para salvar ou compartilhar o PDF baseado na capacidade do dispositivo
+ * Helper para visualizar o PDF primeiro e depois oferecer compartilhamento
  */
 const saveOrShare = async (doc: any, filename: string) => {
   const blob = doc.output('blob');
+  const blobURL = URL.createObjectURL(blob);
+  
+  // 1. Visualização: Abre em nova aba primeiro (Preview)
+  const previewWindow = window.open(blobURL, '_blank');
+
+  // 2. Preparação para compartilhamento
   const file = new File([blob], filename, { type: 'application/pdf' });
 
-  // Verifica se o navegador suporta compartilhamento de arquivos (comumente em dispositivos móveis)
+  // Verifica se o navegador suporta compartilhamento de arquivos
   if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
+      // 3. Compartilhamento automático aparece "por cima" ou após a visualização
       await navigator.share({
         files: [file],
         title: filename,
         text: 'Segue relação de pedidos em PDF'
       });
-      return; // Sucesso no compartilhamento
+      return; 
     } catch (err) {
-      // Se o usuário cancelar ou houver erro, tentamos o download normal como fallback
       if ((err as Error).name !== 'AbortError') {
         console.error('Falha no compartilhamento:', err);
       }
     }
   }
 
-  // Fallback para download tradicional (Desktop ou navegadores sem suporte a Share API)
-  doc.save(filename);
+  // Fallback: Se não houver suporte a share e a janela foi bloqueada, salva o arquivo
+  if (!previewWindow) {
+    doc.save(filename);
+  }
 };
 
 export const generateOrderPDF = async (order: Order) => {
@@ -44,6 +52,19 @@ export const generateOrderPDF = async (order: Order) => {
         ? `SETOR ${order.setor}` 
         : order.setor;
     };
+
+    // Cálculo da soma total de camisetas do pedido
+    let totalCamisetas = 0;
+    const countOrderShirts = (data?: ColorData) => {
+      if (!data) return;
+      Object.values(data).forEach(catData => {
+        Object.values(catData).forEach(qty => {
+          totalCamisetas += (qty as number || 0);
+        });
+      });
+    };
+    countOrderShirts(order.verdeOliva);
+    countOrderShirts(order.terracota);
 
     // Configurações de Cores e Estilos
     const textColor = '#1e293b'; 
@@ -86,20 +107,19 @@ export const generateOrderPDF = async (order: Order) => {
 
       if (rows.length === 0) return false;
 
-      // Verificar se a tabela cabe na página, senão adiciona nova página
+      // Verificar se a tabela cabe na página
       if (currentY > 240) {
         doc.addPage();
         currentY = 20;
       }
 
-      // Título da Tabela (Cor + Categoria)
+      // Título da Tabela
       doc.setFontSize(11);
       doc.setTextColor(headerColor);
       doc.setFont(undefined, 'bold');
       doc.text(`${colorLabel.toUpperCase()} - ${categoryLabel.toUpperCase()}`, 14, currentY);
       currentY += 4;
 
-      // Renderização do Grid/Tabela
       (doc as any).autoTable({
         startY: currentY,
         head: [['Tamanho', 'Quantidade']],
@@ -121,21 +141,17 @@ export const generateOrderPDF = async (order: Order) => {
     const verdeColor = "#556B2F";
     const verdeLabel = "Verde Oliva";
     
-    const vInf = renderCategoryGrid(verdeLabel, "Infantil", "verdeOliva", "infantil", verdeColor);
-    const vBl = renderCategoryGrid(verdeLabel, "Babylook", "verdeOliva", "babylook", verdeColor);
-    const vUni = renderCategoryGrid(verdeLabel, "Unissex", "verdeOliva", "unissex", verdeColor);
-    
-    if (vInf || vBl || vUni) hasAnyItem = true;
+    if (renderCategoryGrid(verdeLabel, "Infantil", "verdeOliva", "infantil", verdeColor)) hasAnyItem = true;
+    if (renderCategoryGrid(verdeLabel, "Babylook", "verdeOliva", "babylook", verdeColor)) hasAnyItem = true;
+    if (renderCategoryGrid(verdeLabel, "Unissex", "verdeOliva", "unissex", verdeColor)) hasAnyItem = true;
 
     // Seção TERRACOTA
     const terraColor = "#a35e47";
     const terraLabel = "Terracota";
     
-    const tInf = renderCategoryGrid(terraLabel, "Infantil", "terracota", "infantil", terraColor);
-    const tBl = renderCategoryGrid(terraLabel, "Babylook", "terracota", "babylook", terraColor);
-    const tUni = renderCategoryGrid(terraLabel, "Unissex", "terracota", "unissex", terraColor);
-
-    if (tInf || tBl || tUni) hasAnyItem = true;
+    if (renderCategoryGrid(terraLabel, "Infantil", "terracota", "infantil", terraColor)) hasAnyItem = true;
+    if (renderCategoryGrid(terraLabel, "Babylook", "terracota", "babylook", terraColor)) hasAnyItem = true;
+    if (renderCategoryGrid(terraLabel, "Unissex", "terracota", "unissex", terraColor)) hasAnyItem = true;
 
     if (!hasAnyItem) {
         doc.setFontSize(10);
@@ -144,7 +160,6 @@ export const generateOrderPDF = async (order: Order) => {
         currentY += 10;
     }
 
-    // Rodapé de Valores
     if (currentY > 240) {
       doc.addPage();
       currentY = 20;
@@ -152,14 +167,14 @@ export const generateOrderPDF = async (order: Order) => {
       currentY += 5;
     }
 
-    // Valor Total
+    // Valor Total + Soma de Camisetas
     doc.setFontSize(12);
     doc.setTextColor(textColor);
     doc.setFont(undefined, 'bold');
-    doc.text(`VALOR TOTAL DO PEDIDO: ${order.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, currentY);
+    const valorTotalFormatado = order.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    doc.text(`VALOR TOTAL DO PEDIDO: ${valorTotalFormatado} (${totalCamisetas} CAMISETAS)`, 14, currentY);
     currentY += 10;
 
-    // Observações com suporte a quebra de linha
     if (order.observacao) {
       if (currentY > 260) {
         doc.addPage();
@@ -177,7 +192,6 @@ export const generateOrderPDF = async (order: Order) => {
       doc.text(splitObs, 14, currentY);
     }
 
-    // Utiliza a função inteligente de salvar/compartilhar
     await saveOrShare(doc, `Pedido_${order.numPedido}.pdf`);
   } catch (error) {
     console.error("Erro ao gerar PDF:", error);
@@ -190,7 +204,6 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
     const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF({ orientation: 'landscape' });
 
-    // Título atualizado conforme solicitação
     doc.setFontSize(18);
     doc.text("Relatório de Produção - Matriz de Tamanhos - UMADEMATS - Jubileu de Ouro", 148.5, 22, { align: "center" });
     
@@ -198,13 +211,11 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
     doc.setTextColor(100);
     doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 148.5, 29, { align: "center" });
     
-    // Identificação do Lote
     doc.setFontSize(12);
     doc.setTextColor(30);
     doc.setFont(undefined, 'bold');
     doc.text(`LOTE ${batchNumber}`, 148.5, 36, { align: "center" });
 
-    // Processamento de dados
     const data: any = {};
     let grandTotal = 0;
     const allUniqueSizes = Array.from(new Set([...INFANTIL_SIZES, ...BABYLOOK_SIZES, ...UNISSEX_SIZES]));
@@ -243,7 +254,6 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
     let currentY = 42;
     const primaryColor = '#0ea5e9';
 
-    // Gerar 3 Tabelas Distintas
     CATEGORIES.forEach((cat) => {
         let relevantSizes: string[];
         if (cat === 'infantil') relevantSizes = INFANTIL_SIZES;
@@ -269,7 +279,6 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
             body: body,
             theme: 'striped',
             headStyles: { fillColor: primaryColor, textColor: '#FFFFFF', fontStyle: 'bold' },
-            // Adição de rodapé para totalizador de categoria com formatação de milhar
             foot: [['TOTAL CATEGORIA', ...relevantSizes.map(() => ''), data[cat].rowTotal.toLocaleString('pt-BR')]],
             footStyles: { fillColor: '#F1F5F9', textColor: '#1E293B', fontStyle: 'bold' },
             styles: { halign: 'center', cellPadding: 2, fontSize: 9 },
@@ -280,7 +289,6 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
         currentY = (doc as any).lastAutoTable.finalY + 10;
     });
 
-    // Rodapé com Total Geral - Incluindo formatação de milhar
     if (currentY > 180) {
         doc.addPage();
         currentY = 20;
@@ -293,7 +301,6 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
     
     currentY += 15;
 
-    // Comentário opcional do admin
     if (comment) {
         if (currentY > 185) {
             doc.addPage();
@@ -311,7 +318,6 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
         doc.text(splitComment, 14, currentY);
     }
 
-    // Utiliza a função inteligente de salvar/compartilhar
     const matrixFilename = `Matriz_de_Tamanhos_Lote_${batchNumber}_${new Date().toISOString().slice(0, 10)}.pdf`;
     await saveOrShare(doc, matrixFilename);
   } catch (error) {
