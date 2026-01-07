@@ -152,12 +152,15 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
   const finalizeOrder = async () => {
     setIsSubmitting(true);
     try {
+      // Remove observacao do payload para garantir que não seja enviada/sobrescrita
+      const { observacao: _, ...cleanInfo } = info;
       const orderData = {
-        ...info,
+        ...cleanInfo,
         verdeOliva,
         terracota,
         valorTotal: totals.preco 
       };
+      
       if (initialOrder) {
         await updateOrder(initialOrder.docId, orderData);
         setOrderId(initialOrder.numPedido);
@@ -247,10 +250,6 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
             <SizeGrid title="Infantil" sizes={INFANTIL_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.infantil : terracota.infantil} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, infantil: { ...prev.infantil, [sz]: val } }))} />
             <SizeGrid title="Babylook (Feminina)" sizes={BABYLOOK_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.babylook : terracota.babylook} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, babylook: { ...prev.babylook, [sz]: val } }))} />
             <SizeGrid title="Unissex" sizes={UNISSEX_SIZES} data={activeColor === 'verdeOliva' ? verdeOliva.unissex : terracota.unissex} onChange={(sz, val) => (activeColor === 'verdeOliva' ? setVerdeOliva : setTerracota)(prev => ({ ...prev, unissex: { ...prev.unissex, [sz]: val } }))} />
-            
-            <div className="pt-4">
-              <TextArea label="Observações do Pedido" placeholder="Ex: Tamanhos especiais, solicitações de entrega, etc." value={info.observacao} onChange={e => setInfo({...info, observacao: e.target.value})} />
-            </div>
           </div>
           <div className="fixed bottom-0 inset-x-0 bg-surface/90 backdrop-blur-xl p-4 sm:p-8 z-[200] border-t border-border-light shadow-2xl">
             <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
@@ -287,7 +286,7 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
                 <OrderReviewTable title="Terracota" data={terracota} colorHex="#a35e47" />
             </div>
 
-            {/* SEÇÃO DE OBSERVAÇÃO COM DESTAQUE NA ETAPA 3 */}
+            {/* SEÇÃO DE OBSERVAÇÃO PRESERVADA PARA EXIBIÇÃO DE PEDIDOS ANTIGOS */}
             {info.observacao ? (
               <div className="mb-10 p-6 bg-primary-light/30 border-2 border-primary/10 rounded-[2rem] relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-full -mr-12 -mt-12 transition-transform group-hover:scale-110"></div>
@@ -303,11 +302,7 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="mb-10 p-5 border-2 border-dashed border-border-light rounded-[2rem] text-center">
-                 <p className="text-[10px] text-text-secondary/40 font-black uppercase tracking-widest">Nenhuma observação informada</p>
-              </div>
-            )}
+            ) : null}
 
             <div className="pt-8 border-t-2 border-border-light flex flex-col sm:flex-row justify-between items-center gap-6">
                <div className="text-center sm:text-left">

@@ -24,19 +24,19 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   // Estado para controlar quais lotes estão expandidos
   const [expandedBatches, setExpandedBatches] = useState<Set<number>>(new Set());
 
-  // Define o lote ativo (último) como expandido inicialmente
+  // Define APENAS o lote ativo (último) como expandido no carregamento inicial
   useEffect(() => {
     if (batchKeys.length > 0) {
       setExpandedBatches(prev => {
-        // Se já houver algum estado definido (interação do usuário), não reseta
+        // Se o usuário já interagiu (Set não está vazio), mantém o estado da sessão atual
         if (prev.size > 0) return prev;
         
-        // Caso contrário, define o último lote (atual) como aberto
+        // No carregamento inicial, expande apenas o lote mais recente
         const activeBatch = batchKeys[batchKeys.length - 1];
         return new Set([activeBatch]);
       });
     }
-  }, [batchKeys.length]); // Dependência apenas no tamanho do array para evitar re-render em updates de dados
+  }, [batchKeys.length]);
 
   const toggleBatch = (lote: number) => {
     setExpandedBatches(prev => {
