@@ -1,7 +1,9 @@
 
-import React, { useMemo } from 'react';
 import { Order, ColorData } from '../../types';
-import { Card } from '../UI';
+import { Card, Button, Modal } from '../UI';
+import React, { useMemo, useState, useEffect } from 'react';
+import { getGlobalConfig } from '../../services/firebase';
+import { generateSummaryBatchPDF } from '../../services/pdfService';
 
 const getShirtCount = (order: Order) => {
     const calculate = (data?: ColorData) => {
@@ -49,13 +51,12 @@ const StatHighlightCard: React.FC<StatHighlightCardProps> = ({ title, value, sub
     };
     const currentTheme = colorClasses[color];
 
-    // Lógica de ajuste dinâmico de fonte baseada no comprimento do texto
     const getFontSizeClass = (text: string) => {
         const len = text.length;
         if (len <= 10) return "text-3xl";
         if (len <= 15) return "text-2xl";
         if (len <= 20) return "text-xl";
-        return "text-lg"; // Para nomes extremamente longos
+        return "text-lg";
     };
 
     return (
@@ -77,6 +78,16 @@ const StatHighlightCard: React.FC<StatHighlightCardProps> = ({ title, value, sub
 };
 
 export const StatisticsTab: React.FC<{ orders: Order[], isLoading: boolean }> = ({ orders, isLoading }) => {
+    const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+    const [availableBatches, setAvailableBatches] = useState<number[]>([]);
+
+    useEffect(() => {
+        getGlobalConfig().then(config => {
+            const batches = Array.from({ length: config.currentBatch }, (_, i) => i + 1);
+            setAvailableBatches(batches);
+        });
+    }, []);
+
     const stats = useMemo(() => {
         const initialResult = {
             topCityShirts: { name: 'N/D', count: 0, totalValue: 0 },
@@ -148,6 +159,11 @@ export const StatisticsTab: React.FC<{ orders: Order[], isLoading: boolean }> = 
         };
     }, [orders]);
 
+    const handleSelectBatch = (batch: number) => {
+        setIsBatchModalOpen(false);
+        generateSummaryBatchPDF(orders, batch);
+    };
+
     if (isLoading) {
         return (
           <div className="py-20 text-center animate-pulse">
@@ -169,49 +185,88 @@ export const StatisticsTab: React.FC<{ orders: Order[], isLoading: boolean }> = 
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
-            <StatHighlightCard
-                title="Cidade que Mais Pediu"
-                icon="fa-trophy"
-                color="green"
-                value={stats.topCityShirts.name}
-                subValue={`${stats.topCityShirts.count} camisetas • ${stats.topCityShirts.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`}
-            />
-            <StatHighlightCard
-                title="Setor que Mais Pediu"
-                icon="fa-trophy"
-                color="green"
-                value={stats.topSectorShirts.name}
-                subValue={`${stats.topSectorShirts.count} camisetas • ${stats.topSectorShirts.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`}
-            />
-            <StatHighlightCard
-                title="Setor com Maior Valor Pago"
-                icon="fa-hand-holding-dollar"
-                color="blue"
-                value={stats.topSectorPaid.name}
-                subValue={stats.topSectorPaid.paid.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            />
-            <StatHighlightCard
-                title="Cidade com Maior Valor Pago"
-                icon="fa-hand-holding-dollar"
-                color="blue"
-                value={stats.topCityPaid.name}
-                subValue={stats.topCityPaid.paid.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            />
-            <StatHighlightCard
-                title="Setor com Mais Débitos"
-                icon="fa-file-invoice-dollar"
-                color="red"
-                value={stats.topSectorDebt.name}
-                subValue={stats.topSectorDebt.debt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            />
-            <StatHighlightCard
-                title="Cidade com Mais Débito"
-                icon="fa-file-invoice-dollar"
-                color="red"
-                value={stats.topCityDebt.name}
-                subValue={stats.topCityDebt.debt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            />
+        <div className="space-y-10 animate-in fade-in duration-500">
+            {/* BOTÃO DO NOVO RELATÓRIO */}
+            <div className="flex justify-start">
+                <Button 
+                    variant="outline" 
+                    className="h-14 px-8 border-primary/30 hover:bg-primary-light"
+                    onClick={() => setIsBatchModalOpen(true)}
+                >
+                    <i className="fas fa-file-pdf text-lg"></i>
+                    RELATÓRIO GERAL DE PEDIDOS
+                </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <StatHighlightCard
+                    title="Cidade que Mais Pediu"
+                    icon="fa-trophy"
+                    color="green"
+                    value={stats.topCityShirts.name}
+                    subValue={`${stats.topCityShirts.count} camisetas • ${stats.topCityShirts.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`}
+                />
+                <StatHighlightCard
+                    title="Setor que Mais Pediu"
+                    icon="fa-trophy"
+                    color="green"
+                    value={stats.topSectorShirts.name}
+                    subValue={`${stats.topSectorShirts.count} camisetas • ${stats.topSectorShirts.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`}
+                />
+                <StatHighlightCard
+                    title="Setor com Maior Valor Pago"
+                    icon="fa-hand-holding-dollar"
+                    color="blue"
+                    value={stats.topSectorPaid.name}
+                    subValue={stats.topSectorPaid.paid.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                />
+                <StatHighlightCard
+                    title="Cidade com Maior Valor Pago"
+                    icon="fa-hand-holding-dollar"
+                    color="blue"
+                    value={stats.topCityPaid.name}
+                    subValue={stats.topCityPaid.paid.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                />
+                <StatHighlightCard
+                    title="Setor com Mais Débitos"
+                    icon="fa-file-invoice-dollar"
+                    color="red"
+                    value={stats.topSectorDebt.name}
+                    subValue={stats.topSectorDebt.debt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                />
+                <StatHighlightCard
+                    title="Cidade com Mais Débito"
+                    icon="fa-file-invoice-dollar"
+                    color="red"
+                    value={stats.topCityDebt.name}
+                    subValue={stats.topCityDebt.debt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                />
+            </div>
+
+            {/* MODAL DE SELEÇÃO DE LOTE */}
+            <Modal 
+                isOpen={isBatchModalOpen} 
+                onClose={() => setIsBatchModalOpen(false)} 
+                title="Selecione o Lote"
+            >
+                <div className="space-y-6 text-center">
+                    <p className="text-sm text-text-secondary font-bold uppercase tracking-widest leading-relaxed">
+                        Escolha o lote para gerar o relatório consolidado de pedidos.
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 py-4">
+                        {availableBatches.map(batch => (
+                            <button
+                                key={batch}
+                                onClick={() => handleSelectBatch(batch)}
+                                className="h-16 rounded-2xl border-2 border-border-light hover:border-primary hover:bg-primary-light transition-all flex flex-col items-center justify-center group"
+                            >
+                                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary group-hover:text-primary">LOTE</span>
+                                <span className="text-xl font-black text-text-primary group-hover:text-primary">{batch}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };
