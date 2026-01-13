@@ -44,6 +44,18 @@ export const handlePdfOutput = async (doc: any, filename: string, action: 'view'
   }
 };
 
+const calculateTotalShirts = (order: Order) => {
+  const countColors = (data?: ColorData) => {
+    if (!data) return 0;
+    let total = 0;
+    Object.values(data).forEach(cat => {
+      Object.values(cat).forEach(val => total += (Number(val) || 0));
+    });
+    return total;
+  };
+  return countColors(order.verdeOliva) + countColors(order.terracota);
+};
+
 /**
  * Gera o Relatório Geral de Pedidos consolidado por lote (Novo Requisito)
  */
@@ -75,9 +87,10 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
     )).sort();
 
     const sectorCounts = sectorsWhoOrdered.map(s => {
-      const count = batchOrders.filter(o => o.local === 'Capital' && o.setor === s).length;
+      const sectorOrders = batchOrders.filter(o => o.local === 'Capital' && o.setor === s);
+      const count = sectorOrders.reduce((acc, curr) => acc + calculateTotalShirts(curr), 0);
       const label = s === 'UMADEMATS' ? s : `SETOR ${s}`;
-      return `${label}: ${count} PEDIDO(S)`;
+      return `${label}: ${count} CAMISETA(S)`;
     });
 
     // Lógica de colunas (7 linhas por coluna)
@@ -131,8 +144,9 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
     )).sort();
 
     citiesWhoOrdered.forEach((city, index) => {
-      const count = batchOrders.filter(o => o.local === 'Interior' && o.setor === city).length;
-      doc.text(`${city.toUpperCase()}: ${count} PEDIDO(S)`, margin, currentY + (index * 6));
+      const cityOrders = batchOrders.filter(o => o.local === 'Interior' && o.setor === city);
+      const count = cityOrders.reduce((acc, curr) => acc + calculateTotalShirts(curr), 0);
+      doc.text(`${city.toUpperCase()}: ${count} CAMISETA(S)`, margin, currentY + (index * 6));
     });
 
     currentY += (citiesWhoOrdered.length * 6) + 10;
