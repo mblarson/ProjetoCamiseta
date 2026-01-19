@@ -62,10 +62,8 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
   }, []);
 
   const filteredOrders = orders.filter(o => {
-    // Se estiver pesquisando, ignora os filtros de Lote e Local para busca GLOBAL
-    const isSearching = searchText.trim() !== '';
-    if (isSearching) return true;
-
+    // O filtro de texto é aplicado no AdminPanel (via searchOrders), 
+    // aqui garantimos que o resultado da busca respeite os filtros de Lote e Local selecionados.
     const matchesLocal = localFilter === 'Todos' || o.local === localFilter;
     const matchesLote = loteFilter === 'Todos' || (o.lote || 1) === loteFilter;
     return matchesLocal && matchesLote;
