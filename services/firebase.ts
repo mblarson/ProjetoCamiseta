@@ -48,9 +48,16 @@ class FirebaseService {
   public handleFirebaseError(e: any) {
     const msg = e.message || "";
     const code = e.code || "";
-    if (msg.includes("Cloud Firestore API has not been used") || code === "permission-denied") {
+    
+    // Distinguir erro de API desativada de erro de permissão (Regras de Segurança)
+    if (msg.includes("Cloud Firestore API has not been used")) {
       throw new Error("API_DISABLED");
     }
+    
+    if (code === "permission-denied") {
+      throw new Error("PERMISSION_DENIED");
+    }
+    
     throw e;
   }
 
@@ -356,18 +363,12 @@ export const recordPayment = async (orderId: string, amount: number, date?: stri
       if (newValorPago >= orderData.valorTotal) newStatus = 'Pago';
       else if (newValorPago <= 0) newStatus = 'Pendente';
 
-      let displayDate = date;
-      if (date && date.includes('-')) {
-        const [y, m, d] = date.split('-');
-        displayDate = `${d}/${m}/${y}`;
-      }
-
       const timestamp = new Date().toISOString();
       const liquidacaoId = `${orderId}-${timestamp}`;
 
       const historyEntry: PaymentHistory = {
         valor: amount,
-        data: displayDate || new Date().toLocaleDateString('pt-BR'),
+        data: date || new Date().toLocaleDateString('pt-BR'),
         timestamp,
         liquidacaoId
       };
@@ -600,19 +601,12 @@ export const getPaginatedOrders = async (lastVisible?: DocumentSnapshot, loteFil
   }
 };
 
-/**
- * Busca de Pedidos Corrigida:
- * Agora realiza filtragem parcial (CONTAINS) e Case-Insensitive.
- * Inclui o nome formatado do setor (ex: "SETOR F") para garantir que o usuário encontre
- * exatamente o que vê na interface, independentemente de maiúsculas ou minúsculas.
- */
 export const searchOrders = async (searchTerm: string): Promise<Order[]> => {
   try {
     await service.connect();
     const term = searchTerm.trim().toLowerCase();
     if (!term) return [];
 
-    // Recuperamos todos os pedidos para permitir busca por "Contém" (Firestore nativo não suporta substrings centrais)
     const snap = await getDocs(collection(db, "pedidos"));
     const results: Order[] = [];
     
@@ -620,25 +614,22 @@ export const searchOrders = async (searchTerm: string): Promise<Order[]> => {
       const data = d.data();
       const order = { docId: d.id, ...data, lote: data.lote || 1 } as Order;
       
-      // Gera o nome do setor exatamente como o usuário o vê na tela
       const displaySetor = (order.setor === 'UMADEMATS') 
         ? 'UMADEMATS' 
         : (order.local === 'Capital' && !order.setor.toUpperCase().startsWith('SETOR') 
             ? `SETOR ${order.setor}` 
             : order.setor);
 
-      // Normalização dos campos para comparação Case-Insensitive e Substring
       const searchableFields = [
         order.numPedido,
         order.nome,
         order.setor,
-        displaySetor, // Compara com o texto formatado (ex: SETOR F)
+        displaySetor,
         order.local,
         order.email,
         order.contato
       ].map(f => (f || "").toLowerCase());
 
-      // Verifica se o termo está contido em qualquer um dos campos
       const isMatch = searchableFields.some(f => f.includes(term));
 
       if (isMatch) {
@@ -646,7 +637,6 @@ export const searchOrders = async (searchTerm: string): Promise<Order[]> => {
       }
     });
 
-    // Mantém a ordenação cronológica decrescente
     return results.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
   } catch (e: any) {
     service.handleFirebaseError(e);
