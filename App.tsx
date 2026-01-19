@@ -189,7 +189,7 @@ const App: React.FC = () => {
                 <div className="space-y-4 text-sm text-text-secondary">
                   <p>A API está ativada, mas as <b>Regras de Segurança (Rules)</b> do Firestore estão bloqueando o acesso.</p>
                   <p className="p-4 bg-background rounded-xl border border-border-light text-[11px] font-mono leading-relaxed">
-                    Acesse o Console do Firebase > Firestore > Aba "Rules" e certifique-se de que a leitura e escrita estão permitidas.
+                    Acesse o Console do Firebase &gt; Firestore &gt; Aba "Rules" e certifique-se de que a leitura e escrita estão permitidas.
                   </p>
                   <Button className="w-full h-14" onClick={() => window.location.reload()}>
                     TENTAR NOVAMENTE
