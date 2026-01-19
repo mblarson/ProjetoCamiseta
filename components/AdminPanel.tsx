@@ -1,9 +1,8 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminTab, Stats, Order, PaymentHistory, Confirmation } from '../types';
-import { Card, Button, Input, CurrencyInput, Modal } from './UI';
+import { Modal, Button, Input, CurrencyInput } from './UI';
 import { AdminMenu } from './AdminMenu';
-import { SizeMatrix } from './SizeMatrix';
 import { analyzeSales } from '../services/aiService';
 import { 
   getAllOrders, deleteOrder, getGlobalConfig, updateGlobalConfig, 
@@ -11,7 +10,6 @@ import {
   syncConfirmationsFromOrders, getConfirmations, updateConfirmationStatus, getPaginatedOrders,
   searchOrders, searchConfirmations, syncAllStats, fetchFullBackup
 } from '../services/firebase';
-import { generateOrderPDF } from '../services/pdfService';
 import { DashboardTab } from './admin/DashboardTab';
 import { PaymentsTab } from './admin/PaymentsTab';
 import { OrdersTab } from './admin/OrdersTab';
@@ -22,7 +20,7 @@ import { StatisticsTab } from './admin/StatisticsTab';
 interface AdminPanelProps {
   stats: Stats | null;
   onEditOrder: (order: Order) => void;
-  onShowSizeMatrix: () => void;
+  onShowSizeMatrix: (batch: number) => void;
 }
 
 const getTabDescription = (tab: AdminTab) => {
@@ -93,7 +91,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
 
   useEffect(() => {
     const loadDataForTab = async () => {
-      // Evita limpar o estado imediatamente se estiver apenas filtrando para manter a interface reativa
       if (!debouncedSearchText) {
           setOrders([]);
           setConfirmations([]);
@@ -267,8 +264,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
         alert("Iniciando backup completo antes da exclusão...");
         const backupData = await fetchFullBackup();
         downloadJSONBackup(backupData);
-        
-        // Aguarda um pequeno delay para garantir que o download iniciou
         await new Promise(r => setTimeout(r, 2000));
         
         if (confirm("Backup baixado com sucesso! Deseja prosseguir com a exclusão TOTAL dos dados do banco?")) {
@@ -278,10 +273,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
              window.location.reload();
            }
         } else {
-          alert("Exclusão cancelada. Seus dados continuam no banco, e você já possui o backup salvo.");
+          alert("Exclusão cancelada.");
         }
       } catch (e) {
-        alert("Falha crítica ao gerar backup. A exclusão foi abortada por segurança.");
+        alert("Falha crítica ao gerar backup.");
       }
     }
 
@@ -341,7 +336,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
         alert("Erro ao cancelar liquidação.");
       }
     } catch (error) {
-        alert("Ocorreu um erro crítico ao cancelar a liquidação.");
+        alert("Ocorreu um erro crítico.");
     } finally {
       setIsProcessingPayment(false);
     }
@@ -368,8 +363,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
   return (
     <div className="flex flex-col gap-6 animate-in slide-in-from-right-4 duration-500">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-6 border-b border-border-light pb-6">
-        <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-1 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-3">
               <h2 className="font-black text-2xl md:text-3xl text-text-primary tracking-tight capitalize leading-none">{tab}</h2>
               <button 
                 onClick={handleRefreshMetrics}
@@ -378,7 +373,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
               >
                 <i className={`fas fa-sync-alt ${isProcessingConfig ? 'fa-spin' : ''}`}></i>
                 <span className="hidden sm:inline">SINCRONIZAR</span>
-                <span className="sm:hidden">SYNC</span>
               </button>
             </div>
             <p className="text-[9px] md:text-[10px] text-text-secondary font-bold uppercase tracking-widest">
@@ -435,12 +429,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
         />
       )}
 
-      {tab === AdminTab.Statistics && (
-        <StatisticsTab
-          orders={orders}
-          isLoading={isLoadingOrders}
-        />
-      )}
+      {tab === AdminTab.Statistics && <StatisticsTab orders={orders} isLoading={isLoadingOrders} />}
 
       {tab === AdminTab.Event && (
         <EventTab 
@@ -466,7 +455,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
               placeholder="R$ 0,00"
               className="text-2xl font-black h-14"
             />
-            
             <div className="flex flex-col gap-2">
               <label className="text-[10px] uppercase font-black tracking-widest text-primary/70">DATA DO RECEBIMENTO</label>
               <input 
@@ -477,64 +465,39 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
               />
             </div>
           </div>
-
-          <Button 
-            className="w-full h-14 text-sm" 
-            onClick={handleRegisterPayment} 
-            disabled={isProcessingPayment || !paymentAmount}
-          >
+          <Button className="w-full h-14 text-sm" onClick={handleRegisterPayment} disabled={isProcessingPayment || !paymentAmount}>
             {isProcessingPayment ? "PROCESSANDO..." : "CONFIRMAR PAGAMENTO"}
           </Button>
-
           <div className="pt-4 space-y-4">
             <h3 className="text-[10px] font-black uppercase tracking-widest text-text-secondary text-center">Histórico de Pagamentos</h3>
-            
             <div className="overflow-hidden rounded-xl border border-border-light/50">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-border-light/50">
-                    <th className="py-3 text-center w-1/2 font-black text-[9px] uppercase tracking-widest text-text-secondary">DATA</th>
-                    <th className="py-3 text-center w-1/2 border-l border-border-light/50 font-black text-[9px] uppercase tracking-widest text-text-secondary">VALOR</th>
+                  <tr className="bg-slate-50 border-b border-border-light/50 text-[9px] uppercase tracking-widest text-text-secondary">
+                    <th className="py-3 text-center w-1/2 font-black">DATA</th>
+                    <th className="py-3 text-center w-1/2 border-l border-border-light/50 font-black">VALOR</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-light/30 text-center">
                   {isLoadingHistory ? (
                     <tr><td colSpan={2} className="py-8 text-text-secondary/60 italic text-xs">Sincronizando...</td></tr>
                   ) : (orderPaymentHistory.length === 0) ? (
-                    <tr>
-                      <td colSpan={2} className="py-8 text-text-secondary/60 italic text-xs uppercase tracking-widest">Sem lançamentos</td>
-                    </tr>
+                    <tr><td colSpan={2} className="py-8 text-text-secondary/60 italic text-xs uppercase tracking-widest">Sem lançamentos</td></tr>
                   ) : (
                     orderPaymentHistory.slice().reverse().map((h: PaymentHistory) => (
-                      <tr key={h.liquidacaoId} className="text-text-primary hover:bg-primary-light/30 transition-colors font-bold">
-                        <td className="py-3.5 text-text-secondary text-xs">{h.data}</td>
-                        <td className="py-3.5 border-l border-border-light/30 text-xs">{h.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                      <tr key={h.liquidacaoId} className="text-text-primary hover:bg-primary-light/30 transition-colors font-bold text-xs">
+                        <td className="py-3.5 text-text-secondary">{h.data}</td>
+                        <td className="py-3.5 border-l border-border-light/30">{h.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
             </div>
-
             {!isLoadingHistory && orderPaymentHistory.length > 0 && (
               <div className="flex justify-center pt-2">
-                <Button 
-                  onClick={() => handleCancelLastPayment(registerPaymentOrder!.docId)}
-                  disabled={isProcessingPayment}
-                  variant="danger"
-                  className="px-6 py-2 rounded-full text-[9px] flex items-center gap-2 h-10"
-                >
-                  {isProcessingPayment ? (
-                    <>
-                      <i className="fas fa-spinner fa-spin"></i>
-                      <span>Cancelando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <i className="fas fa-undo"></i>
-                      <span>CANCELAR ÚLTIMA</span>
-                    </>
-                  )}
+                <Button onClick={() => handleCancelLastPayment(registerPaymentOrder!.docId)} disabled={isProcessingPayment} variant="danger" className="px-6 py-2 rounded-full text-[9px] flex items-center gap-2 h-10">
+                  {isProcessingPayment ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-undo"></i> CANCELAR ÚLTIMA</>}
                 </Button>
               </div>
             )}
@@ -542,72 +505,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
         </div>
       </Modal>
 
-      <Modal 
-        isOpen={!!editingConfirmation} 
-        onClose={() => setEditingConfirmation(null)} 
-        title={`Alterar Status: ${editingConfirmation?.docId.replace(/LOTE_\d+_/, '')}`}
-      >
+      <Modal isOpen={!!editingConfirmation} onClose={() => setEditingConfirmation(null)} title={`Alterar Status`}>
         <div className="space-y-6">
             <p className="text-center text-sm text-text-secondary font-bold uppercase tracking-wider">Selecione o novo status de confirmação.</p>
             <div className="grid grid-cols-1 gap-4 pt-4">
-                <Button 
-                    onClick={() => handleUpdateConfirmationStatus('confirmed')} 
-                    disabled={isUpdatingConfirmation}
-                    className="h-14 bg-green-500 hover:bg-green-600 text-white"
-                >
+                <Button onClick={() => handleUpdateConfirmationStatus('confirmed')} disabled={isUpdatingConfirmation} className="h-14 bg-green-500 hover:bg-green-600 text-white">
                     <i className="fas fa-check-circle"></i> Confirmado
                 </Button>
-                <Button 
-                    onClick={() => handleUpdateConfirmationStatus('pending')} 
-                    disabled={isUpdatingConfirmation}
-                    className="h-14 bg-yellow-500 hover:bg-yellow-600 text-white"
-                >
+                <Button onClick={() => handleUpdateConfirmationStatus('pending')} disabled={isUpdatingConfirmation} className="h-14 bg-yellow-500 hover:bg-yellow-600 text-white">
                     <i className="fas fa-clock"></i> Pendente
                 </Button>
-                <Button 
-                    onClick={() => handleUpdateConfirmationStatus('none')} 
-                    disabled={isUpdatingConfirmation}
-                    variant="outline"
-                    className="h-14"
-                >
+                <Button onClick={() => handleUpdateConfirmationStatus('none')} disabled={isUpdatingConfirmation} variant="outline" className="h-14">
                     <i className="fas fa-question-circle"></i> Não Aplicável
                 </Button>
             </div>
-            {isUpdatingConfirmation && (
-                <p className="text-center text-primary font-black text-xs animate-pulse uppercase tracking-wider">Atualizando...</p>
-            )}
         </div>
       </Modal>
 
       <Modal isOpen={isPriceModalOpen} onClose={() => setIsPriceModalOpen(false)} title="Alterar Valor">
         <div className="space-y-6">
-          <div className="p-6 bg-surface border border-border-light rounded-2xl">
-            <CurrencyInput 
-              label="NOVO VALOR UNITÁRIO"
-              value={newPrice}
-              onChange={setNewPrice}
-              placeholder="R$ 0,00"
-              className="text-center text-2xl font-black h-14"
-              autoFocus
-            />
-          </div>
+          <CurrencyInput label="NOVO VALOR UNITÁRIO" value={newPrice} onChange={setNewPrice} placeholder="R$ 0,00" className="text-center text-2xl font-black h-14" autoFocus />
           <div className="flex gap-4">
             <Button variant="outline" className="flex-1 h-14" onClick={() => setIsPriceModalOpen(false)}>CANCELAR</Button>
-            <Button 
-              className="flex-1 h-14"
-              onClick={() => {
-                const priceValue = parseCurrencyToNumber(newPrice);
-                if (newPrice && priceValue > 0) {
+            <Button className="flex-1 h-14" onClick={() => {
+                if (newPrice && parseCurrencyToNumber(newPrice) > 0) {
                   setIsPriceModalOpen(false);
                   setSecurityModal({ type: 'price', password: '', newValue: newPrice });
-                } else {
-                  alert("Por favor, insira um valor numérico válido e maior que zero.");
                 }
               }}
               disabled={!newPrice || parseCurrencyToNumber(newPrice) <= 0}
-            >
-              SALVAR
-            </Button>
+            > SALVAR </Button>
           </div>
         </div>
       </Modal>
