@@ -24,19 +24,21 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   // Estado para controlar quais lotes estão expandidos
   const [expandedBatches, setExpandedBatches] = useState<Set<number>>(new Set());
 
-  // Define APENAS o lote ativo (último) como expandido no carregamento inicial
+  /**
+   * REGRAS DE COMPORTAMENTO — DASHBOARD ADMIN (PROMPT):
+   * 1. SEMPRE que o Dashboard for carregado, o LOTE ATUAL deve vir EXPANDIDO.
+   * 2. Todos os LOTES ANTERIORES devem vir RETRAÍDOS.
+   * 3. O estado inicial deve ser sempre recalculado com base no LOTE ATUAL (maior número).
+   * 4. Não persistir estado de expansão por usuário ou sessão.
+   */
   useEffect(() => {
     if (batchKeys.length > 0) {
-      setExpandedBatches(prev => {
-        // Se o usuário já interagiu (Set não está vazio), mantém o estado da sessão atual
-        if (prev.size > 0) return prev;
-        
-        // No carregamento inicial, expande apenas o lote mais recente
-        const activeBatch = batchKeys[batchKeys.length - 1];
-        return new Set([activeBatch]);
-      });
+      // Identifica o lote atual (maior índice na lista ordenada)
+      const activeBatch = batchKeys[batchKeys.length - 1];
+      // Reinicia o estado para expandir APENAS o lote atual
+      setExpandedBatches(new Set([activeBatch]));
     }
-  }, [batchKeys.length]);
+  }, [currentStats]); // Recalcula sempre que as estatísticas (e consequentemente o lote atual) são carregadas
 
   const toggleBatch = (lote: number) => {
     setExpandedBatches(prev => {
@@ -118,10 +120,11 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                  className="flex items-center gap-3 cursor-pointer select-none"
                  onClick={() => toggleBatch(lote)}
                >
-                  <span className="bg-primary/10 text-primary px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest">
+                  <span className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest transition-colors ${isExpanded ? 'bg-primary text-white' : 'bg-primary/10 text-primary'}`}>
                     LOTE {lote}
                   </span>
                   <div className="h-px bg-border-light flex-1"></div>
+                  <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'} text-[10px] text-text-secondary/50 transition-transform duration-300`}></i>
                </div>
                
                {isExpanded && (
