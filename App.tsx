@@ -30,7 +30,6 @@ const App: React.FC = () => {
   const [showSizeMatrix, setShowSizeMatrix] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(true);
   
-  // Estado para gerenciar o modal de ação do PDF
   const [pdfToAction, setPdfToAction] = useState<{ doc: any, filename: string } | null>(null);
 
   const loadConfig = useCallback(async () => {
@@ -52,7 +51,6 @@ const App: React.FC = () => {
       if (e.message === "API_DISABLED") {
         setConnection('api-disabled');
       } else if (e.message === "PERMISSION_DENIED") {
-        // Se falhar no Auth inicial (muito raro), tratamos como crítico
         setConnection('permission-denied');
       } else {
         setConnection('error');
@@ -70,15 +68,10 @@ const App: React.FC = () => {
         setIsAdmin(isAdminUser);
 
         try {
-          // Só tentamos buscar stats se for Admin ou se as regras permitirem.
-          // Se falhar por permissão, não interrompemos o fluxo do app.
           const s = await getStats();
           setStats(s);
         } catch (e: any) {
-          console.warn("Stats access restricted:", e.message);
-          // OMITIDO: setConnection('permission-denied') 
-          // Não definimos o estado de erro global aqui para que o usuário anônimo
-          // possa continuar usando as outras funções (Home/Consulta) normalmente.
+          console.warn("Stats access restricted (normal for non-admins)");
         }
       }
     });
@@ -86,7 +79,6 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, [initFirebase]);
 
-  // Listener global para disparar o modal de ação do PDF
   useEffect(() => {
     const handler = (e: any) => setPdfToAction(e.detail);
     window.addEventListener('show-pdf-modal', handler);
@@ -96,7 +88,7 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     await signOutUser();
     setIsAdmin(false);
-    setStats(null); // Limpa stats ao sair
+    setStats(null);
     setActiveSection(Section.Home);
     loadConfig();
   };
@@ -173,7 +165,6 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {/* O erro de permissão agora só aparecerá se algo REALMENTE impedir o funcionamento básico do App */}
           {connection === 'permission-denied' && (
             <div className="max-w-2xl mx-auto mb-10 p-10 card border-l-4 border-orange-500 bg-orange-500/5 animate-in slide-in-from-top-4">
               <div className="flex flex-col gap-6">
@@ -187,9 +178,9 @@ const App: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-4 text-sm text-text-secondary">
-                  <p>A API está ativada, mas as <b>Regras de Segurança (Rules)</b> do Firestore estão bloqueando o acesso.</p>
+                  <p>As <b>Regras de Segurança (Rules)</b> do Firestore estão bloqueando o acesso público.</p>
                   <p className="p-4 bg-background rounded-xl border border-border-light text-[11px] font-mono leading-relaxed">
-                    Acesse o Console do Firebase > Firestore > Aba "Rules" e certifique-se de que a leitura e escrita estão permitidas.
+                    Acesse o Console do Firebase &gt; Firestore &gt; Aba "Rules" e certifique-se de que a leitura e escrita estão permitidas para todos os usuários conforme as instruções de produção.
                   </p>
                   <Button className="w-full h-14" onClick={() => window.location.reload()}>
                     TENTAR NOVAMENTE
@@ -245,7 +236,6 @@ const App: React.FC = () => {
         onSuccess={handleLoginSuccess}
       />
 
-      {/* Modal de escolha de ação do PDF */}
       <PdfActionModal 
         pdfData={pdfToAction} 
         onClose={() => setPdfToAction(null)} 
