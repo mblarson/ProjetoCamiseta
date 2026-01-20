@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Stats } from '../../types';
 import { Card, Button } from '../UI';
@@ -18,25 +17,16 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   aiAnalysis,
   currentStats,
 }) => {
-  // Ordena os lotes (batches) para exibição, se existirem
   const batchKeys = currentStats?.batches ? Object.keys(currentStats.batches).map(Number).sort((a,b) => a-b) : [1];
-
-  // Estado para controlar quais lotes estão expandidos
   const [expandedBatches, setExpandedBatches] = useState<Set<number>>(new Set());
 
-  // Define APENAS o lote ativo (último) como expandido no carregamento inicial
+  // Comportamento Determinístico: Sempre expande apenas o lote atual ao montar o componente
   useEffect(() => {
     if (batchKeys.length > 0) {
-      setExpandedBatches(prev => {
-        // Se o usuário já interagiu (Set não está vazio), mantém o estado da sessão atual
-        if (prev.size > 0) return prev;
-        
-        // No carregamento inicial, expande apenas o lote mais recente
-        const activeBatch = batchKeys[batchKeys.length - 1];
-        return new Set([activeBatch]);
-      });
+      const activeBatch = batchKeys[batchKeys.length - 1];
+      setExpandedBatches(new Set([activeBatch]));
     }
-  }, [batchKeys.length]);
+  }, [batchKeys.length]); // Re-executa apenas se a lista de lotes mudar (ex: novo lote criado)
 
   const toggleBatch = (lote: number) => {
     setExpandedBatches(prev => {
@@ -77,7 +67,6 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         </Card>
       )}
 
-      {/* SEÇÃO GLOBAL - TOTALIZADORES */}
       <div className="space-y-4">
          <div className="flex items-center gap-3 mb-2">
             <div className="h-px bg-border-light flex-1"></div>
@@ -106,7 +95,6 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
          </div>
       </div>
 
-      {/* SEÇÃO POR LOTE */}
       <div className="space-y-8">
         {batchKeys.map(lote => {
            const batchData = currentStats?.batches?.[lote] || (lote === 1 ? currentStats : { qtd_pedidos: 0, qtd_camisetas: 0, valor_total: 0 });
@@ -118,10 +106,11 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                  className="flex items-center gap-3 cursor-pointer select-none"
                  onClick={() => toggleBatch(lote)}
                >
-                  <span className="bg-primary/10 text-primary px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest">
+                  <span className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest transition-colors ${isExpanded ? 'bg-primary text-white' : 'bg-primary/10 text-primary'}`}>
                     LOTE {lote}
                   </span>
                   <div className="h-px bg-border-light flex-1"></div>
+                  <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'} text-[10px] text-text-secondary/40`}></i>
                </div>
                
                {isExpanded && (

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Order, ColorData } from '../../types';
 import { Button, Input } from '../UI';
@@ -62,13 +61,19 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
   }, []);
 
   const filteredOrders = orders.filter(o => {
-    // Se estiver pesquisando, ignora os filtros de Lote e Local para busca GLOBAL
-    const isSearching = searchText.trim() !== '';
-    if (isSearching) return true;
-
     const matchesLocal = localFilter === 'Todos' || o.local === localFilter;
     const matchesLote = loteFilter === 'Todos' || (o.lote || 1) === loteFilter;
-    return matchesLocal && matchesLote;
+    
+    // O texto de busca deve ser validado mantendo o respeito aos filtros de Lote e Local
+    const term = searchText.trim().toLowerCase();
+    const matchesText = !term || (
+      o.numPedido.toLowerCase().includes(term) ||
+      o.nome.toLowerCase().includes(term) ||
+      o.setor.toLowerCase().includes(term) ||
+      o.contato.toLowerCase().includes(term)
+    );
+
+    return matchesLocal && matchesLote && matchesText;
   });
 
   return (
