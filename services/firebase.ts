@@ -48,16 +48,12 @@ class FirebaseService {
   public handleFirebaseError(e: any) {
     const msg = e.message || "";
     const code = e.code || "";
-    
-    // Distinguir erro de API desativada de erro de permissão (Regras de Segurança)
     if (msg.includes("Cloud Firestore API has not been used")) {
       throw new Error("API_DISABLED");
     }
-    
     if (code === "permission-denied") {
       throw new Error("PERMISSION_DENIED");
     }
-    
     throw e;
   }
 
@@ -685,7 +681,7 @@ export const deleteOrder = async (order: Order) => {
     });
 
     if (success) {
-      await syncAllStats();
+      await syncAllStats().catch(() => {});
     }
     return success;
   } catch (e: any) { service.handleFirebaseError(e); return false; }
@@ -804,7 +800,7 @@ export const updateOrder = async (docId: string, orderData: Partial<Order>) => {
     });
 
     if (success) {
-      await syncAllStats();
+      await syncAllStats().catch(() => {});
     }
     return success;
   } catch (e: any) { 
@@ -849,7 +845,8 @@ export const createOrder = async (orderData: Partial<Order>, prefix: string = 'P
     });
 
     if (numPedido) {
-      await syncAllStats();
+      // Background sync, no await needed or catch permissions errors
+      syncAllStats().catch(() => console.warn("Stats sync skipped due to permissions."));
     }
     return numPedido;
   } catch (e: any) { service.handleFirebaseError(e); }

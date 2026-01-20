@@ -151,6 +151,7 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
 
   const finalizeOrder = async () => {
     setIsSubmitting(true);
+    setErrorMsg('');
     try {
       // Remove observacao do payload para garantir que não seja enviada/sobrescrita
       const { observacao: _, ...cleanInfo } = info;
@@ -161,18 +162,25 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
         valorTotal: totals.preco 
       };
       
+      let resId = '';
       if (initialOrder) {
         await updateOrder(initialOrder.docId, orderData);
-        setOrderId(initialOrder.numPedido);
+        resId = initialOrder.numPedido;
       } else {
         const numPedido = await createOrder(orderData);
-        setOrderId(numPedido!);
+        if (!numPedido) throw new Error("Falha ao gerar número do pedido.");
+        resId = numPedido;
       }
+      
+      setOrderId(resId);
       setIsConfirmModalOpen(false);
       setStep('success');
     } catch (e) {
-      setErrorMsg("Falha ao salvar pedido.");
-    } finally { setIsSubmitting(false); }
+      console.error("Erro no envio:", e);
+      setErrorMsg("Falha ao salvar pedido. Verifique sua conexão.");
+    } finally { 
+      setIsSubmitting(false); 
+    }
   };
 
   const formatSetorDisplay = () => {
@@ -324,6 +332,11 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
           <Button className="w-full h-14" onClick={finalizeOrder} disabled={isSubmitting}>
             {isSubmitting ? <i className="fas fa-spinner fa-spin"></i> : "ENVIAR PEDIDO AGORA"}
           </Button>
+          {errorMsg && (
+            <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+              <p className="text-xs text-red-500 font-bold uppercase tracking-widest">{errorMsg}</p>
+            </div>
+          )}
         </div>
       </Modal>
 
