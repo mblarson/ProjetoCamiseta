@@ -30,7 +30,7 @@ export const handlePdfOutput = async (doc: any, filename: string, action: 'view'
         await navigator.share({
           files: [file],
           title: filename,
-          text: 'Segue relação de pedidos em PDF' 
+          text: 'Segue relation de pedidos em PDF' 
         });
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
@@ -57,7 +57,7 @@ const calculateTotalShirts = (order: Order) => {
 };
 
 /**
- * Gera o Relatório Geral de Pedidos consolidado por lote (Novo Requisito)
+ * Gera o Relatório Geral de Pedidos consolidado por lote
  */
 export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: number) => {
   try {
@@ -66,16 +66,13 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
     const margin = 14;
     let currentY = 20;
 
-    // Filtra pedidos do lote
     const batchOrders = orders.filter(o => (o.lote || 1) === batchNumber);
 
-    // Configurações iniciais
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
     doc.text(`RELATÓRIO GERAL DO LOTE — ${batchNumber}`, 105, currentY, { align: "center" });
     currentY += 15;
 
-    // --- 3. SETORES QUE REALIZARAM PEDIDO ---
     doc.setFontSize(12);
     doc.text("3. SETORES QUE REALIZARAM PEDIDO", margin, currentY);
     currentY += 8;
@@ -93,7 +90,6 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
       return `${label}: ${count} CAMISETA(S)`;
     });
 
-    // Lógica de colunas (7 linhas por coluna)
     let tempY = currentY;
     sectorCounts.forEach((text, index) => {
       const col = Math.floor(index / 7);
@@ -108,7 +104,6 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
        currentY += 5;
     }
 
-    // --- 4. SETORES QUE NÃO REALIZARAM PEDIDO ---
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text("4. SETORES QUE NÃO REALIZARAM PEDIDO", margin, currentY);
@@ -131,7 +126,6 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
 
     currentY += (Math.ceil(sectorsWhoDidntOrder.length / 2) * 6) + 10;
 
-    // --- 5. CIDADES QUE REALIZARAM PEDIDO ---
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text("5. CIDADES QUE REALIZARAM PEDIDO", margin, currentY);
@@ -155,7 +149,6 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
       currentY += 5;
     }
 
-    // --- 6. CIDADES QUE NÃO REALIZARAM PEDIDO ---
     if (currentY > 260) { doc.addPage(); currentY = 20; }
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
@@ -343,25 +336,72 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
     let currentY = 42;
     CATEGORIES.forEach((cat) => {
         let relevantSizes = cat === 'infantil' ? INFANTIL_SIZES : (cat === 'babylook' ? BABYLOOK_SIZES : UNISSEX_SIZES);
+        
         const head = [[`TABELA — ${cat.toUpperCase()}`, ...relevantSizes, 'TOTAL']];
         const body = COLORS.map(color => {
             const rowData = [ color === 'verdeOliva' ? 'Verde Oliva' : 'Terracota' ];
-            relevantSizes.forEach(size => rowData.push(data[cat][color][size] || '-'));
-            rowData.push(data[cat][color].subTotal);
+            // DO: add comment above each fix.
+            // Fix: ensure type consistency by converting number or symbol to string for rowData array.
+            relevantSizes.forEach(size => rowData.push(String(data[cat][color][size] || '-')));
+            // Fix: ensure type consistency by converting subTotal to string.
+            rowData.push(String(data[cat][color].subTotal));
             return rowData;
         });
+
+        // Cálculo dos totalizadores das colunas (tamanhos) para esta categoria
+        const footData = ['TOTAIS POR TAMANHO'];
+        relevantSizes.forEach(size => {
+            let sizeTotal = 0;
+            COLORS.forEach(color => {
+                sizeTotal += (data[cat][color][size] || 0);
+            });
+            // DO: add comment above each fix.
+            // Fix: ensure type consistency by converting sizeTotal or symbol to string for footData array.
+            footData.push(String(sizeTotal || '-'));
+        });
+        // Soma do rodapé para a coluna 'TOTAL'
+        let catGrandTotal = 0;
+        COLORS.forEach(color => catGrandTotal += data[cat][color].subTotal);
+        // DO: add comment above each fix.
+        // Fix: ensure type consistency by converting catGrandTotal to string for footData array.
+        footData.push(String(catGrandTotal));
 
         (doc as any).autoTable({
             startY: currentY,
             head: head,
             body: body,
+            foot: [footData],
             theme: 'striped',
             headStyles: { fillColor: '#0ea5e9', textColor: '#FFFFFF' },
+            footStyles: { fillColor: '#f1f5f9', textColor: '#1e293b', fontStyle: 'bold' },
             styles: { halign: 'center', fontSize: 9 },
             columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
         });
         currentY = (doc as any).lastAutoTable.finalY + 10;
     });
+
+    // Inclusão dos totalizadores gerais do Lote no final do PDF
+    if (currentY > 170) {
+      doc.addPage();
+      currentY = 25;
+    }
+
+    doc.setFontSize(14);
+    doc.setTextColor(30);
+    doc.setFont(undefined, 'bold');
+    doc.text(`QUANTIDADE TOTAL DE CAMISETAS: ${grandTotal}`, 14, currentY);
+    currentY += 8;
+    const totalMoney = grandTotal * unitPrice;
+    doc.text(`VALOR TOTAL (LOTE ${batchNumber}): ${totalMoney.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, currentY);
+
+    if (comment) {
+      currentY += 15;
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'italic');
+      doc.setTextColor(100);
+      doc.text("Observações:", 14, currentY);
+      doc.text(comment, 14, currentY + 6, { maxWidth: 260 });
+    }
 
     triggerPdfActionModal(doc, `Matriz_de_Tamanhos_Lote_${batchNumber}.pdf`);
   } catch (error) {
