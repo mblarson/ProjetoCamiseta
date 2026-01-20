@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { Stats } from '../../types';
-import { Card, Button, Modal } from '../UI';
+import { Card, Button } from '../UI';
 
 interface DashboardTabProps {
   handleAiAction: () => void;
   isAnalysing: boolean;
-  onShowSizeMatrix: (batch: number) => void;
+  onShowSizeMatrix: () => void;
   aiAnalysis: string;
   currentStats: Stats | null;
 }
@@ -18,31 +18,38 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   aiAnalysis,
   currentStats,
 }) => {
+  // Ordena os lotes (batches) para exibição, se existirem
   const batchKeys = currentStats?.batches ? Object.keys(currentStats.batches).map(Number).sort((a,b) => a-b) : [1];
-  const [expandedBatches, setExpandedBatches] = useState<Set<number>>(new Set());
-  
-  // Estado para o modal de seleção de lote da matriz
-  const [isBatchSelectModalOpen, setIsBatchSelectModalOpen] = useState(false);
 
+  // Estado para controlar quais lotes estão expandidos
+  const [expandedBatches, setExpandedBatches] = useState<Set<number>>(new Set());
+
+  /**
+   * REGRAS DE COMPORTAMENTO — DASHBOARD ADMIN (PROMPT):
+   * 1. SEMPRE que o Dashboard for carregado, o LOTE ATUAL deve vir EXPANDIDO.
+   * 2. Todos os LOTES ANTERIORES devem vir RETRAÍDOS.
+   * 3. O estado inicial deve ser sempre recalculado com base no LOTE ATUAL (maior número).
+   * 4. Não persistir estado de expansão por usuário ou sessão.
+   */
   useEffect(() => {
     if (batchKeys.length > 0) {
+      // Identifica o lote atual (maior índice na lista ordenada)
       const activeBatch = batchKeys[batchKeys.length - 1];
+      // Reinicia o estado para expandir APENAS o lote atual
       setExpandedBatches(new Set([activeBatch]));
     }
-  }, [currentStats]);
+  }, [currentStats]); // Recalcula sempre que as estatísticas (e consequentemente o lote atual) são carregadas
 
   const toggleBatch = (lote: number) => {
     setExpandedBatches(prev => {
       const next = new Set(prev);
-      if (next.has(lote)) next.delete(lote);
-      else next.add(lote);
+      if (next.has(lote)) {
+        next.delete(lote);
+      } else {
+        next.add(lote);
+      }
       return next;
     });
-  };
-
-  const handleOpenMatrix = (batch: number) => {
-    setIsBatchSelectModalOpen(false);
-    onShowSizeMatrix(batch);
   };
 
   return (
@@ -72,6 +79,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         </Card>
       )}
 
+      {/* SEÇÃO GLOBAL - TOTALIZADORES */}
       <div className="space-y-4">
          <div className="flex items-center gap-3 mb-2">
             <div className="h-px bg-border-light flex-1"></div>
@@ -100,6 +108,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
          </div>
       </div>
 
+      {/* SEÇÃO POR LOTE */}
       <div className="space-y-8">
         {batchKeys.map(lote => {
            const batchData = currentStats?.batches?.[lote] || (lote === 1 ? currentStats : { qtd_pedidos: 0, qtd_camisetas: 0, valor_total: 0 });
@@ -107,13 +116,17 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
            
            return (
             <div key={lote} className="space-y-4">
-               <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => toggleBatch(lote)}>
+               <div 
+                 className="flex items-center gap-3 cursor-pointer select-none"
+                 onClick={() => toggleBatch(lote)}
+               >
                   <span className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest transition-colors ${isExpanded ? 'bg-primary text-white' : 'bg-primary/10 text-primary'}`}>
                     LOTE {lote}
                   </span>
                   <div className="h-px bg-border-light flex-1"></div>
                   <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'} text-[10px] text-text-secondary/50 transition-transform duration-300`}></i>
                </div>
+               
                {isExpanded && (
                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 animate-in slide-in-from-top-2 duration-300">
                     <StatCard label="Pedidos no Lote" value={batchData?.qtd_pedidos || 0} icon="fa-clipboard-list" description={`Total do Lote ${lote}`} />
@@ -128,47 +141,25 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
       <div className="pt-6">
         <Button 
-          onClick={() => setIsBatchSelectModalOpen(true)} 
+          onClick={onShowSizeMatrix} 
           variant="outline"
-          className="w-full h-20 text-base border-primary/40 hover:bg-primary/5"
+          className="w-full h-20 text-base"
         >
             <i className="fas fa-file-alt text-xl"></i> Relatório Detalhado de Produção
         </Button>
       </div>
-
-      {/* Modal de Seleção de Lote para o Relatório Detalhado */}
-      <Modal 
-        isOpen={isBatchSelectModalOpen} 
-        onClose={() => setIsBatchSelectModalOpen(false)} 
-        title="Selecione o Lote de Produção"
-      >
-        <div className="space-y-6 text-center">
-            <p className="text-sm text-text-secondary font-bold uppercase tracking-widest leading-relaxed">
-                Escolha o lote para visualizar a matriz de tamanhos e conferir os detalhes de produção.
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 py-4">
-                {batchKeys.map(batch => (
-                    <button
-                        key={batch}
-                        onClick={() => handleOpenMatrix(batch)}
-                        className="h-20 rounded-2xl border-2 border-border-light hover:border-primary hover:bg-primary-light transition-all flex flex-col items-center justify-center group"
-                    >
-                        <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary group-hover:text-primary">LOTE</span>
-                        <span className="text-2xl font-black text-text-primary group-hover:text-primary">{batch}</span>
-                    </button>
-                ))}
-            </div>
-            <Button variant="outline" className="w-full h-12 text-[10px]" onClick={() => setIsBatchSelectModalOpen(false)}>CANCELAR</Button>
-        </div>
-      </Modal>
     </div>
   );
 };
 
 const StatCard: React.FC<{ label: string, value: number, isMoney?: boolean, icon: string, description: string, accentColor?: string, bgStyle?: string }> = ({ label, value, isMoney, icon, description, accentColor = "text-text-primary", bgStyle = "bg-surface" }) => {
+  const hoverStyle = accentColor === 'text-green-600'
+    ? 'hover:border-green-500/50 hover:bg-green-500/10'
+    : 'hover:border-primary/50 hover:bg-primary-light';
+  
   return (
-    <Card className={`transition-all duration-500 group relative overflow-hidden ${bgStyle} hover:shadow-xl hover:-translate-y-1 p-8`}>
-      <div className="absolute -right-4 -top-4 opacity-5 text-8xl transition-transform group-hover:scale-125 text-text-primary">
+    <Card className={`transition-all duration-500 group relative overflow-hidden ${bgStyle} ${hoverStyle} hover:-translate-y-1 p-8`}>
+      <div className="absolute -right-4 -top-4 opacity-5 text-8xl transition-transform group-hover:scale-125 group-hover:rotate-6 text-text-primary">
         <i className={`fas ${icon}`}></i>
       </div>
       <div className="flex flex-col h-full justify-center text-center gap-3">

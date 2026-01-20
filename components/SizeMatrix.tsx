@@ -8,7 +8,6 @@ import { getAllOrders, getGlobalConfig, getStats } from '../services/firebase';
 
 interface SizeMatrixProps {
   onClose: () => void;
-  batchNumber: number; // Agora obrigatório via prop
 }
 
 const CATEGORIES = ['unissex', 'babylook', 'infantil'] as const;
@@ -21,10 +20,11 @@ interface SelectedCellInfo {
   total: number;
 }
 
-export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose, batchNumber }) => {
+export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [unitPrice, setUnitPrice] = useState(DEFAULT_PRICE);
+  const [currentBatch, setCurrentBatch] = useState(1);
   const [loading, setLoading] = useState(true);
   const [selectedCell, setSelectedCell] = useState<SelectedCellInfo | null>(null);
   
@@ -42,6 +42,7 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose, batchNumber }) 
         ]);
         setOrders(ordersData);
         setUnitPrice(configData.valorCamiseta);
+        setCurrentBatch(configData.currentBatch);
         setStats(statsData);
       } catch (error) {
         console.error("Failed to load size matrix data:", error);
@@ -52,13 +53,15 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose, batchNumber }) 
     loadData();
   }, []);
 
-  const batchData = useMemo(() => {
+  // Processa APENAS o lote ativo
+  const activeBatchData = useMemo(() => {
     const data: any = {};
     let grandTotal = 0;
     let totalVerde = 0;
     let totalTerracota = 0;
     const allUniqueSizes = Array.from(new Set([...INFANTIL_SIZES, ...BABYLOOK_SIZES, ...UNISSEX_SIZES]));
 
+    // Inicializa estrutura
     CATEGORIES.forEach(cat => {
       data[cat] = {};
       COLORS.forEach(color => {
@@ -69,8 +72,9 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose, batchNumber }) 
       });
     });
 
+    // Filtra e popula dados apenas do lote atual
     orders
-      .filter(o => (o.lote || 1) === batchNumber)
+      .filter(o => (o.lote || 1) === currentBatch)
       .forEach(order => {
         COLORS.forEach(color => {
           const colorData = order[color];
@@ -94,25 +98,35 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose, batchNumber }) 
       });
 
     return { data, grandTotal, totalVerde, totalTerracota };
-  }, [orders, batchNumber]);
+  }, [orders, currentBatch]);
 
   const contributors = useMemo(() => {
     if (!selectedCell) return [];
+    
     return orders
-      .filter(o => (o.lote || 1) === batchNumber)
+      .filter(o => (o.lote || 1) === currentBatch)
       .map(o => {
         const colorData = o[selectedCell.color as keyof Order] as any;
         const qty = colorData?.[selectedCell.category]?.[selectedCell.size] || 0;
+        
         const displaySetor = o.setor === 'UMADEMATS' ? o.setor : (o.local === 'Capital' ? `Setor ${o.setor}` : o.setor);
-        return { id: o.docId, numPedido: o.numPedido, nome: o.nome, setor: displaySetor, local: o.local, qty };
+
+        return {
+          id: o.docId,
+          numPedido: o.numPedido,
+          nome: o.nome,
+          setor: displaySetor,
+          local: o.local,
+          qty
+        };
       })
       .filter(c => c.qty > 0)
       .sort((a, b) => b.qty - a.qty);
-  }, [selectedCell, orders, batchNumber]);
+  }, [selectedCell, orders, currentBatch]);
 
   const handleDownloadPDF = () => {
-    const batchOrders = orders.filter(o => (o.lote || 1) === batchNumber);
-    generateSizeMatrixPDF(batchOrders, unitPrice, stats, batchNumber, reportComment);
+    const activeBatchOrders = orders.filter(o => (o.lote || 1) === currentBatch);
+    generateSizeMatrixPDF(activeBatchOrders, unitPrice, stats, currentBatch, reportComment);
     setIsCommentModalOpen(false);
     setReportComment('');
   };
@@ -124,28 +138,37 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose, batchNumber }) 
         <div className="space-y-4">
           <div className="h-12 w-full bg-surface rounded-lg"></div>
           <div className="h-12 w-full bg-surface rounded-lg"></div>
+          <div className="h-12 w-full bg-surface rounded-lg"></div>
         </div>
       </Card>
     );
   }
 
-  const { data, grandTotal, totalVerde, totalTerracota } = batchData;
+  const { data, grandTotal, totalVerde, totalTerracota } = activeBatchData;
 
   return (
     <div className="animate-in fade-in duration-500 pb-20">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 pb-6 border-b border-border-light sticky top-20 bg-background/95 backdrop-blur z-30 pt-4">
         <div className="flex items-center gap-4">
-          <button onClick={onClose} className="w-12 h-12 rounded-full bg-surface border border-border-light hover:bg-background transition-colors text-text-secondary hover:text-primary flex items-center justify-center">
+          <button 
+            onClick={onClose} 
+            className="w-12 h-12 rounded-full bg-surface border border-border-light hover:bg-background transition-colors text-text-secondary hover:text-primary flex items-center justify-center"
+            aria-label="Voltar"
+          >
             <i className="fas fa-arrow-left text-lg"></i>
           </button>
           <div>
               <h3 className="text-2xl font-black text-text-primary uppercase tracking-tight">Matriz de Produção</h3>
-              <p className="text-[10px] text-text-secondary font-bold uppercase tracking-[0.2em]">Exibindo Lote {batchNumber}</p>
+              <p className="text-[10px] text-text-secondary font-bold uppercase tracking-[0.2em]">Detalhado por Lote</p>
           </div>
         </div>
         <div className="w-full sm:w-auto">
-          <Button variant="outline" onClick={() => setIsCommentModalOpen(true)} className="w-full text-[10px] h-12 rounded-2xl">
-              <i className="fas fa-file-pdf"></i> Baixar PDF (Lote {batchNumber})
+          <Button 
+              variant="outline" 
+              onClick={() => setIsCommentModalOpen(true)}
+              className="w-full text-[10px] h-12 rounded-2xl"
+          >
+              <i className="fas fa-file-pdf"></i> Baixar PDF (Lote {currentBatch})
           </Button>
         </div>
       </div>
@@ -154,22 +177,35 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose, batchNumber }) 
           {CATEGORIES.map(category => {
             const categoryHasData = COLORS.some(color => data[category][color].subTotal > 0);
             if (!categoryHasData) return null;
-            let relevantSizes = category === 'infantil' ? INFANTIL_SIZES : (category === 'babylook' ? BABYLOOK_SIZES : UNISSEX_SIZES);
+
+            let relevantSizes: string[];
+            if (category === 'infantil') relevantSizes = INFANTIL_SIZES;
+            else if (category === 'babylook') relevantSizes = BABYLOOK_SIZES;
+            else relevantSizes = UNISSEX_SIZES;
             
             return (
               <div key={category}>
-                <div className="flex items-center gap-4 mb-6"><h2 className="text-lg font-black uppercase tracking-[0.3em] text-text-secondary">{category}</h2><div className="flex-grow h-px bg-border-light/50"></div></div>
+                <div className="flex items-center gap-4 mb-6">
+                  <h2 className="text-lg font-black uppercase tracking-[0.3em] text-text-secondary">
+                    {category}
+                  </h2>
+                  <div className="flex-grow h-px bg-border-light/50"></div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {COLORS.map(color => {
                     const colorData = data[category][color];
                     if (colorData.subTotal === 0) return null;
+
+                    const colorName = color === 'verdeOliva' ? 'Verde-Oliva' : 'Terracota';
                     const colorHex = color === 'verdeOliva' ? '#556B2F' : '#a35e47';
+
                     return (
                       <Card key={`${category}-${color}`} className="overflow-hidden p-0 border border-border-light shadow-sm rounded-3xl">
                         <div className="p-5 border-b border-border-light/50 flex justify-between items-center bg-slate-50/50">
                           <h3 className="font-black text-base tracking-tight uppercase flex items-center gap-3">
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colorHex }}></div>
-                            {color === 'verdeOliva' ? 'Verde-Oliva' : 'Terracota'}
+                            {colorName}
                           </h3>
                         </div>
                         <div className="overflow-x-auto">
@@ -186,7 +222,11 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose, batchNumber }) 
                                 {relevantSizes.map(size => {
                                   const val = colorData[size] || 0;
                                   return (
-                                    <td key={size} className={`text-center font-bold text-lg py-4 px-2 ${val > 0 ? 'text-text-primary cursor-pointer hover:bg-primary/5 transition-colors' : 'text-text-secondary/20'}`} onClick={() => val > 0 && setSelectedCell({ category, color, size, total: val })}>
+                                    <td 
+                                      key={size} 
+                                      className={`text-center font-bold text-lg py-4 px-2 ${val > 0 ? 'text-text-primary cursor-pointer hover:bg-primary/5 transition-colors' : 'text-text-secondary/20'}`}
+                                      onClick={() => val > 0 && setSelectedCell({ category, color, size, total: val })}
+                                    >
                                       {val || '-'}
                                     </td>
                                   );
@@ -196,7 +236,7 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose, batchNumber }) 
                           </table>
                         </div>
                         <div className="bg-background p-4 flex justify-end items-center gap-4 border-t border-border-light/50">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Subtotal</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Total Cor/Categ.</span>
                             <span className="font-black text-xl text-primary">{colorData.subTotal}</span>
                         </div>
                       </Card>
@@ -206,35 +246,75 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose, batchNumber }) 
               </div>
             );
           })}
+
           <div className="mt-8 pt-6 border-t border-border-light flex flex-col sm:flex-row justify-between items-center gap-6">
             <div className="flex gap-6">
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#556B2F]"></div><span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">VERDE: {totalVerde}</span></div>
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#a35e47]"></div><span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">TERRA: {totalTerracota}</span></div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#556B2F]"></div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">VERDE: {totalVerde}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#a35e47]"></div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">TERRACOTA: {totalTerracota}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-6"><span className="text-xs font-bold uppercase tracking-[0.2em] text-text-secondary">Total Lote {batchNumber}</span><span className="text-4xl font-black text-primary tracking-tighter">{grandTotal}</span></div>
+            <div className="flex items-center gap-6">
+              <span className="text-xs font-bold uppercase tracking-[0.2em] text-text-secondary">Total Camisetas (Lote {currentBatch})</span>
+              <span className="text-4xl font-black text-primary tracking-tighter">{grandTotal}</span>
+            </div>
           </div>
       </div>
 
-      <Modal isOpen={!!selectedCell} onClose={() => setSelectedCell(null)} title="Auditoria de Pedidos">
+      <Modal 
+        isOpen={!!selectedCell} 
+        onClose={() => setSelectedCell(null)}
+        title="Auditoria de Pedidos"
+      >
         <div className="space-y-6">
           <div className="p-4 bg-primary-light/50 border border-primary/20 rounded-2xl">
-            <h4 className="text-sm font-black uppercase tracking-tight text-text-primary">{selectedCell?.color === 'verdeOliva' ? 'Verde Oliva' : 'Terracota'} • {selectedCell?.category} • Tam {selectedCell?.size}</h4>
+            <div className="flex justify-between items-center mb-1">
+              <p className="text-[10px] font-black uppercase tracking-widest text-primary">Composição da Célula</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Total: {selectedCell?.total}</p>
+            </div>
+            <h4 className="text-sm font-black uppercase tracking-tight text-text-primary">
+              {selectedCell?.color === 'verdeOliva' ? 'Verde Oliva' : 'Terracota'} • {selectedCell?.category} • Tamanho {selectedCell?.size}
+            </h4>
           </div>
-          <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2">
-            {contributors.map((c) => (
-              <div key={c.id} className="flex justify-between items-center p-4 border border-border-light rounded-xl bg-surface">
-                <div><p className="text-xs font-black text-text-primary uppercase">{c.nome}</p><p className="text-[10px] font-bold text-text-secondary uppercase">{c.setor}</p></div>
-                <div className="text-right"><p className="text-lg font-black text-primary tracking-tighter">{c.qty}</p></div>
+
+          <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+            {contributors.map((c, idx) => (
+              <div key={c.id} className="flex justify-between items-center p-4 border border-border-light rounded-xl bg-surface hover:bg-white transition-colors">
+                <div>
+                  <p className="text-xs font-black text-text-primary uppercase tracking-tight">{c.nome}</p>
+                  <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{c.setor}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-black text-primary tracking-tighter">{c.qty}</p>
+                  <p className="text-[8px] font-black text-text-secondary/40 uppercase">unidades</p>
+                </div>
               </div>
             ))}
           </div>
+
+          <div className="pt-4 border-t border-border-light flex justify-between items-center">
+            <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Soma Verificada</p>
+            <p className="text-xl font-black text-text-primary tracking-tighter">{selectedCell?.total}</p>
+          </div>
+          
           <Button onClick={() => setSelectedCell(null)} variant="outline" className="w-full h-12 rounded-xl text-[10px]">FECHAR AUDITORIA</Button>
         </div>
       </Modal>
 
       <Modal isOpen={isCommentModalOpen} onClose={() => setIsCommentModalOpen(false)} title="Observações do Relatório">
-        <div className="space-y-6 text-center">
-          <TextArea placeholder="Nota opcional para o PDF..." value={reportComment} onChange={e => setReportComment(e.target.value)} />
+        <div className="space-y-6">
+          <p className="text-[11px] text-text-secondary font-bold uppercase tracking-widest text-center">
+            Adicione uma nota opcional para constar no PDF da Matriz de Produção.
+          </p>
+          <TextArea 
+            placeholder="Ex: Instruções de separação, observações de prazo, etc." 
+            value={reportComment}
+            onChange={e => setReportComment(e.target.value)}
+          />
           <div className="flex gap-4">
             <Button variant="outline" className="flex-1 h-12 text-[10px]" onClick={() => setIsCommentModalOpen(false)}>CANCELAR</Button>
             <Button className="flex-1 h-12 text-[10px]" onClick={handleDownloadPDF}>GERAR PDF</Button>

@@ -5,6 +5,7 @@ import { getStats, auth, connectFirebase, signOutUser, getGlobalConfig } from '.
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
 
 // Components
+import { Button } from './components/UI';
 import { Header } from './components/Header';
 import { HomeMenu } from './components/HomeMenu';
 import { OrderSection } from './components/OrderSection';
@@ -14,7 +15,6 @@ import { LoginModal } from './components/LoginModal';
 import { SizeMatrix } from './components/SizeMatrix';
 import { SplashScreen } from './components/SplashScreen';
 import { PdfActionModal } from './components/PdfActionModal';
-import { ConnectionStatus } from './components/ConnectionStatus';
 
 type ConnectionState = 'connecting' | 'connected' | 'error' | 'api-disabled' | 'permission-denied';
 
@@ -27,11 +27,10 @@ const App: React.FC = () => {
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  
-  // Alterado para armazenar o número do lote selecionado para a matriz
-  const [selectedMatrixBatch, setSelectedMatrixBatch] = useState<number | null>(null);
+  const [showSizeMatrix, setShowSizeMatrix] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(true);
   
+  // Estado para gerenciar o modal de ação do PDF
   const [pdfToAction, setPdfToAction] = useState<{ doc: any, filename: string } | null>(null);
 
   const loadConfig = useCallback(async () => {
@@ -53,6 +52,7 @@ const App: React.FC = () => {
       if (e.message === "API_DISABLED") {
         setConnection('api-disabled');
       } else if (e.message === "PERMISSION_DENIED") {
+        // Se falhar no Auth inicial (muito raro), tratamos como crítico
         setConnection('permission-denied');
       } else {
         setConnection('error');
@@ -70,10 +70,15 @@ const App: React.FC = () => {
         setIsAdmin(isAdminUser);
 
         try {
+          // Só tentamos buscar stats se for Admin ou se as regras permitirem.
+          // Se falhar por permissão, não interrompemos o fluxo do app.
           const s = await getStats();
           setStats(s);
         } catch (e: any) {
           console.warn("Stats access restricted:", e.message);
+          // OMITIDO: setConnection('permission-denied') 
+          // Não definimos o estado de erro global aqui para que o usuário anônimo
+          // possa continuar usando as outras funções (Home/Consulta) normalmente.
         }
       }
     });
@@ -81,6 +86,7 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, [initFirebase]);
 
+  // Listener global para disparar o modal de ação do PDF
   useEffect(() => {
     const handler = (e: any) => setPdfToAction(e.detail);
     window.addEventListener('show-pdf-modal', handler);
@@ -90,7 +96,7 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     await signOutUser();
     setIsAdmin(false);
-    setStats(null);
+    setStats(null); // Limpa stats ao sair
     setActiveSection(Section.Home);
     loadConfig();
   };
@@ -139,16 +145,67 @@ const App: React.FC = () => {
         isAtAdminPanel={activeSection === Section.Admin}
       />
       
-      {selectedMatrixBatch !== null ? (
+      {showSizeMatrix ? (
         <main className="container mx-auto px-4 sm:px-6 pt-28 animate-in fade-in duration-700">
-          <SizeMatrix 
-            batchNumber={selectedMatrixBatch} 
-            onClose={() => setSelectedMatrixBatch(null)} 
-          />
+          <SizeMatrix onClose={() => setShowSizeMatrix(false)} />
         </main>
       ) : (
         <main className="container mx-auto px-4 sm:px-6 pt-28 animate-in fade-in duration-700">
-          <ConnectionStatus connection={connection} errorDetails={errorDetails} />
+          {connection === 'api-disabled' && (
+            <div className="max-w-2xl mx-auto mb-10 p-10 card border-l-4 border-red-500 bg-red-500/5 animate-in slide-in-from-top-4">
+              <div className="flex flex-col gap-6">
+                <div className="flex items-center gap-5">
+                  <div className="w-14 h-14 rounded-2xl bg-red-500/20 flex items-center justify-center text-2xl text-red-500">
+                    <i className="fas fa-plug-circle-exmark"></i>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-text-primary uppercase tracking-tight">API do Cloud Firestore Desativada</h3>
+                    <p className="text-[10px] text-red-500 font-bold uppercase tracking-[0.2em]">Configuração Obrigatória</p>
+                  </div>
+                </div>
+                <div className="space-y-4 text-sm text-text-secondary">
+                  <p>O Google Cloud exige que a API do Firestore seja ativada manualmente no console do projeto.</p>
+                  <Button className="w-full h-14" onClick={() => window.location.reload()}>
+                    RECARREGAR SISTEMA
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* O erro de permissão agora só aparecerá se algo REALMENTE impedir o funcionamento básico do App */}
+          {connection === 'permission-denied' && (
+            <div className="max-w-2xl mx-auto mb-10 p-10 card border-l-4 border-orange-500 bg-orange-500/5 animate-in slide-in-from-top-4">
+              <div className="flex flex-col gap-6">
+                <div className="flex items-center gap-5">
+                  <div className="w-14 h-14 rounded-2xl bg-orange-500/20 flex items-center justify-center text-2xl text-orange-500">
+                    <i className="fas fa-user-shield"></i>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-text-primary uppercase tracking-tight">Acesso ao Banco Negado</h3>
+                    <p className="text-[10px] text-orange-500 font-bold uppercase tracking-[0.2em]">Erro de Permissão</p>
+                  </div>
+                </div>
+                <div className="space-y-4 text-sm text-text-secondary">
+                  <p>A API está ativada, mas as <b>Regras de Segurança (Rules)</b> do Firestore estão bloqueando o acesso.</p>
+                  <p className="p-4 bg-background rounded-xl border border-border-light text-[11px] font-mono leading-relaxed">
+                    Acesse o Console do Firebase > Firestore > Aba "Rules" e certifique-se de que a leitura e escrita estão permitidas.
+                  </p>
+                  <Button className="w-full h-14" onClick={() => window.location.reload()}>
+                    TENTAR NOVAMENTE
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {connection === 'error' && (
+            <div className="max-w-2xl mx-auto mb-10 p-10 card border-l-4 border-red-500 bg-red-500/5">
+              <h3 className="text-xl font-black text-red-500 mb-2">ERRO DE CONEXÃO</h3>
+              <p className="text-sm text-text-secondary mb-4">{errorDetails || "Ocorreu um problema ao conectar com o banco de dados."}</p>
+              <Button onClick={() => window.location.reload()}>TENTAR NOVAMENTE</Button>
+            </div>
+          )}
 
           {connection === 'connected' && (
             <div className="animate-in fade-in duration-500">
@@ -175,13 +232,7 @@ const App: React.FC = () => {
                 {activeSection === Section.Home && <HomeMenu onNavigate={handleNavigation} isOrdersOpen={isOrdersOpen} />}
                 {activeSection === Section.Consult && <ConsultSection onEdit={handleEdit} isOrdersOpen={isOrdersOpen} />}
                 {activeSection === Section.Order && <OrderSection initialOrder={editingOrder} onBackToHome={() => setActiveSection(Section.Home)} />}
-                {activeSection === Section.Admin && (
-                  <AdminPanel 
-                    stats={stats} 
-                    onEditOrder={handleEdit} 
-                    onShowSizeMatrix={(batch) => setSelectedMatrixBatch(batch)} 
-                  />
-                )}
+                {activeSection === Section.Admin && <AdminPanel stats={stats} onEditOrder={handleEdit} onShowSizeMatrix={() => setShowSizeMatrix(true)} />}
               </div>
             </div>
           )}
@@ -194,6 +245,7 @@ const App: React.FC = () => {
         onSuccess={handleLoginSuccess}
       />
 
+      {/* Modal de escolha de ação do PDF */}
       <PdfActionModal 
         pdfData={pdfToAction} 
         onClose={() => setPdfToAction(null)} 
