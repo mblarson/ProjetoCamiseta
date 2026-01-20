@@ -95,7 +95,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
           const { orders: newOrders, lastVisible } = await getPaginatedOrders();
           setOrders(newOrders);
           setLastVisibleOrder(lastVisible);
-          setHasMoreOrders(!!lastVisible);
+          // O botão só aparece se tivermos 50 resultados na busca inicial
+          setHasMoreOrders(newOrders.length === 50);
         }
         setIsLoadingOrders(false);
       } else if (tab === AdminTab.Payments || tab === AdminTab.Statistics) {
@@ -139,6 +140,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
         setOrders(data);
     }
     setTimeout(() => setIsProcessingConfig(false), 500);
+  };
+
+  const handleLoadMoreOrders = async () => {
+    if (isLoadingMore || !lastVisibleOrder) return;
+    setIsLoadingMore(true);
+    try {
+      const { orders: newOrders, lastVisible } = await getPaginatedOrders(lastVisibleOrder);
+      setOrders(prev => [...prev, ...newOrders]);
+      setLastVisibleOrder(lastVisible);
+      // Mantém o botão se esta nova página também tiver 50 resultados
+      setHasMoreOrders(newOrders.length === 50);
+    } catch (error) {
+      console.error("Erro ao carregar mais pedidos:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
 
   const handleAiAction = async () => {
@@ -243,7 +260,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
       )}
       
       {tab === AdminTab.Orders && (
-        <OrdersTab searchText={searchText} setSearchText={setSearchText} isLoadingOrders={isLoadingOrders} orders={orders} onEditOrder={onEditOrder} setOrderToDelete={setOrderToDelete} loadMoreOrders={() => {}} hasMoreOrders={hasMoreOrders} isLoadingMore={isLoadingMore} />
+        <OrdersTab 
+          searchText={searchText} 
+          setSearchText={setSearchText} 
+          isLoadingOrders={isLoadingOrders} 
+          orders={orders} 
+          onEditOrder={onEditOrder} 
+          setOrderToDelete={setOrderToDelete} 
+          loadMoreOrders={handleLoadMoreOrders} 
+          hasMoreOrders={hasMoreOrders} 
+          isLoadingMore={isLoadingMore} 
+        />
       )}
       
       {tab === AdminTab.Confirmation && (

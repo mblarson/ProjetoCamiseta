@@ -51,25 +51,22 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
   const [localFilter, setLocalFilter] = useState<'Todos' | 'Capital' | 'Interior'>('Todos');
   const [loteFilter, setLoteFilter] = useState<number | 'Todos'>('Todos');
   const [availableBatches, setAvailableBatches] = useState<number[]>([1]);
-  // Fix: Added missing state to control which order is expanded in the list
   const [expandedSector, setExpandedSector] = useState<string | null>(null);
 
   useEffect(() => {
     getGlobalConfig().then(c => {
         const batches = Array.from({length: c.currentBatch}, (_, i) => i + 1);
         setAvailableBatches(batches);
-        setLoteFilter(c.currentBatch); // Default to current batch
+        setLoteFilter(c.currentBatch);
     });
   }, []);
 
   const filteredOrders = orders.filter(o => {
-    // 1. Filtrar primeiro por LOTE e LOCALIDADE (Obrigatório conforme prompt)
     const matchesLocal = localFilter === 'Todos' || o.local === localFilter;
     const matchesLote = loteFilter === 'Todos' || (o.lote || 1) === loteFilter;
     
     if (!matchesLocal || !matchesLote) return false;
 
-    // 2. Aplicar filtro de TEXTO apenas sobre o resultado desse lote/localidade
     const term = searchText.trim().toUpperCase();
     if (!term) return true;
 
@@ -93,7 +90,6 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
           />
         </div>
         
-        {/* Filtro Lote */}
         <div className="flex flex-col gap-3 items-center lg:items-start">
             <label className="text-[10px] uppercase font-black tracking-widest text-primary/70 px-1">Lote</label>
             <div className="flex gap-2 overflow-x-auto pb-1 w-full justify-center lg:justify-start">
