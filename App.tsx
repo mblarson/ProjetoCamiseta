@@ -16,7 +16,7 @@ import { SizeMatrix } from './components/SizeMatrix';
 import { SplashScreen } from './components/SplashScreen';
 import { PdfActionModal } from './components/PdfActionModal';
 
-type ConnectionState = 'connecting' | 'connected' | 'error' | 'api-disabled' | 'permission-denied';
+type ConnectionState = 'connecting' | 'connected' | 'error' | 'api-disabled';
 
 const App: React.FC = () => {
   const [activeSection, setActiveSection] = useState<Section>(Section.Home);
@@ -30,6 +30,7 @@ const App: React.FC = () => {
   const [showSizeMatrix, setShowSizeMatrix] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(true);
   
+  // Estado para gerenciar o modal de ação do PDF
   const [pdfToAction, setPdfToAction] = useState<{ doc: any, filename: string } | null>(null);
 
   const loadConfig = useCallback(async () => {
@@ -50,8 +51,6 @@ const App: React.FC = () => {
       console.error("Firebase Auth Error:", e);
       if (e.message === "API_DISABLED") {
         setConnection('api-disabled');
-      } else if (e.message === "PERMISSION_DENIED") {
-        setConnection('permission-denied');
       } else {
         setConnection('error');
         setErrorDetails(e.message);
@@ -64,14 +63,13 @@ const App: React.FC = () => {
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        const isAdminUser = !user.isAnonymous && user.email === 'admin@umademats.com.br';
-        setIsAdmin(isAdminUser);
-
         try {
           const s = await getStats();
           setStats(s);
+          const isAdminUser = !user.isAnonymous && user.email === 'admin@umademats.com.br';
+          setIsAdmin(isAdminUser);
         } catch (e: any) {
-          console.warn("Stats access restricted (normal for non-admins)");
+          console.error("Stats/Auth update error:", e);
         }
       }
     });
@@ -79,6 +77,7 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, [initFirebase]);
 
+  // Listener global para disparar o modal de ação do PDF
   useEffect(() => {
     const handler = (e: any) => setPdfToAction(e.detail);
     window.addEventListener('show-pdf-modal', handler);
@@ -88,7 +87,6 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     await signOutUser();
     setIsAdmin(false);
-    setStats(null);
     setActiveSection(Section.Home);
     loadConfig();
   };
@@ -156,34 +154,9 @@ const App: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-4 text-sm text-text-secondary">
-                  <p>O Google Cloud exige que a API do Firestore seja ativada manualmente no console do projeto.</p>
+                  <p>O Google Cloud exige que a API do Firestore seja ativada manualmente.</p>
                   <Button className="w-full h-14" onClick={() => window.location.reload()}>
                     RECARREGAR SISTEMA
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {connection === 'permission-denied' && (
-            <div className="max-w-2xl mx-auto mb-10 p-10 card border-l-4 border-orange-500 bg-orange-500/5 animate-in slide-in-from-top-4">
-              <div className="flex flex-col gap-6">
-                <div className="flex items-center gap-5">
-                  <div className="w-14 h-14 rounded-2xl bg-orange-500/20 flex items-center justify-center text-2xl text-orange-500">
-                    <i className="fas fa-user-shield"></i>
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black text-text-primary uppercase tracking-tight">Acesso ao Banco Negado</h3>
-                    <p className="text-[10px] text-orange-500 font-bold uppercase tracking-[0.2em]">Erro de Permissão</p>
-                  </div>
-                </div>
-                <div className="space-y-4 text-sm text-text-secondary">
-                  <p>As <b>Regras de Segurança (Rules)</b> do Firestore estão bloqueando o acesso público.</p>
-                  <p className="p-4 bg-background rounded-xl border border-border-light text-[11px] font-mono leading-relaxed">
-                    Acesse o Console do Firebase &gt; Firestore &gt; Aba "Rules" e certifique-se de que a leitura e escrita estão permitidas para todos os usuários conforme as instruções de produção.
-                  </p>
-                  <Button className="w-full h-14" onClick={() => window.location.reload()}>
-                    TENTAR NOVAMENTE
                   </Button>
                 </div>
               </div>
@@ -236,6 +209,7 @@ const App: React.FC = () => {
         onSuccess={handleLoginSuccess}
       />
 
+      {/* Modal de escolha de ação do PDF */}
       <PdfActionModal 
         pdfData={pdfToAction} 
         onClose={() => setPdfToAction(null)} 

@@ -1,26 +1,12 @@
 
-/* Theme Variables */
-:root {
-  --background: #ffffff;
-  --surface: rgba(248, 250, 252, 0.75); /* slate-50 with transparency */
-  --primary: #0ea5e9; /* sky-500 */
-  --primary-light: rgba(14, 165, 233, 0.1);
-  --secondary: #D53F8C;
-  --text-primary: #1e293b; /* slate-800 */
-  --text-secondary: #64748b; /* slate-500 */
-  --border-light: #e2e8f0; /* slate-200 */
-  --splash-bg: #ffffff;
-  --sky-500: #0ea5e9;
-}
-
 /* Base Styles */
 html {
-  font-size: 18px; /* Aumentado de 17px para melhor legibilidade */
+  font-size: 18px; /* Aumentado de 17px */
 }
 
 @media (max-width: 768px) {
   html {
-    font-size: 16px; /* Ajuste para mobile */
+    font-size: 16px; /* Base sólida para mobile */
   }
 }
 
@@ -34,9 +20,10 @@ body {
   line-height: 1.5;
 }
 
-/* Card Style (Sólido para performance) */
+/* Card Style (Glassmorphism Light - Optimized) */
 .card {
-  background: #ffffff;
+  /* THEME CHANGE: Removed backdrop-filter to prevent interface freezing on mobile/medium devices */
+  background: #ffffff; /* Sólido para performance máxima */
   border-radius: 1.5rem;
   border: 1px solid var(--border-light);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
