@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button, Input, Card, Modal, TextArea } from './UI';
 import { checkExistingEmail, checkExistingSector, createOrder, updateOrder, getGlobalConfig } from '../services/firebase';
@@ -18,7 +17,6 @@ const initialColorData = (): ColorData => ({
   unissex: {}
 });
 
-// Componente auxiliar para a tabela de revisão no resumo
 const OrderReviewTable: React.FC<{ title: string, data: ColorData, colorHex: string }> = ({ title, data, colorHex }) => {
     const items: { category: string, size: string, quantity: number }[] = [];
     (['infantil', 'babylook', 'unissex'] as const).forEach(category => {
@@ -151,8 +149,8 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
 
   const finalizeOrder = async () => {
     setIsSubmitting(true);
+    setErrorMsg('');
     try {
-      // Remove observacao do payload para garantir que não seja enviada/sobrescrita
       const { observacao: _, ...cleanInfo } = info;
       const orderData = {
         ...cleanInfo,
@@ -161,18 +159,33 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
         valorTotal: totals.preco 
       };
       
+      let numPedido;
       if (initialOrder) {
         await updateOrder(initialOrder.docId, orderData);
-        setOrderId(initialOrder.numPedido);
+        numPedido = initialOrder.numPedido;
       } else {
-        const numPedido = await createOrder(orderData);
-        setOrderId(numPedido!);
+        numPedido = await createOrder(orderData);
       }
-      setIsConfirmModalOpen(false);
-      setStep('success');
-    } catch (e) {
-      setErrorMsg("Falha ao salvar pedido.");
-    } finally { setIsSubmitting(false); }
+      
+      if (numPedido) {
+        setOrderId(numPedido);
+        setIsConfirmModalOpen(false);
+        setStep('success');
+      } else {
+        throw new Error("EMPTY_RESPONSE");
+      }
+    } catch (e: any) {
+      console.error("Erro ao finalizar pedido:", e);
+      if (e.message === "RULES_DENIED") {
+        setErrorMsg("⚠️ Erro de Permissão: O servidor do Google negou a gravação do pedido. Verifique as 'Security Rules' no Console do Firebase.");
+      } else if (e.message === "AUTH_DISABLED") {
+        setErrorMsg("⚠️ Erro de Conexão: O login anônimo está desativado no Firebase. Contate o administrador.");
+      } else {
+        setErrorMsg("❌ Falha crítica ao salvar pedido. Verifique o console do navegador para detalhes técnicos.");
+      }
+    } finally { 
+      setIsSubmitting(false); 
+    }
   };
 
   const formatSetorDisplay = () => {
@@ -286,7 +299,6 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
                 <OrderReviewTable title="Terracota" data={terracota} colorHex="#a35e47" />
             </div>
 
-            {/* SEÇÃO DE OBSERVAÇÃO PRESERVADA PARA EXIBIÇÃO DE PEDIDOS ANTIGOS */}
             {info.observacao ? (
               <div className="mb-10 p-6 bg-primary-light/30 border-2 border-primary/10 rounded-[2rem] relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-full -mr-12 -mt-12 transition-transform group-hover:scale-110"></div>
@@ -321,6 +333,13 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
       <Modal isOpen={isConfirmModalOpen} onClose={() => setIsConfirmModalOpen(false)} title="Confirmar Pedido">
         <div className="space-y-6 text-center">
           <p className="text-sm text-text-secondary font-bold uppercase tracking-wider mb-6">Ao confirmar, o pedido será enviado para o sistema central da UMADEMATS.</p>
+          
+          {errorMsg && (
+            <div className="p-4 bg-red-500/10 border-2 border-red-500/20 rounded-2xl text-red-500 text-xs font-black uppercase tracking-widest animate-shake mb-6">
+              {errorMsg}
+            </div>
+          )}
+
           <Button className="w-full h-14" onClick={finalizeOrder} disabled={isSubmitting}>
             {isSubmitting ? <i className="fas fa-spinner fa-spin"></i> : "ENVIAR PEDIDO AGORA"}
           </Button>

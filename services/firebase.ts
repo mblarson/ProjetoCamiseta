@@ -6,7 +6,7 @@ import {
   DocumentSnapshot, startAfter, documentId
 } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
 import { getAuth, signInAnonymously, Auth, User, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
-import { Order, Stats, PaymentHistory, ColorData, Confirmation } from '../types';
+import { Order, Stats, PaymentHistory, ColorData } from '../types';
 
 const firebaseConfig = {
   apiKey: "AIzaSyA1I6zqowDo3k8eG1A1c-1hnGBofNX6PoA",
@@ -23,6 +23,7 @@ class FirebaseService {
   public db: Firestore;
   public auth: Auth;
   private authPromise: Promise<User> | null = null;
+  public isReady: boolean = false;
 
   private constructor() {
     try {
@@ -33,7 +34,7 @@ class FirebaseService {
       });
       this.auth = getAuth(app);
     } catch (e) {
-      console.error("🔥 Firebase: Falha na Configuração Inicial", e);
+      console.error("🔥 Firebase Init Error:", e);
       throw e;
     }
   }
@@ -45,23 +46,45 @@ class FirebaseService {
     return FirebaseService.instance;
   }
 
-  public handleFirebaseError(e: any) {
-    const msg = e.message || "";
+  public handleFirebaseError(e: any, context?: string) {
+    const msg = (e.message || "").toLowerCase();
     const code = e.code || "";
-    if (msg.includes("Cloud Firestore API has not been used") || code === "permission-denied") {
-      throw new Error("API_DISABLED");
+    const user = this.auth.currentUser;
+    
+    console.group(`🔥 ERRO FIREBASE ${context ? `[${context}]` : ''}`);
+    console.error("Código:", code);
+    console.error("Mensagem:", e.message);
+    console.log("Usuário:", user ? (user.isAnonymous ? "Anônimo" : user.email) : "Deslogado");
+    console.groupEnd();
+    
+    if (code === "permission-denied" || msg.includes("insufficient permissions") || msg.includes("rules_denied")) {
+      throw new Error("RULES_DENIED");
     }
+
+    if (code === "auth/operation-not-allowed") {
+      throw new Error("AUTH_DISABLED");
+    }
+
     throw e;
   }
 
   public async connect(): Promise<User> {
-    if (this.auth.currentUser) return this.auth.currentUser;
+    if (this.auth.currentUser) {
+      this.isReady = true;
+      return this.auth.currentUser;
+    }
     if (this.authPromise) return this.authPromise;
-    this.authPromise = signInAnonymously(this.auth).then(cred => cred.user).catch(err => {
-      this.authPromise = null;
-      this.handleFirebaseError(err);
-      throw err;
-    });
+    
+    this.authPromise = signInAnonymously(this.auth)
+      .then(cred => {
+        this.isReady = true;
+        return cred.user;
+      })
+      .catch(err => {
+        this.authPromise = null;
+        console.warn("Conexão anônima falhou...");
+        throw err;
+      });
     return this.authPromise;
   }
 }
@@ -70,13 +93,13 @@ const service = FirebaseService.getInstance();
 export const auth = service.auth;
 export const db = service.db;
 export const connectFirebase = () => service.connect();
+export const isFirebaseReady = () => service.isReady;
 
 export const signInWithEmail = async (email, password) => {
     try {
         await signInWithEmailAndPassword(auth, email, password);
         return { success: true };
     } catch (error: any) {
-        console.error("Firebase Auth Error:", error.code);
         return { success: false, code: error.code };
     }
 };
@@ -102,17 +125,6 @@ const getPaymentDocId = (order: Pick<Order, 'local' | 'setor'>): string => {
     key = `SETOR ${key}`;
   }
   return key;
-};
-
-const getConfirmationDocId = (local: 'Capital' | 'Interior', setor: string, lote: number = 1): string => {
-  let baseId = setor.toUpperCase().trim();
-  if (baseId === 'UMADEMATS') baseId = 'UMADEMATS';
-  else if (local === 'Capital') baseId = `SETOR ${baseId}`;
-  
-  if (lote > 1) {
-    return `LOTE_${lote}_${baseId}`;
-  }
-  return baseId;
 };
 
 const calculateShirtCount = (order: Partial<Order>) => {
@@ -184,7 +196,7 @@ export const syncAllStats = async () => {
 
     return true;
   } catch (e: any) {
-    service.handleFirebaseError(e);
+    console.warn("⚠️ Falha ao sincronizar estatísticas (pode ser falta de permissão):", e.message);
     return false;
   }
 };
@@ -192,10 +204,9 @@ export const syncAllStats = async () => {
 export const fetchFullBackup = async () => {
   try {
     await service.connect();
-    const [ordersSnap, paymentsSnap, confirmationsSnap, statsSnap, configSnap] = await Promise.all([
+    const [ordersSnap, paymentsSnap, statsSnap, configSnap] = await Promise.all([
       getDocs(collection(db, "pedidos")),
       getDocs(collection(db, "pagamentos")),
-      getDocs(collection(db, "confirmacoes")),
       getDoc(doc(db, "configuracoes", "estatisticas")),
       getDoc(doc(db, "configuracoes", "geral"))
     ]);
@@ -206,11 +217,10 @@ export const fetchFullBackup = async () => {
       config: configSnap.data(),
       pedidos: ordersSnap.docs.map(d => ({ docId: d.id, ...d.data() })),
       pagamentos: paymentsSnap.docs.map(d => ({ docId: d.id, ...d.data() })),
-      confirmacoes: confirmationsSnap.docs.map(d => ({ docId: d.id, ...d.data() })),
       estatisticasFinal: statsSnap.exists() ? statsSnap.data() : null
     };
   } catch (e: any) {
-    console.error("Erro ao gerar backup:", e);
+    service.handleFirebaseError(e, "Backup");
     throw e;
   }
 };
@@ -235,7 +245,7 @@ export const recalculateTotalsAfterPriceChange = async (newPrice: number) => {
     await syncAllStats();
     return true;
   } catch (e: any) {
-    service.handleFirebaseError(e);
+    service.handleFirebaseError(e, "Recalculate Price");
     return false;
   }
 };
@@ -255,7 +265,7 @@ export const getPaymentHistoryForOrder = async (order: Order): Promise<PaymentHi
       const orderPayments = allLiquidacoes.filter((p: any) => p.pedidoId === order.docId);
       return orderPayments as PaymentHistory[];
   } catch (e: any) {
-      service.handleFirebaseError(e);
+      service.handleFirebaseError(e, "Get Payment History");
       return [];
   }
 };
@@ -268,7 +278,9 @@ export const getGlobalConfig = async (): Promise<GlobalConfig> => {
         const data = snap.data() as GlobalConfig;
         return { ...data, currentBatch: data.currentBatch || 1 };
     }
-  } catch (e: any) { service.handleFirebaseError(e); }
+  } catch (e: any) { 
+    console.warn("Configurações não encontradas, usando padrões.");
+  }
   return { pedidosAbertos: true, valorCamiseta: 30.00, currentBatch: 1 };
 };
 
@@ -283,7 +295,7 @@ export const updateGlobalConfig = async (data: Partial<GlobalConfig>) => {
     }
     return true;
   } catch (e: any) {
-      service.handleFirebaseError(e);
+      service.handleFirebaseError(e, "Update Config");
       return false;
   }
 };
@@ -295,7 +307,7 @@ export const createNewBatch = async (newBatchNumber: number) => {
         await syncAllStats();
         return true;
     } catch (e: any) {
-        service.handleFirebaseError(e);
+        service.handleFirebaseError(e, "Create Batch");
         return false;
     }
 };
@@ -311,13 +323,9 @@ export const deleteLastBatch = async () => {
         const ordersQuery = query(collection(db, "pedidos"), where("lote", "==", batchToDelete));
         const ordersSnap = await getDocs(ordersQuery);
         
-        const confQuery = query(collection(db, "confirmacoes"), where("lote", "==", batchToDelete));
-        const confSnap = await getDocs(confQuery);
-
         const batch = writeBatch(db);
 
         ordersSnap.forEach(d => batch.delete(d.ref));
-        confSnap.forEach(d => batch.delete(d.ref));
         
         const configRef = doc(db, "configuracoes", "geral");
         batch.update(configRef, { currentBatch: batchToDelete - 1 });
@@ -326,7 +334,7 @@ export const deleteLastBatch = async () => {
         await syncAllStats();
         return true;
     } catch (e: any) {
-        service.handleFirebaseError(e);
+        service.handleFirebaseError(e, "Delete Batch");
         return false;
     }
 };
@@ -416,7 +424,7 @@ export const recordPayment = async (orderId: string, amount: number, date?: stri
 
       return true;
     });
-  } catch (e: any) { service.handleFirebaseError(e); return false; }
+  } catch (e: any) { service.handleFirebaseError(e, "Record Payment"); return false; }
 };
 
 export const cancelLastPayment = async (orderId: string) => {
@@ -493,16 +501,14 @@ export const endEvent = async () => {
   try {
     await service.connect();
     
-    const [ordersSnap, paymentsSnap, confirmationsSnap] = await Promise.all([
+    const [ordersSnap, paymentsSnap] = await Promise.all([
       getDocs(collection(db, "pedidos")),
-      getDocs(collection(db, "pagamentos")),
-      getDocs(collection(db, "confirmacoes"))
+      getDocs(collection(db, "pagamentos"))
     ]);
 
     const allDocs = [
       ...ordersSnap.docs,
-      ...paymentsSnap.docs,
-      ...confirmationsSnap.docs
+      ...paymentsSnap.docs
     ];
 
     const MAX_BATCH_SIZE = 500;
@@ -536,8 +542,7 @@ export const endEvent = async () => {
 
     return true;
   } catch (e: any) { 
-    console.error("Erro ao encerrar evento:", e);
-    service.handleFirebaseError(e); 
+    service.handleFirebaseError(e, "End Event"); 
     return false; 
   }
 };
@@ -549,7 +554,7 @@ export const getStats = async (): Promise<Stats> => {
     const statsSnap = await getDoc(doc(db, "configuracoes", "estatisticas"));
     return statsSnap.exists() ? statsSnap.data() as Stats : defaultStats;
   } catch (e: any) { 
-    service.handleFirebaseError(e); 
+    console.warn("Estatísticas protegidas ou indisponíveis.");
   }
   return defaultStats;
 };
@@ -563,7 +568,7 @@ export const getAllOrders = async (): Promise<Order[]> => {
         const data = d.data();
         return { docId: d.id, ...data, lote: data.lote || 1 } as Order;
     });
-  } catch (e: any) { service.handleFirebaseError(e); return []; }
+  } catch (e: any) { service.handleFirebaseError(e, "Get All Orders"); return []; }
 };
 
 const ORDERS_PAGE_SIZE = 50;
@@ -595,24 +600,17 @@ export const getPaginatedOrders = async (lastVisible?: DocumentSnapshot, loteFil
 
     return { orders, lastVisible: lastVisibleDoc };
   } catch (e: any) {
-    service.handleFirebaseError(e);
+    service.handleFirebaseError(e, "Get Paginated Orders");
     return { orders: [], lastVisible: null };
   }
 };
 
-/**
- * Busca de Pedidos Corrigida:
- * Agora realiza filtragem parcial (CONTAINS) e Case-Insensitive.
- * Inclui o nome formatado do setor (ex: "SETOR F") para garantir que o usuário encontre
- * exatamente o que vê na interface, independentemente de maiúsculas ou minúsculas.
- */
 export const searchOrders = async (searchTerm: string): Promise<Order[]> => {
   try {
     await service.connect();
     const term = searchTerm.trim().toLowerCase();
     if (!term) return [];
 
-    // Recuperamos todos os pedidos para permitir busca por "Contém" (Firestore nativo não suporta substrings centrais)
     const snap = await getDocs(collection(db, "pedidos"));
     const results: Order[] = [];
     
@@ -620,25 +618,22 @@ export const searchOrders = async (searchTerm: string): Promise<Order[]> => {
       const data = d.data();
       const order = { docId: d.id, ...data, lote: data.lote || 1 } as Order;
       
-      // Gera o nome do setor exatamente como o usuário o vê na tela
       const displaySetor = (order.setor === 'UMADEMATS') 
         ? 'UMADEMATS' 
         : (order.local === 'Capital' && !order.setor.toUpperCase().startsWith('SETOR') 
             ? `SETOR ${order.setor}` 
             : order.setor);
 
-      // Normalização dos campos para comparação Case-Insensitive e Substring
       const searchableFields = [
         order.numPedido,
         order.nome,
         order.setor,
-        displaySetor, // Compara com o texto formatado (ex: SETOR F)
+        displaySetor,
         order.local,
         order.email,
         order.contato
       ].map(f => (f || "").toLowerCase());
 
-      // Verifica se o termo está contido em qualquer um dos campos
       const isMatch = searchableFields.some(f => f.includes(term));
 
       if (isMatch) {
@@ -646,10 +641,9 @@ export const searchOrders = async (searchTerm: string): Promise<Order[]> => {
       }
     });
 
-    // Mantém a ordenação cronológica decrescente
     return results.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
   } catch (e: any) {
-    service.handleFirebaseError(e);
+    service.handleFirebaseError(e, "Search Orders");
     return [];
   }
 };
@@ -665,7 +659,7 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
     }
     return null;
   } catch (e: any) {
-    service.handleFirebaseError(e);
+    service.handleFirebaseError(e, "Get Order By ID");
     return null;
   }
 };
@@ -687,18 +681,14 @@ export const deleteOrder = async (order: Order) => {
       
       transaction.delete(orderRef);
 
-      const confDocId = getConfirmationDocId(order.local, order.setor, order.lote);
-      const confRef = doc(db, "confirmacoes", confDocId);
-      transaction.delete(confRef);
-
       return true;
     });
 
     if (success) {
-      await syncAllStats();
+      syncAllStats(); // Agora é chamado de forma assíncrona sem await para não travar o fluxo
     }
     return success;
-  } catch (e: any) { service.handleFirebaseError(e); return false; }
+  } catch (e: any) { service.handleFirebaseError(e, "Delete Order"); return false; }
 };
 
 export const checkExistingEmail = async (email: string, currentBatch: number) => {
@@ -718,8 +708,8 @@ export const checkExistingEmail = async (email: string, currentBatch: number) =>
 
     return { exists: !!duplicate, message: duplicate ? `Já existe um pedido registrado com este e-mail no Lote ${currentBatch}.` : "" };
   } catch (e: any) { 
-    service.handleFirebaseError(e); 
-    return { exists: false, message: "Erro ao verificar o e-mail." };
+    console.warn("Falha ao checar e-mail duplicado.");
+    return { exists: false, message: "" };
   }
 };
 
@@ -748,8 +738,8 @@ export const checkExistingSector = async (local: 'Capital' | 'Interior', setor: 
 
     return { exists: !!duplicate, message };
   } catch (e: any) {
-    service.handleFirebaseError(e);
-    return { exists: false, message: "Erro ao verificar o setor/cidade." };
+    console.warn("Falha ao checar setor duplicado.");
+    return { exists: false, message: "" };
   }
 };
 
@@ -761,7 +751,7 @@ export const findOrder = async (id: string) => {
     if (snap.empty) return null;
     const data = snap.docs[0].data();
     return { docId: snap.docs[0].id, ...data, lote: data.lote || 1 } as Order;
-  } catch (e: any) { service.handleFirebaseError(e); return null; }
+  } catch (e: any) { service.handleFirebaseError(e, "Find Order"); return null; }
 };
 
 export const findOrderByEmail = async (email: string): Promise<Order[]> => {
@@ -773,7 +763,7 @@ export const findOrderByEmail = async (email: string): Promise<Order[]> => {
         const data = d.data();
         return { docId: d.id, ...data, lote: data.lote || 1 } as Order;
     }).sort((a, b) => b.lote - a.lote);
-  } catch (e: any) { service.handleFirebaseError(e); return []; }
+  } catch (e: any) { service.handleFirebaseError(e, "Find Order by Email"); return []; }
 };
 
 export const updateOrder = async (docId: string, orderData: Partial<Order>) => {
@@ -785,7 +775,6 @@ export const updateOrder = async (docId: string, orderData: Partial<Order>) => {
       if (!orderSnap.exists()) throw new Error("Pedido não encontrado");
       
       const oldOrder = orderSnap.data() as Order;
-      const lote = oldOrder.lote || 1;
       const newTotalValue = orderData.valorTotal!;
       const valorPago = oldOrder.valorPago;
       
@@ -795,30 +784,15 @@ export const updateOrder = async (docId: string, orderData: Partial<Order>) => {
 
       transaction.update(orderRef, { ...orderData, statusPagamento: newStatus });
 
-      const oldConfId = getConfirmationDocId(oldOrder.local, oldOrder.setor, lote);
-      const newConfId = orderData.local && orderData.setor 
-        ? getConfirmationDocId(orderData.local, orderData.setor, lote) 
-        : oldConfId;
-
-      if (oldConfId !== newConfId) {
-        transaction.delete(doc(db, "confirmacoes", oldConfId));
-        transaction.set(doc(db, "confirmacoes", newConfId), {
-          type: orderData.local || oldOrder.local,
-          status: 'none',
-          lastUpdated: '',
-          lote: lote
-        }, { merge: true });
-      }
-
       return true;
     });
 
     if (success) {
-      await syncAllStats();
+      syncAllStats();
     }
     return success;
   } catch (e: any) { 
-    service.handleFirebaseError(e); 
+    service.handleFirebaseError(e, "Update Order"); 
     return false; 
   }
 };
@@ -844,114 +818,15 @@ export const createOrder = async (orderData: Partial<Order>, prefix: string = 'P
         lote: currentBatch
       });
 
-      if (orderData.local && orderData.setor) {
-        const confDocId = getConfirmationDocId(orderData.local, orderData.setor, currentBatch);
-        const confRef = doc(db, "confirmacoes", confDocId);
-        transaction.set(confRef, {
-          type: orderData.local,
-          status: 'none',
-          lastUpdated: '',
-          lote: currentBatch
-        }, { merge: true });
-      }
-
       return numPedido;
     });
 
     if (numPedido) {
-      await syncAllStats();
+      // Chamamos o sync sem await para garantir que o usuário receba o OK mesmo se as regras do Firestore para estatísticas estiverem bloqueadas
+      syncAllStats().catch(err => console.warn("Erro silencioso ao sincronizar:", err));
     }
     return numPedido;
-  } catch (e: any) { service.handleFirebaseError(e); }
-};
-
-export const getConfirmations = async (loteFilter?: number): Promise<Confirmation[]> => {
-  try {
-    await service.connect();
-    let q;
-    if (loteFilter) {
-        q = query(collection(db, "confirmacoes"), where("lote", "==", loteFilter));
-    } else {
-        q = query(collection(db, "confirmacoes"));
-    }
-    const snap = await getDocs(q);
-    return snap.docs.map(d => {
-        const data = d.data();
-        return { docId: d.id, ...data, lote: data.lote || 1 } as Confirmation;
-    });
-  } catch (e: any) {
-    service.handleFirebaseError(e);
-    return [];
-  }
-};
-
-export const searchConfirmations = async (searchTerm: string): Promise<Confirmation[]> => {
-  try {
-    await service.connect();
-    const term = searchTerm.trim().toUpperCase();
-    const q = query(collection(db, "confirmacoes"), orderBy(documentId()), where(documentId(), ">=", term), where(documentId(), "<=", term + '\uf8ff'));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => {
-        const data = d.data();
-        return { docId: d.id, ...data, lote: data.lote || 1 } as Confirmation;
-    });
-  } catch (e: any) {
-      service.handleFirebaseError(e);
-      return [];
-  }
-};
-
-export const syncConfirmationsFromOrders = async () => {
-  try {
-    await service.connect();
-    const [orders, confirmations] = await Promise.all([
-      getAllOrders(),
-      getConfirmations()
-    ]);
-
-    const existingIds = new Set(confirmations.map(c => c.docId));
-    const newConfirmationsMap = new Map<string, Omit<Confirmation, 'docId'>>();
-
-    orders.forEach(order => {
-      const lote = order.lote || 1;
-      const docId = getConfirmationDocId(order.local, order.setor, lote);
-      
-      if (!existingIds.has(docId) && !newConfirmationsMap.has(docId)) {
-        newConfirmationsMap.set(docId, {
-          type: order.local,
-          status: 'none',
-          lastUpdated: '',
-          lote: lote
-        });
-      }
-    });
-
-    if (newConfirmationsMap.size > 0) {
-      const batch = writeBatch(db);
-      newConfirmationsMap.forEach((data, docId) => {
-        const docRef = doc(db, "confirmacoes", docId);
-        batch.set(docRef, data);
-      });
-      await batch.commit();
-    }
-    return true;
-  } catch (e: any) {
-    service.handleFirebaseError(e);
-    return false;
-  }
-};
-
-export const updateConfirmationStatus = async (docId: string, status: 'none' | 'confirmed' | 'pending') => {
-  try {
-    await service.connect();
-    const docRef = doc(db, "confirmacoes", docId);
-    await updateDoc(docRef, {
-      status: status,
-      lastUpdated: new Date().toISOString()
-    });
-    return true;
-  } catch (e: any) {
-    service.handleFirebaseError(e);
-    return false;
+  } catch (e: any) { 
+    service.handleFirebaseError(e, "Create Order"); 
   }
 };

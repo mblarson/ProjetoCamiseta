@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { AdminTab } from '../types';
 
@@ -11,7 +10,6 @@ const tabIcons: Record<AdminTab, string> = {
   [AdminTab.Dashboard]: 'fa-tachometer-alt',
   [AdminTab.Orders]: 'fa-clipboard-list',
   [AdminTab.Payments]: 'fa-money-bill-wave',
-  [AdminTab.Confirmation]: 'fa-check-double',
   [AdminTab.Statistics]: 'fa-chart-pie',
   [AdminTab.Event]: 'fa-calendar-alt',
 };

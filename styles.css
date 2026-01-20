@@ -1,12 +1,23 @@
+:root {
+  --background: #ffffff;
+  --surface: rgba(248, 250, 252, 0.75);
+  --primary: #0ea5e9;
+  --primary-light: rgba(14, 165, 233, 0.1);
+  --secondary: #D53F8C;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --border-light: #e2e8f0;
+  --splash-bg: #ffffff;
+}
 
-/* Base Styles */
 html {
-  font-size: 18px; /* Aumentado de 17px */
+  font-size: 18px;
+  scroll-behavior: smooth;
 }
 
 @media (max-width: 768px) {
   html {
-    font-size: 16px; /* Base sólida para mobile */
+    font-size: 16px;
   }
 }
 
@@ -18,24 +29,21 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
+  overflow-x: hidden;
 }
 
-/* Card Style (Glassmorphism Light - Optimized) */
 .card {
-  /* THEME CHANGE: Removed backdrop-filter to prevent interface freezing on mobile/medium devices */
-  background: #ffffff; /* Sólido para performance máxima */
+  background: #ffffff;
   border-radius: 1.5rem;
   border: 1px solid var(--border-light);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
 }
 
-/* Selection Color */
 ::selection {
   background-color: var(--primary);
   color: #ffffff;
 }
 
-/* Force Hide Number Input Spinners */
 input[type=number]::-webkit-inner-spin-button, 
 input[type=number]::-webkit-outer-spin-button { 
   -webkit-appearance: none !important; 
@@ -47,7 +55,6 @@ input[type=number] {
   appearance: none !important;
 }
 
-/* Scroll Customization */
 ::-webkit-scrollbar {
   width: 10px;
 }
@@ -59,4 +66,15 @@ input[type=number] {
   border-radius: 10px;
   border: 2px solid transparent;
   background-clip: content-box;
+}
+
+.animate-shake {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
 }

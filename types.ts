@@ -1,4 +1,3 @@
-
 export type ColorType = 'verdeOliva' | 'terracota';
 export type CategoryType = 'infantil' | 'babylook' | 'unissex';
 
@@ -43,6 +42,15 @@ export interface Order {
   unissex?: SizeQuantities;
 }
 
+// Fix: Added missing Confirmation interface to resolve import error in ConfirmationTab.tsx
+export interface Confirmation {
+  docId: string;
+  type: 'Capital' | 'Interior';
+  status: 'none' | 'confirmed' | 'pending';
+  lote?: number;
+  lastUpdated?: string;
+}
+
 export interface BatchStats {
   qtd_pedidos: number;
   qtd_camisetas: number;
@@ -65,14 +73,6 @@ export interface Stats {
   [key: string]: any; 
 }
 
-export interface Confirmation {
-  docId: string;
-  type: 'Capital' | 'Interior';
-  status: 'none' | 'confirmed' | 'pending';
-  lastUpdated: string; // ISO string
-  lote: number; // Novo campo
-}
-
 export enum Section {
   Home = 'home',
   Order = 'order',
@@ -84,7 +84,6 @@ export enum AdminTab {
   Dashboard = 'dashboard',
   Orders = 'pedidos',
   Payments = 'pagamentos',
-  Confirmation = 'confirmação',
   Statistics = 'estatisticas',
   Event = 'evento'
 }
