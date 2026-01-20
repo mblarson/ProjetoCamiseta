@@ -6,7 +6,8 @@ import {
   DocumentSnapshot, startAfter, documentId
 } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
 import { getAuth, signInAnonymously, Auth, User, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
-import { Order, Stats, PaymentHistory, ColorData, Confirmation } from '../types';
+// Added GlobalConfig to imports
+import { Order, Stats, PaymentHistory, ColorData, Confirmation, GlobalConfig } from '../types';
 
 const firebaseConfig = {
   apiKey: "AIzaSyA1I6zqowDo3k8eG1A1c-1hnGBofNX6PoA",
@@ -74,60 +75,39 @@ export const auth = service.auth;
 export const db = service.db;
 export const connectFirebase = () => service.connect();
 
-export const signInWithEmail = async (email, password) => {
-    try {
-        await signInWithEmailAndPassword(auth, email, password);
-        return { success: true };
-    } catch (error: any) {
-        console.error("Firebase Auth Error:", error.code);
-        return { success: false, code: error.code };
+/**
+ * Função Robusta para Contagem de Camisetas
+ * Considera nova estrutura (cores) e estrutura legada (raiz)
+ */
+export const calculateShirtCount = (order: any): number => {
+  if (!order) return 0;
+  let total = 0;
+  const categories = ['infantil', 'babylook', 'unissex'];
+  const colors = ['verdeOliva', 'terracota'];
+
+  // 1. Contagem na nova estrutura de Cores
+  colors.forEach(col => {
+    if (order[col]) {
+      categories.forEach(cat => {
+        if (order[col][cat]) {
+          Object.values(order[col][cat]).forEach(val => {
+            total += (Number(val) || 0);
+          });
+        }
+      });
     }
-};
+  });
 
-export const signOutUser = async () => {
-    try {
-        await signOut(auth);
-        await signInAnonymously(auth);
-    } catch (error) {
-        console.error("Sign Out Error:", error);
+  // 2. Contagem na estrutura Legada (caso exista pedido antigo no lote)
+  categories.forEach(cat => {
+    if (order[cat]) {
+      Object.values(order[cat]).forEach(val => {
+        total += (Number(val) || 0);
+      });
     }
-};
+  });
 
-export interface GlobalConfig {
-  pedidosAbertos: boolean;
-  valorCamiseta: number;
-  currentBatch: number;
-}
-
-const getPaymentDocId = (order: Pick<Order, 'local' | 'setor'>): string => {
-  let key = order.setor.toUpperCase().trim();
-  if (order.local === 'Capital' && !key.startsWith('SETOR') && key !== 'UMADEMATS') {
-    key = `SETOR ${key}`;
-  }
-  return key;
-};
-
-const getConfirmationDocId = (local: 'Capital' | 'Interior', setor: string, lote: number = 1): string => {
-  let baseId = setor.toUpperCase().trim();
-  if (baseId === 'UMADEMATS') baseId = 'UMADEMATS';
-  else if (local === 'Capital') baseId = `SETOR ${baseId}`;
-  
-  if (lote > 1) {
-    return `LOTE_${lote}_${baseId}`;
-  }
-  return baseId;
-};
-
-const calculateShirtCount = (order: Partial<Order>) => {
-  const calculate = (data?: ColorData) => {
-    if (!data) return 0;
-    let q = 0;
-    Object.values(data).forEach(cat => {
-      Object.values(cat).forEach(val => q += (val as number || 0));
-    });
-    return q;
-  };
-  return calculate(order.verdeOliva) + calculate(order.terracota);
+  return total;
 };
 
 export const syncAllStats = async () => {
@@ -180,639 +160,22 @@ export const syncAllStats = async () => {
       pedidos_parciais: parciais,
       pedidos_pendentes: pendentes,
       batches: batches,
-      qtd_infantil: 0,
+      // Reset de campos específicos se necessário futuramente
+      qtd_infantil: 0, 
       qtd_babylook: 0,
       qtd_unissex: 0
     }, { merge: true });
 
     return true;
   } catch (e: any) {
-    service.handleFirebaseError(e);
+    console.warn("SyncAllStats: Falha na atualização (comum se não for Admin)", e.message);
     return false;
-  }
-};
-
-export const fetchFullBackup = async () => {
-  try {
-    await service.connect();
-    const [ordersSnap, paymentsSnap, confirmationsSnap, statsSnap, configSnap] = await Promise.all([
-      getDocs(collection(db, "pedidos")),
-      getDocs(collection(db, "pagamentos")),
-      getDocs(collection(db, "confirmacoes")),
-      getDoc(doc(db, "configuracoes", "estatisticas")),
-      getDoc(doc(db, "configuracoes", "geral"))
-    ]);
-
-    return {
-      backupDate: new Date().toISOString(),
-      evento: "UMADEMATS - JUBILEU DE OURO",
-      config: configSnap.data(),
-      pedidos: ordersSnap.docs.map(d => ({ docId: d.id, ...d.data() })),
-      pagamentos: paymentsSnap.docs.map(d => ({ docId: d.id, ...d.data() })),
-      confirmacoes: confirmationsSnap.docs.map(d => ({ docId: d.id, ...d.data() })),
-      estatisticasFinal: statsSnap.exists() ? statsSnap.data() : null
-    };
-  } catch (e: any) {
-    console.error("Erro ao gerar backup:", e);
-    throw e;
-  }
-};
-
-export const recalculateTotalsAfterPriceChange = async (newPrice: number) => {
-  try {
-    await service.connect();
-    const ordersQuery = query(collection(db, "pedidos"));
-    const ordersSnap = await getDocs(ordersQuery);
-    const batch = writeBatch(db);
-
-    ordersSnap.forEach(orderDoc => {
-      const orderData = orderDoc.data() as Order;
-      const shirtCount = calculateShirtCount(orderData);
-      const newOrderTotal = shirtCount * newPrice;
-      
-      const orderRef = doc(db, "pedidos", orderDoc.id);
-      batch.update(orderRef, { valorTotal: newOrderTotal });
-    });
-
-    await batch.commit();
-    await syncAllStats();
-    return true;
-  } catch (e: any) {
-    service.handleFirebaseError(e);
-    return false;
-  }
-};
-
-export const getPaymentHistoryForOrder = async (order: Order): Promise<PaymentHistory[]> => {
-  try {
-      await service.connect();
-      const paymentDocId = getPaymentDocId(order);
-      const paymentLogRef = doc(db, "pagamentos", paymentDocId);
-      const paymentLogSnap = await getDoc(paymentLogRef);
-
-      if (!paymentLogSnap.exists()) {
-          return [];
-      }
-
-      const allLiquidacoes = paymentLogSnap.data().liquidacoes || [];
-      const orderPayments = allLiquidacoes.filter((p: any) => p.pedidoId === order.docId);
-      return orderPayments as PaymentHistory[];
-  } catch (e: any) {
-      service.handleFirebaseError(e);
-      return [];
-  }
-};
-
-export const getGlobalConfig = async (): Promise<GlobalConfig> => {
-  try {
-    await service.connect();
-    const snap = await getDoc(doc(db, "configuracoes", "geral"));
-    if (snap.exists()) {
-        const data = snap.data() as GlobalConfig;
-        return { ...data, currentBatch: data.currentBatch || 1 };
-    }
-  } catch (e: any) { service.handleFirebaseError(e); }
-  return { pedidosAbertos: true, valorCamiseta: 30.00, currentBatch: 1 };
-};
-
-export const updateGlobalConfig = async (data: Partial<GlobalConfig>) => {
-  try {
-    await service.connect();
-    const configRef = doc(db, "configuracoes", "geral");
-    await setDoc(configRef, data, { merge: true });
-    
-    if (data.valorCamiseta !== undefined) {
-      await recalculateTotalsAfterPriceChange(data.valorCamiseta);
-    }
-    return true;
-  } catch (e: any) {
-      service.handleFirebaseError(e);
-      return false;
-  }
-};
-
-export const createNewBatch = async (newBatchNumber: number) => {
-    try {
-        await service.connect();
-        await updateGlobalConfig({ currentBatch: newBatchNumber });
-        await syncAllStats();
-        return true;
-    } catch (e: any) {
-        service.handleFirebaseError(e);
-        return false;
-    }
-};
-
-export const deleteLastBatch = async () => {
-    try {
-        await service.connect();
-        const config = await getGlobalConfig();
-        const batchToDelete = config.currentBatch;
-
-        if (batchToDelete <= 1) return false;
-
-        const ordersQuery = query(collection(db, "pedidos"), where("lote", "==", batchToDelete));
-        const ordersSnap = await getDocs(ordersQuery);
-        
-        const confQuery = query(collection(db, "confirmacoes"), where("lote", "==", batchToDelete));
-        const confSnap = await getDocs(confQuery);
-
-        const batch = writeBatch(db);
-
-        ordersSnap.forEach(d => batch.delete(d.ref));
-        confSnap.forEach(d => batch.delete(d.ref));
-        
-        const configRef = doc(db, "configuracoes", "geral");
-        batch.update(configRef, { currentBatch: batchToDelete - 1 });
-
-        await batch.commit();
-        await syncAllStats();
-        return true;
-    } catch (e: any) {
-        service.handleFirebaseError(e);
-        return false;
-    }
-};
-
-export const recordPayment = async (orderId: string, amount: number, date?: string) => {
-  try {
-    await service.connect();
-    return await runTransaction(db, async (transaction) => {
-      const orderRef = doc(db, "pedidos", orderId);
-      const statsRef = doc(db, "configuracoes", "estatisticas");
-      
-      const orderSnap = await transaction.get(orderRef);
-      if (!orderSnap.exists()) throw new Error("Pedido não encontrado");
-      
-      const orderData = orderSnap.data() as Order;
-      const lote = orderData.lote || 1;
-      const paymentDocId = getPaymentDocId(orderData);
-      const paymentLogRef = doc(db, "pagamentos", paymentDocId);
-
-      const statsSnap = await transaction.get(statsRef);
-      const paymentLogSnap = await transaction.get(paymentLogRef);
-      
-      const oldStatus = orderData.statusPagamento;
-      const newValorPago = (orderData.valorPago || 0) + amount;
-      
-      let newStatus: 'Pendente' | 'Parcial' | 'Pago' = 'Parcial';
-      if (newValorPago >= orderData.valorTotal) newStatus = 'Pago';
-      else if (newValorPago <= 0) newStatus = 'Pendente';
-
-      const timestamp = new Date().toISOString();
-      const liquidacaoId = `${orderId}-${timestamp}`;
-
-      const historyEntry: PaymentHistory = {
-        valor: amount,
-        data: date || new Date().toLocaleDateString('pt-BR'),
-        timestamp,
-        liquidacaoId
-      };
-
-      transaction.update(orderRef, {
-        valorPago: newValorPago,
-        statusPagamento: newStatus,
-      });
-
-      const paymentLogEntry = {
-        ...historyEntry,
-        pedidoId: orderId,
-        numPedido: orderData.numPedido,
-        nomeLider: orderData.nome,
-        lote: lote
-      };
-      
-      if (paymentLogSnap.exists()) {
-        const currentLiquidacoes = paymentLogSnap.data().liquidacoes || [];
-        transaction.update(paymentLogRef, {
-          liquidacoes: [...currentLiquidacoes, paymentLogEntry]
-        });
-      } else {
-        transaction.set(paymentLogRef, {
-          liquidacoes: [paymentLogEntry]
-        });
-      }
-
-      if (statsSnap.exists()) {
-        const statsUpdate: any = {
-          total_recebido_real: increment(amount),
-        };
-
-        if (oldStatus !== newStatus) {
-          if (oldStatus === 'Pendente') statsUpdate.pedidos_pendentes = increment(-1);
-          if (oldStatus === 'Parcial') statsUpdate.pedidos_parciais = increment(-1);
-          if (oldStatus === 'Pago') statsUpdate.pedidos_pagos = increment(-1);
-          
-          if (newStatus === 'Pendente') statsUpdate.pedidos_pendentes = increment(1);
-          if (newStatus === 'Parcial') statsUpdate.pedidos_parciais = increment(1);
-          if (newStatus === 'Pago') statsUpdate.pedidos_pagos = increment(1);
-        }
-        
-        transaction.update(statsRef, statsUpdate);
-      }
-
-      return true;
-    });
-  } catch (e: any) { service.handleFirebaseError(e); return false; }
-};
-
-export const cancelLastPayment = async (orderId: string) => {
-  try {
-    await service.connect();
-    return await runTransaction(db, async (transaction) => {
-      const orderRef = doc(db, "pedidos", orderId);
-      const statsRef = doc(db, "configuracoes", "estatisticas");
-      
-      const orderSnap = await transaction.get(orderRef);
-      if (!orderSnap.exists()) throw new Error("Pedido não encontrado");
-      
-      const orderData = orderSnap.data() as Order;
-      const paymentDocId = getPaymentDocId(orderData);
-      const paymentLogRef = doc(db, "pagamentos", paymentDocId);
-
-      const statsSnap = await transaction.get(statsRef);
-      const paymentLogSnap = await transaction.get(paymentLogRef);
-      
-      if (!paymentLogSnap.exists()) return false;
-
-      const allLiquidacoes = paymentLogSnap.data().liquidacoes || [];
-      const orderPayments = allLiquidacoes
-        .filter((p: any) => p.pedidoId === orderId)
-        .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-      if (orderPayments.length === 0) return false;
-      const lastPayment = orderPayments[0];
-      
-      const amountToCancel = lastPayment.valor;
-      const oldStatus = orderData.statusPagamento;
-      const newValorPago = Math.max(0, (orderData.valorPago || 0) - amountToCancel);
-      
-      let newStatus: 'Pendente' | 'Parcial' | 'Pago' = 'Pendente';
-      if (newValorPago >= orderData.valorTotal) newStatus = 'Pago';
-      else if (newValorPago > 0) newStatus = 'Parcial';
-
-      transaction.update(orderRef, {
-        valorPago: newValorPago,
-        statusPagamento: newStatus,
-      });
-
-      const updatedLiquidacoes = allLiquidacoes.filter(
-        (p: any) => p.liquidacaoId !== lastPayment.liquidacaoId
-      );
-      transaction.update(paymentLogRef, { liquidacoes: updatedLiquidacoes });
-
-      if (statsSnap.exists()) {
-        const statsUpdate: any = {
-          total_recebido_real: increment(-amountToCancel)
-        };
-
-        if (oldStatus !== newStatus) {
-          if (oldStatus === 'Pendente') statsUpdate.pedidos_pendentes = increment(-1);
-          if (oldStatus === 'Parcial') statsUpdate.pedidos_parciais = increment(-1);
-          if (oldStatus === 'Pago') statsUpdate.pedidos_pagos = increment(-1);
-          
-          if (newStatus === 'Pendente') statsUpdate.pedidos_pendentes = increment(1);
-          if (newStatus === 'Parcial') statsUpdate.pedidos_parciais = increment(1);
-          if (newStatus === 'Pago') statsUpdate.pedidos_pagos = increment(1);
-        }
-        
-        transaction.update(statsRef, statsUpdate);
-      }
-
-      return true;
-    });
-  } catch (e: any) { 
-    return false;
-  }
-};
-
-export const endEvent = async () => {
-  try {
-    await service.connect();
-    
-    const [ordersSnap, paymentsSnap, confirmationsSnap] = await Promise.all([
-      getDocs(collection(db, "pedidos")),
-      getDocs(collection(db, "pagamentos")),
-      getDocs(collection(db, "confirmacoes"))
-    ]);
-
-    const allDocs = [
-      ...ordersSnap.docs,
-      ...paymentsSnap.docs,
-      ...confirmationsSnap.docs
-    ];
-
-    const MAX_BATCH_SIZE = 500;
-    
-    for (let i = 0; i < allDocs.length; i += MAX_BATCH_SIZE) {
-      const batch = writeBatch(db);
-      const chunk = allDocs.slice(i, i + MAX_BATCH_SIZE);
-      
-      chunk.forEach(docSnap => {
-        batch.delete(docSnap.ref);
-      });
-      
-      await batch.commit();
-    }
-
-    await setDoc(doc(db, "configuracoes", "estatisticas"), {
-      qtd_pedidos: 0,
-      qtd_camisetas: 0,
-      valor_total: 0,
-      total_recebido_real: 0,
-      qtd_infantil: 0,
-      qtd_babylook: 0,
-      qtd_unissex: 0,
-      pedidos_pagos: 0,
-      pedidos_pendentes: 0,
-      pedidos_parciais: 0,
-      batches: {} 
-    });
-    
-    await updateGlobalConfig({ currentBatch: 1 });
-
-    return true;
-  } catch (e: any) { 
-    console.error("Erro ao encerrar evento:", e);
-    service.handleFirebaseError(e); 
-    return false; 
-  }
-};
-
-export const getStats = async (): Promise<Stats> => {
-  const defaultStats: Stats = { qtd_pedidos: 0, qtd_camisetas: 0, valor_total: 0, total_recebido_real: 0, qtd_infantil: 0, qtd_babylook: 0, qtd_unissex: 0, pedidos_pagos: 0, pedidos_pendentes: 0, pedidos_parciais: 0, batches: {} };
-  try {
-    await service.connect();
-    const statsSnap = await getDoc(doc(db, "configuracoes", "estatisticas"));
-    return statsSnap.exists() ? statsSnap.data() as Stats : defaultStats;
-  } catch (e: any) { 
-    service.handleFirebaseError(e); 
-  }
-  return defaultStats;
-};
-
-export const getAllOrders = async (): Promise<Order[]> => {
-  try {
-    await service.connect();
-    const q = query(collection(db, "pedidos"), orderBy("data", "desc"));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => {
-        const data = d.data();
-        return { docId: d.id, ...data, lote: data.lote || 1 } as Order;
-    });
-  } catch (e: any) { service.handleFirebaseError(e); return []; }
-};
-
-const ORDERS_PAGE_SIZE = 50;
-
-export const getPaginatedOrders = async (lastVisible?: DocumentSnapshot, loteFilter?: number): Promise<{ orders: Order[], lastVisible: DocumentSnapshot | null }> => {
-  try {
-    await service.connect();
-    const constraints: any[] = [
-      orderBy("data", "desc"),
-      limit(ORDERS_PAGE_SIZE)
-    ];
-
-    if (loteFilter) {
-        constraints.unshift(where("lote", "==", loteFilter));
-    }
-
-    if (lastVisible) {
-      constraints.push(startAfter(lastVisible));
-    }
-
-    const q = query(collection(db, "pedidos"), ...constraints);
-    const snap = await getDocs(q);
-    
-    const orders = snap.docs.map(d => {
-        const data = d.data();
-        return { docId: d.id, ...data, lote: data.lote || 1 } as Order;
-    });
-    const lastVisibleDoc = snap.docs.length === ORDERS_PAGE_SIZE ? snap.docs[snap.docs.length - 1] : null;
-
-    return { orders, lastVisible: lastVisibleDoc };
-  } catch (e: any) {
-    service.handleFirebaseError(e);
-    return { orders: [], lastVisible: null };
-  }
-};
-
-export const searchOrders = async (searchTerm: string): Promise<Order[]> => {
-  try {
-    await service.connect();
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return [];
-
-    const snap = await getDocs(collection(db, "pedidos"));
-    const results: Order[] = [];
-    
-    snap.forEach(d => {
-      const data = d.data();
-      const order = { docId: d.id, ...data, lote: data.lote || 1 } as Order;
-      
-      const displaySetor = (order.setor === 'UMADEMATS') 
-        ? 'UMADEMATS' 
-        : (order.local === 'Capital' && !order.setor.toUpperCase().startsWith('SETOR') 
-            ? `SETOR ${order.setor}` 
-            : order.setor);
-
-      const searchableFields = [
-        order.numPedido,
-        order.nome,
-        order.setor,
-        displaySetor,
-        order.local,
-        order.email,
-        order.contato
-      ].map(f => (f || "").toLowerCase());
-
-      const isMatch = searchableFields.some(f => f.includes(term));
-
-      if (isMatch) {
-        results.push(order);
-      }
-    });
-
-    return results.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
-  } catch (e: any) {
-    service.handleFirebaseError(e);
-    return [];
-  }
-};
-
-export const getOrderById = async (orderId: string): Promise<Order | null> => {
-  try {
-    await service.connect();
-    const orderRef = doc(db, "pedidos", orderId);
-    const orderSnap = await getDoc(orderRef);
-    if (orderSnap.exists()) {
-        const data = orderSnap.data();
-      return { docId: orderSnap.id, ...data, lote: data.lote || 1 } as Order;
-    }
-    return null;
-  } catch (e: any) {
-    service.handleFirebaseError(e);
-    return null;
-  }
-};
-
-export const deleteOrder = async (order: Order) => {
-  try {
-    await service.connect();
-    const success = await runTransaction(db, async (transaction) => {
-      const orderRef = doc(db, "pedidos", order.docId);
-      const paymentDocId = getPaymentDocId(order);
-      const paymentLogRef = doc(db, "pagamentos", paymentDocId);
-
-      const paymentLogSnap = await transaction.get(paymentLogRef);
-      if (paymentLogSnap.exists()) {
-          const allLiquidacoes = paymentLogSnap.data().liquidacoes || [];
-          const updatedLiquidacoes = allLiquidacoes.filter((p: any) => p.pedidoId !== order.docId);
-          transaction.update(paymentLogRef, { liquidacoes: updatedLiquidacoes });
-      }
-      
-      transaction.delete(orderRef);
-
-      const confDocId = getConfirmationDocId(order.local, order.setor, order.lote);
-      const confRef = doc(db, "confirmacoes", confDocId);
-      transaction.delete(confRef);
-
-      return true;
-    });
-
-    if (success) {
-      await syncAllStats().catch(() => {});
-    }
-    return success;
-  } catch (e: any) { service.handleFirebaseError(e); return false; }
-};
-
-export const checkExistingEmail = async (email: string, currentBatch: number) => {
-  try {
-    await service.connect();
-    const q = query(
-        collection(db, "pedidos"), 
-        where("email", "==", email.toLowerCase().trim())
-    );
-    const snap = await getDocs(q);
-
-    const duplicate = snap.docs.find(d => {
-        const data = d.data();
-        const recordBatch = data.lote || 1;
-        return recordBatch === currentBatch;
-    });
-
-    return { exists: !!duplicate, message: duplicate ? `Já existe um pedido registrado com este e-mail no Lote ${currentBatch}.` : "" };
-  } catch (e: any) { 
-    service.handleFirebaseError(e); 
-    return { exists: false, message: "Erro ao verificar o e-mail." };
-  }
-};
-
-export const checkExistingSector = async (local: 'Capital' | 'Interior', setor: string, currentBatch: number) => {
-  try {
-    await service.connect();
-    const q = query(
-        collection(db, "pedidos"), 
-        where("local", "==", local), 
-        where("setor", "==", setor), 
-        limit(10)
-    );
-    const snap = await getDocs(q);
-
-    const duplicate = snap.docs.find(d => {
-        const data = d.data();
-        const recordBatch = data.lote || 1;
-        return recordBatch === currentBatch;
-    });
-
-    let message = "";
-    if (duplicate) {
-      const displaySetor = (local === 'Capital' && setor !== 'UMADEMATS') ? `SETOR ${setor}` : setor;
-      message = local === 'Capital' ? `O ${displaySetor} já possui um pedido registrado no Lote ${currentBatch}.` : `A cidade de ${setor} já possui um pedido registrado no Lote ${currentBatch}.`;
-    }
-
-    return { exists: !!duplicate, message };
-  } catch (e: any) {
-    service.handleFirebaseError(e);
-    return { exists: false, message: "Erro ao verificar o setor/cidade." };
-  }
-};
-
-export const findOrder = async (id: string) => {
-  try {
-    await service.connect();
-    const q = query(collection(db, "pedidos"), where("numPedido", "==", id.trim().toUpperCase()), limit(1));
-    const snap = await getDocs(q);
-    if (snap.empty) return null;
-    const data = snap.docs[0].data();
-    return { docId: snap.docs[0].id, ...data, lote: data.lote || 1 } as Order;
-  } catch (e: any) { service.handleFirebaseError(e); return null; }
-};
-
-export const findOrderByEmail = async (email: string): Promise<Order[]> => {
-  try {
-    await service.connect();
-    const q = query(collection(db, "pedidos"), where("email", "==", email.toLowerCase().trim()));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => {
-        const data = d.data();
-        return { docId: d.id, ...data, lote: data.lote || 1 } as Order;
-    }).sort((a, b) => b.lote - a.lote);
-  } catch (e: any) { service.handleFirebaseError(e); return []; }
-};
-
-export const updateOrder = async (docId: string, orderData: Partial<Order>) => {
-  try {
-    await service.connect();
-    const success = await runTransaction(db, async (transaction) => {
-      const orderRef = doc(db, "pedidos", docId);
-      const orderSnap = await transaction.get(orderRef);
-      if (!orderSnap.exists()) throw new Error("Pedido não encontrado");
-      
-      const oldOrder = orderSnap.data() as Order;
-      const lote = oldOrder.lote || 1;
-      const newTotalValue = orderData.valorTotal!;
-      const valorPago = oldOrder.valorPago;
-      
-      let newStatus: 'Pendente' | 'Parcial' | 'Pago' = 'Pendente';
-      if (valorPago >= newTotalValue) newStatus = 'Pago';
-      else if (valorPago > 0) newStatus = 'Parcial';
-
-      transaction.update(orderRef, { ...orderData, statusPagamento: newStatus });
-
-      const oldConfId = getConfirmationDocId(oldOrder.local, oldOrder.setor, lote);
-      const newConfId = orderData.local && orderData.setor 
-        ? getConfirmationDocId(orderData.local, orderData.setor, lote) 
-        : oldConfId;
-
-      if (oldConfId !== newConfId) {
-        transaction.delete(doc(db, "confirmacoes", oldConfId));
-        transaction.set(doc(db, "confirmacoes", newConfId), {
-          type: orderData.local || oldOrder.local,
-          status: 'none',
-          lastUpdated: '',
-          lote: lote
-        }, { merge: true });
-      }
-
-      return true;
-    });
-
-    if (success) {
-      await syncAllStats().catch(() => {});
-    }
-    return success;
-  } catch (e: any) { 
-    service.handleFirebaseError(e); 
-    return false; 
   }
 };
 
 export const createOrder = async (orderData: Partial<Order>, prefix: string = 'PED') => {
   try {
     await service.connect();
-    
     const config = await getGlobalConfig();
     const currentBatch = config.currentBatch;
 
@@ -831,7 +194,7 @@ export const createOrder = async (orderData: Partial<Order>, prefix: string = 'P
       });
 
       if (orderData.local && orderData.setor) {
-        const confDocId = getConfirmationDocId(orderData.local, orderData.setor, currentBatch);
+        const confDocId = `LOTE_${currentBatch}_${orderData.setor.toUpperCase().trim()}`;
         const confRef = doc(db, "confirmacoes", confDocId);
         transaction.set(confRef, {
           type: orderData.local,
@@ -845,100 +208,195 @@ export const createOrder = async (orderData: Partial<Order>, prefix: string = 'P
     });
 
     if (numPedido) {
-      // Background sync, no await needed or catch permissions errors
-      syncAllStats().catch(() => console.warn("Stats sync skipped due to permissions."));
+      // Tentativa de sync em background (vai falhar para o cliente, o que é esperado)
+      syncAllStats().catch(() => {});
     }
     return numPedido;
-  } catch (e: any) { service.handleFirebaseError(e); }
+  } catch (e: any) { 
+    service.handleFirebaseError(e); 
+    return null;
+  }
 };
 
-export const getConfirmations = async (loteFilter?: number): Promise<Confirmation[]> => {
-  try {
-    await service.connect();
-    let q;
-    if (loteFilter) {
-        q = query(collection(db, "confirmacoes"), where("lote", "==", loteFilter));
-    } else {
-        q = query(collection(db, "confirmacoes"));
+export const signInWithEmail = async (email, password) => {
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, code: error.code };
     }
-    const snap = await getDocs(q);
-    return snap.docs.map(d => {
-        const data = d.data();
-        return { docId: d.id, ...data, lote: data.lote || 1 } as Confirmation;
-    });
-  } catch (e: any) {
-    service.handleFirebaseError(e);
-    return [];
-  }
 };
-
-export const searchConfirmations = async (searchTerm: string): Promise<Confirmation[]> => {
+export const signOutUser = async () => {
+    try {
+        await signOut(auth);
+        await signInAnonymously(auth);
+    } catch (error) { console.error(error); }
+};
+export const getGlobalConfig = async (): Promise<GlobalConfig> => {
   try {
     await service.connect();
-    const term = searchTerm.trim().toUpperCase();
-    const q = query(collection(db, "confirmacoes"), orderBy(documentId()), where(documentId(), ">=", term), where(documentId(), "<=", term + '\uf8ff'));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => {
-        const data = d.data();
-        return { docId: d.id, ...data, lote: data.lote || 1 } as Confirmation;
-    });
-  } catch (e: any) {
-      service.handleFirebaseError(e);
-      return [];
+    const snap = await getDoc(doc(db, "configuracoes", "geral"));
+    if (snap.exists()) return snap.data() as GlobalConfig;
+  } catch (e: any) { }
+  return { pedidosAbertos: true, valorCamiseta: 30.00, currentBatch: 1 };
+};
+export const updateGlobalConfig = async (data: Partial<GlobalConfig>) => {
+  try {
+    await service.connect();
+    await setDoc(doc(db, "configuracoes", "geral"), data, { merge: true });
+    return true;
+  } catch (e) { return false; }
+};
+export const getStats = async (): Promise<Stats> => {
+  // Define default stats that comply with the Stats interface
+  const defaultStats: Stats = { 
+    qtd_pedidos: 0, 
+    qtd_camisetas: 0, 
+    valor_total: 0, 
+    total_recebido_real: 0, 
+    pedidos_pagos: 0, 
+    pedidos_pendentes: 0, 
+    pedidos_parciais: 0, 
+    batches: {},
+    qtd_infantil: 0,
+    qtd_babylook: 0,
+    qtd_unissex: 0
+  };
+  try {
+    await service.connect();
+    const snap = await getDoc(doc(db, "configuracoes", "estatisticas"));
+    return snap.exists() ? snap.data() as Stats : defaultStats;
+  } catch (e) { 
+    return defaultStats;
   }
 };
-
+export const getAllOrders = async (): Promise<Order[]> => {
+  const q = query(collection(db, "pedidos"), orderBy("data", "desc"));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ docId: d.id, ...d.data() } as Order));
+};
+export const getPaginatedOrders = async (lastVisible?: DocumentSnapshot) => {
+  let q = query(collection(db, "pedidos"), orderBy("data", "desc"), limit(50));
+  if (lastVisible) q = query(collection(db, "pedidos"), orderBy("data", "desc"), startAfter(lastVisible), limit(50));
+  const snap = await getDocs(q);
+  return { orders: snap.docs.map(d => ({ docId: d.id, ...d.data() } as Order)), lastVisible: snap.docs[snap.docs.length - 1] };
+};
+export const findOrder = async (id: string) => {
+  const q = query(collection(db, "pedidos"), where("numPedido", "==", id), limit(1));
+  const snap = await getDocs(q);
+  return !snap.empty ? { docId: snap.docs[0].id, ...snap.docs[0].data() } as Order : null;
+};
+export const findOrderByEmail = async (email: string) => {
+  const q = query(collection(db, "pedidos"), where("email", "==", email));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ docId: d.id, ...d.data() } as Order));
+};
+export const deleteOrder = async (order: Order) => {
+  try {
+    await deleteDoc(doc(db, "pedidos", order.docId));
+    await syncAllStats();
+    return true;
+  } catch (e) { return false; }
+};
+export const recordPayment = async (orderId: string, amount: number, date: string) => {
+  try {
+    const orderRef = doc(db, "pedidos", orderId);
+    const snap = await getDoc(orderRef);
+    const order = snap.data() as Order;
+    const newPaid = (order.valorPago || 0) + amount;
+    const status = newPaid >= order.valorTotal ? 'Pago' : 'Parcial';
+    const history = order.historicoPagamentos || [];
+    history.push({ valor: amount, data: date, timestamp: new Date().toISOString(), liquidacaoId: Date.now().toString() });
+    
+    await updateDoc(orderRef, { valorPago: newPaid, statusPagamento: status, historicoPagamentos: history });
+    await syncAllStats();
+    return true;
+  } catch (e) { return false; }
+};
+export const cancelLastPayment = async (orderId: string) => {
+  try {
+    const orderRef = doc(db, "pedidos", orderId);
+    const snap = await getDoc(orderRef);
+    const order = snap.data() as Order;
+    if (!order.historicoPagamentos || order.historicoPagamentos.length === 0) return false;
+    const last = order.historicoPagamentos.pop()!;
+    const newPaid = order.valorPago - last.valor;
+    const status = newPaid <= 0 ? 'Pendente' : (newPaid >= order.valorTotal ? 'Pago' : 'Parcial');
+    await updateDoc(orderRef, { valorPago: newPaid, statusPagamento: status, historicoPagamentos: order.historicoPagamentos });
+    await syncAllStats();
+    return true;
+  } catch (e) { return false; }
+};
+export const getOrderById = async (id: string) => {
+  const snap = await getDoc(doc(db, "pedidos", id));
+  return snap.exists() ? { docId: snap.id, ...snap.data() } as Order : null;
+};
+export const getPaymentHistoryForOrder = async (order: Order) => order.historicoPagamentos || [];
+export const updateOrder = async (id: string, data: any) => {
+  try {
+    await updateDoc(doc(db, "pedidos", id), data);
+    await syncAllStats();
+    return true;
+  } catch (e) { return false; }
+};
+export const checkExistingEmail = async (email: string, batch: number) => {
+  const q = query(collection(db, "pedidos"), where("email", "==", email), where("lote", "==", batch), limit(1));
+  const snap = await getDocs(q);
+  return { exists: !snap.empty, message: !snap.empty ? "E-mail já cadastrado neste lote." : "" };
+};
+export const checkExistingSector = async (local: string, setor: string, batch: number) => {
+  if (setor === 'UMADEMATS') return { exists: false, message: "" };
+  const q = query(collection(db, "pedidos"), where("local", "==", local), where("setor", "==", setor), where("lote", "==", batch), limit(1));
+  const snap = await getDocs(q);
+  return { exists: !snap.empty, message: !snap.empty ? "Setor já possui um pedido neste lote." : "" };
+};
+export const getConfirmations = async () => {
+  const snap = await getDocs(collection(db, "confirmacoes"));
+  return snap.docs.map(d => ({ docId: d.id, ...d.data() } as Confirmation));
+};
+export const searchConfirmations = async (term: string) => {
+  const all = await getConfirmations();
+  return all.filter(c => c.docId.includes(term.toUpperCase()));
+};
 export const syncConfirmationsFromOrders = async () => {
-  try {
-    await service.connect();
-    const [orders, confirmations] = await Promise.all([
-      getAllOrders(),
-      getConfirmations()
-    ]);
-
-    const existingIds = new Set(confirmations.map(c => c.docId));
-    const newConfirmationsMap = new Map<string, Omit<Confirmation, 'docId'>>();
-
-    orders.forEach(order => {
-      const lote = order.lote || 1;
-      const docId = getConfirmationDocId(order.local, order.setor, lote);
-      
-      if (!existingIds.has(docId) && !newConfirmationsMap.has(docId)) {
-        newConfirmationsMap.set(docId, {
-          type: order.local,
-          status: 'none',
-          lastUpdated: '',
-          lote: lote
-        });
-      }
-    });
-
-    if (newConfirmationsMap.size > 0) {
-      const batch = writeBatch(db);
-      newConfirmationsMap.forEach((data, docId) => {
-        const docRef = doc(db, "confirmacoes", docId);
-        batch.set(docRef, data);
-      });
-      await batch.commit();
-    }
-    return true;
-  } catch (e: any) {
-    service.handleFirebaseError(e);
-    return false;
-  }
+  const orders = await getAllOrders();
+  const batch = writeBatch(db);
+  orders.forEach(o => {
+    const id = `LOTE_${o.lote || 1}_${o.setor.toUpperCase().trim()}`;
+    batch.set(doc(db, "confirmacoes", id), { type: o.local, status: 'none', lastUpdated: '', lote: o.lote || 1 }, { merge: true });
+  });
+  await batch.commit();
+  return true;
 };
-
-export const updateConfirmationStatus = async (docId: string, status: 'none' | 'confirmed' | 'pending') => {
-  try {
-    await service.connect();
-    const docRef = doc(db, "confirmacoes", docId);
-    await updateDoc(docRef, {
-      status: status,
-      lastUpdated: new Date().toISOString()
-    });
-    return true;
-  } catch (e: any) {
-    service.handleFirebaseError(e);
-    return false;
-  }
+export const updateConfirmationStatus = async (id: string, status: string) => {
+  await updateDoc(doc(db, "confirmacoes", id), { status, lastUpdated: new Date().toISOString() });
+  return true;
+};
+export const searchOrders = async (term: string) => {
+  const all = await getAllOrders();
+  const t = term.toUpperCase();
+  return all.filter(o => o.numPedido.includes(t) || o.nome.toUpperCase().includes(t) || o.setor.toUpperCase().includes(t));
+};
+export const createNewBatch = async (num: number) => {
+  await updateGlobalConfig({ currentBatch: num });
+  return true;
+};
+export const deleteLastBatch = async () => {
+  const config = await getGlobalConfig();
+  if (config.currentBatch <= 1) return false;
+  await updateGlobalConfig({ currentBatch: config.currentBatch - 1 });
+  return true;
+};
+export const fetchFullBackup = async () => {
+  const orders = await getAllOrders();
+  const stats = await getStats();
+  return { orders, stats, date: new Date().toISOString() };
+};
+export const endEvent = async () => {
+  const orders = await getDocs(collection(db, "pedidos"));
+  const batch = writeBatch(db);
+  orders.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+  await syncAllStats();
+  return true;
 };

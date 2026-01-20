@@ -73,6 +73,13 @@ export interface Confirmation {
   lote: number; // Novo campo
 }
 
+// Added GlobalConfig interface
+export interface GlobalConfig {
+  pedidosAbertos: boolean;
+  valorCamiseta: number;
+  currentBatch: number;
+}
+
 export enum Section {
   Home = 'home',
   Order = 'order',
