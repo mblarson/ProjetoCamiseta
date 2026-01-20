@@ -79,13 +79,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
 
   useEffect(() => {
     const loadDataForTab = async () => {
-      if (!debouncedSearchText) {
-          setOrders([]);
-          setConfirmations([]);
-      }
-
       if (tab === AdminTab.Dashboard) {
-        // AUTO-SYNC AO ENTRAR DO DASHBOARD
         setIsProcessingConfig(true);
         await syncAllStats().catch(() => {});
         const s = await getStats();
@@ -106,7 +100,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
         setIsLoadingOrders(false);
       } else if (tab === AdminTab.Payments || tab === AdminTab.Statistics) {
         setIsLoadingOrders(true);
-        // FORCE SYNC ANTES DE GERAR RELATÓRIOS
         await syncAllStats().catch(() => {});
         const data = debouncedSearchText ? await searchOrders(debouncedSearchText) : await getAllOrders();
         setOrders(data);
@@ -160,7 +153,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
     setSearchText('');
   };
 
-  // Added missing handleSyncConfirmations function
   const handleSyncConfirmations = async () => {
     setIsSyncingConfirmations(true);
     try {
@@ -266,13 +258,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
         <EventTab config={config} setNewPrice={setNewPrice} setIsPriceModalOpen={setIsPriceModalOpen} formatNumberToCurrency={formatNumberToCurrency} setSecurityModal={setSecurityModal} />
       )}
 
-      {/* Modais omitidos para brevidade, mantidos conforme original */}
       <Modal isOpen={!!registerPaymentOrder} onClose={() => setRegisterPaymentOrder(null)} title="Liquidar Pagamento">
          <div className="space-y-6">
             <CurrencyInput label="VALOR PAGO" value={paymentAmount} onChange={setPaymentAmount} />
             <Input label="DATA" type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} />
             <Button className="w-full h-14" onClick={handleRegisterPayment} disabled={isProcessingPayment}>CONFIRMAR</Button>
          </div>
+      </Modal>
+
+      <Modal isOpen={!!orderToDelete} onClose={() => setOrderToDelete(null)} title="Excluir Pedido">
+        <div className="space-y-6 text-center">
+          <p className="text-sm text-text-secondary font-bold uppercase tracking-wider">
+            Tem certeza que deseja excluir o pedido <strong>{orderToDelete?.numPedido}</strong> de <strong>{orderToDelete?.nome}</strong>?
+          </p>
+          <p className="text-[10px] text-red-500 font-black uppercase tracking-widest">Esta ação é irreversível e removerá todos os dados do banco.</p>
+          <div className="flex gap-4">
+            <Button variant="outline" className="flex-1 h-14" onClick={() => setOrderToDelete(null)}>CANCELAR</Button>
+            <Button variant="danger" className="flex-1 h-14" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? <i className="fas fa-spinner fa-spin"></i> : "EXCLUIR DEFINITIVAMENTE"}
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       <Modal isOpen={!!securityModal.type} onClose={() => setSecurityModal({ type: null, password: '' })} title="Segurança">

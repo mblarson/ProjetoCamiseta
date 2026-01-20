@@ -50,8 +50,9 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
 }) => {
   const [localFilter, setLocalFilter] = useState<'Todos' | 'Capital' | 'Interior'>('Todos');
   const [loteFilter, setLoteFilter] = useState<number | 'Todos'>('Todos');
-  const [expandedSector, setExpandedSector] = useState<string | null>(null);
   const [availableBatches, setAvailableBatches] = useState<number[]>([1]);
+  // Fix: Added missing state to control which order is expanded in the list
+  const [expandedSector, setExpandedSector] = useState<string | null>(null);
 
   useEffect(() => {
     getGlobalConfig().then(c => {
@@ -62,13 +63,22 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
   }, []);
 
   const filteredOrders = orders.filter(o => {
-    // Se estiver pesquisando, ignora os filtros de Lote e Local para busca GLOBAL
-    const isSearching = searchText.trim() !== '';
-    if (isSearching) return true;
-
+    // 1. Filtrar primeiro por LOTE e LOCALIDADE (Obrigatório conforme prompt)
     const matchesLocal = localFilter === 'Todos' || o.local === localFilter;
     const matchesLote = loteFilter === 'Todos' || (o.lote || 1) === loteFilter;
-    return matchesLocal && matchesLote;
+    
+    if (!matchesLocal || !matchesLote) return false;
+
+    // 2. Aplicar filtro de TEXTO apenas sobre o resultado desse lote/localidade
+    const term = searchText.trim().toUpperCase();
+    if (!term) return true;
+
+    const displaySetor = formatSetor(o).toUpperCase();
+    return (
+      o.numPedido.toUpperCase().includes(term) || 
+      o.nome.toUpperCase().includes(term) || 
+      displaySetor.includes(term)
+    );
   });
 
   return (
