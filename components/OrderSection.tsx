@@ -33,6 +33,8 @@ const OrderReviewTable: React.FC<{ title: string, data: ColorData, colorHex: str
 
     if (items.length === 0) return null;
 
+    const totalQty = items.reduce((acc, curr) => acc + curr.quantity, 0);
+
     return (
         <div className="space-y-4 animate-in fade-in duration-500">
             <h4 className="flex items-center gap-3 text-xs font-black uppercase tracking-widest text-text-primary">
@@ -50,6 +52,13 @@ const OrderReviewTable: React.FC<{ title: string, data: ColorData, colorHex: str
                         <div className="text-text-primary font-black text-right">{item.quantity}</div>
                     </React.Fragment>
                 ))}
+            </div>
+            
+            <div className="flex justify-between items-center pt-3 border-t border-border-light border-dashed mt-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-70">Total {title}</span>
+                <span className="text-sm font-black text-text-primary bg-surface border border-border-light px-3 py-1 rounded-lg shadow-sm">
+                    {totalQty} un.
+                </span>
             </div>
         </div>
     );
@@ -267,7 +276,12 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
           <div className="fixed bottom-0 inset-x-0 bg-surface/90 backdrop-blur-xl p-4 sm:p-8 z-[200] border-t border-border-light shadow-2xl">
             <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
               <div className="flex flex-col items-center sm:items-start">
-                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Valor Total</span>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Valor Total</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
+                    {totals.total} {totals.total === 1 ? 'Camiseta' : 'Camisetas'}
+                  </span>
+                </div>
                 <span className="text-3xl sm:text-4xl font-black text-text-primary tracking-tighter">{totals.preco.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</span>
               </div>
               <div className="flex gap-4 w-full sm:w-auto">
@@ -317,9 +331,16 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onBackToHome, initia
             ) : null}
 
             <div className="pt-8 border-t-2 border-border-light flex flex-col sm:flex-row justify-between items-center gap-6">
-               <div className="text-center sm:text-left">
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary block mb-1">Total Final</span>
-                  <span className="text-4xl font-black text-text-primary tracking-tighter">{totals.preco.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</span>
+               <div className="text-center sm:text-left space-y-3">
+                  <div className="inline-flex items-center gap-3 px-4 py-2 rounded-xl bg-primary/5 border border-primary/10">
+                      <i className="fas fa-layer-group text-primary text-xs"></i>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Volume Total:</span>
+                      <span className="text-sm font-black text-text-primary">{totals.total} Camisetas</span>
+                  </div>
+                  <div>
+                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary block mb-1">Valor Final</span>
+                      <span className="text-4xl font-black text-text-primary tracking-tighter">{totals.preco.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</span>
+                  </div>
                </div>
                <div className="flex gap-4 w-full sm:w-auto">
                  <Button variant="outline" className="flex-1 sm:px-8 h-14" onClick={() => setStep('sizes')}>VOLTAR</Button>
