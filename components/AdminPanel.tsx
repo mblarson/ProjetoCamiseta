@@ -88,6 +88,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
       }
 
       if (tab === AdminTab.Dashboard) {
+        // Correção Crítica: Força o recálculo real das estatísticas ao abrir o Dashboard.
+        // Isso remove valores estagnados (como o "100" no Total Recebido) e garante que o
+        // valor exibido seja estritamente a soma atual dos pagamentos reais no banco.
+        await syncAllStats();
         const s = await getStats();
         setCurrentStats(s);
       } else if (tab === AdminTab.Orders) {
