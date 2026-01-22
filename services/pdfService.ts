@@ -30,7 +30,7 @@ export const handlePdfOutput = async (doc: any, filename: string, action: 'view'
         await navigator.share({
           files: [file],
           title: filename,
-          text: 'Segue relation de pedidos em PDF' 
+          text: 'Segue relação de pedidos em PDF' 
         });
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
@@ -57,106 +57,130 @@ const calculateTotalShirts = (order: Order) => {
 };
 
 /**
- * Gera o Relatório Geral de Pedidos consolidado por lote
+ * Gera o Relatório Geral de Pedidos consolidado por lote com tabelas visuais
  */
 export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: number) => {
   try {
     const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF();
-    const margin = 14;
-    let currentY = 20;
-
+    const primaryColor = [14, 165, 233]; // #0ea5e9
+    
     const batchOrders = orders.filter(o => (o.lote || 1) === batchNumber);
+    const totalCamisetasLote = batchOrders.reduce((acc, curr) => acc + calculateTotalShirts(curr), 0);
+    const totalFinanceiroLote = batchOrders.reduce((acc, curr) => acc + (curr.valorTotal || 0), 0);
 
+    // Cabeçalho Premium
+    doc.setFillColor(30, 41, 59); // Slate 800
+    doc.rect(0, 0, 210, 40, 'F');
+    
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text(`RELATÓRIO GERAL DO LOTE — ${batchNumber}`, 105, currentY, { align: "center" });
-    currentY += 15;
-
-    doc.setFontSize(12);
-    doc.text("3. SETORES QUE REALIZARAM PEDIDO", margin, currentY);
-    currentY += 8;
-    doc.setFont("helvetica", "normal");
+    doc.setFontSize(22);
+    doc.setTextColor(255, 255, 255);
+    doc.text("UMADEMATS", 105, 18, { align: "center" });
+    
     doc.setFontSize(10);
+    doc.setTextColor(148, 163, 184);
+    doc.text("RELATÓRIO GERAL DE PERFORMANCE E LOGÍSTICA", 105, 25, { align: "center" });
+    
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`LOTE DE PRODUÇÃO — ${batchNumber}`, 105, 34, { align: "center" });
 
+    let currentY = 50;
+
+    // Tabela 1: Resumo de Métricas
+    (doc as any).autoTable({
+      startY: currentY,
+      head: [['MÉTRICA', 'VALOR CONSOLIDADO']],
+      body: [
+        ['TOTAL DE PEDIDOS REGISTRADOS', `${batchOrders.length} PEDIDOS`],
+        ['VOLUME TOTAL DE CAMISETAS', `${totalCamisetasLote} UNIDADES`],
+        ['PROJEÇÃO FINANCEIRA DO LOTE', totalFinanceiroLote.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })]
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', halign: 'center' },
+      styles: { fontSize: 10, cellPadding: 5 },
+      columnStyles: { 0: { fontStyle: 'bold', width: 120 }, 1: { halign: 'right' } }
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 15;
+
+    // Tabela 2: Setores da Capital com Pedidos
     const sectorsWhoOrdered = Array.from(new Set(
       batchOrders.filter(o => o.local === 'Capital').map(o => o.setor)
     )).sort();
 
-    const sectorCounts = sectorsWhoOrdered.map(s => {
+    const sectorRows = sectorsWhoOrdered.map(s => {
       const sectorOrders = batchOrders.filter(o => o.local === 'Capital' && o.setor === s);
       const count = sectorOrders.reduce((acc, curr) => acc + calculateTotalShirts(curr), 0);
       const label = s === 'UMADEMATS' ? s : `SETOR ${s}`;
-      return `${label}: ${count} CAMISETA(S)`;
+      return [label, `${count} un.`];
     });
 
-    let tempY = currentY;
-    sectorCounts.forEach((text, index) => {
-      const col = Math.floor(index / 7);
-      const row = index % 7;
-      const xPos = margin + (col * 90);
-      doc.text(text, xPos, tempY + (row * 6));
-    });
-    
-    currentY += (Math.ceil(sectorCounts.length / 2) * 6) + 10;
-    if (sectorCounts.length === 0) {
-       doc.text("Nenhum setor realizou pedidos neste lote.", margin, currentY - 5);
-       currentY += 5;
-    }
-
-    doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text("4. SETORES QUE NÃO REALIZARAM PEDIDO", margin, currentY);
-    currentY += 8;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
+    doc.setTextColor(30, 41, 59);
+    doc.text("SETORES DA CAPITAL (PEDIDOS REALIZADOS)", 14, currentY - 5);
 
+    (doc as any).autoTable({
+      startY: currentY,
+      head: [['SETOR / DEPARTAMENTO', 'QUANTIDADE']],
+      body: sectorRows.length > 0 ? sectorRows : [['-', 'Nenhum pedido registrado']],
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor, textColor: 255 },
+      styles: { fontSize: 9 },
+      columnStyles: { 1: { halign: 'right' } }
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 15;
+
+    // Tabela 3: Setores Pendentes (Capital)
     const sectorsWhoDidntOrder = SETORES_CAPITAL
       .filter(s => !sectorsWhoOrdered.includes(s))
-      .map(s => s === 'UMADEMATS' ? s : `SETOR ${s}`)
+      .map(s => [s === 'UMADEMATS' ? s : `SETOR ${s}`, 'PENDENTE'])
       .sort();
 
-    tempY = currentY;
-    sectorsWhoDidntOrder.forEach((text, index) => {
-      const col = Math.floor(index / 7);
-      const row = index % 7;
-      const xPos = margin + (col * 90);
-      doc.text(text, xPos, tempY + (row * 6));
+    doc.setFontSize(12);
+    doc.setTextColor(220, 38, 38); // Red 600
+    doc.text("SETORES DA CAPITAL (PENDENTES / SEM PEDIDO)", 14, currentY - 5);
+
+    (doc as any).autoTable({
+      startY: currentY,
+      head: [['SETOR / DEPARTAMENTO', 'STATUS']],
+      body: sectorsWhoDidntOrder.length > 0 ? sectorsWhoDidntOrder : [['-', 'Todos os setores realizaram pedidos']],
+      theme: 'grid',
+      headStyles: { fillColor: [220, 38, 38], textColor: 255 },
+      styles: { fontSize: 9 },
+      columnStyles: { 1: { halign: 'center', fontStyle: 'bold', textColor: [220, 38, 38] } }
     });
 
-    currentY += (Math.ceil(sectorsWhoDidntOrder.length / 2) * 6) + 10;
+    currentY = (doc as any).lastAutoTable.finalY + 15;
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("5. CIDADES QUE REALIZARAM PEDIDO", margin, currentY);
-    currentY += 8;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-
+    // Tabela 4: Interior
     const citiesWhoOrdered = Array.from(new Set(
       batchOrders.filter(o => o.local === 'Interior').map(o => o.setor)
     )).sort();
 
-    citiesWhoOrdered.forEach((city, index) => {
+    const cityRows = citiesWhoOrdered.map(city => {
       const cityOrders = batchOrders.filter(o => o.local === 'Interior' && o.setor === city);
       const count = cityOrders.reduce((acc, curr) => acc + calculateTotalShirts(curr), 0);
-      doc.text(`${city.toUpperCase()}: ${count} CAMISETA(S)`, margin, currentY + (index * 6));
+      return [city.toUpperCase(), `${count} un.`];
     });
 
-    currentY += (citiesWhoOrdered.length * 6) + 10;
-    if (citiesWhoOrdered.length === 0) {
-      doc.text("Nenhuma cidade realizou pedidos neste lote.", margin, currentY - 5);
-      currentY += 5;
-    }
-
-    if (currentY > 260) { doc.addPage(); currentY = 20; }
-    doc.setFont("helvetica", "bold");
+    if (currentY > 240) { doc.addPage(); currentY = 20; }
+    
     doc.setFontSize(12);
-    doc.text("6. CIDADES QUE NÃO REALIZARAM PEDIDO", margin, currentY);
-    currentY += 8;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text("NÃO É POSSÍVEL APRESENTAR REGISTRO POR NÃO EXISTIR LISTA CONCRETA COM TODAS AS CIDADES.", margin, currentY);
+    doc.setTextColor(30, 41, 59);
+    doc.text("CIDADES DO INTERIOR (PEDIDOS REALIZADOS)", 14, currentY - 5);
+
+    (doc as any).autoTable({
+      startY: currentY,
+      head: [['CIDADE / LOCALIDADE', 'QUANTIDADE']],
+      body: cityRows.length > 0 ? cityRows : [['-', 'Nenhuma cidade registrada']],
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor, textColor: 255 },
+      styles: { fontSize: 9 },
+      columnStyles: { 1: { halign: 'right' } }
+    });
 
     const filename = `Relatorio_Geral_Pedidos_Lote_${batchNumber}.pdf`;
     triggerPdfActionModal(doc, filename);

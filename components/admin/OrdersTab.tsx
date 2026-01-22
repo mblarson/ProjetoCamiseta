@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Order, ColorData } from '../../types';
 import { Button, Input } from '../UI';
@@ -66,10 +67,15 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
     
     // O texto de busca deve ser validado mantendo o respeito aos filtros de Lote e Local
     const term = searchText.trim().toLowerCase();
+    
+    // Normalização da busca: criamos o texto de exibição do setor para comparação
+    const displaySetor = formatSetor(o).toLowerCase();
+    
     const matchesText = !term || (
       o.numPedido.toLowerCase().includes(term) ||
       o.nome.toLowerCase().includes(term) ||
       o.setor.toLowerCase().includes(term) ||
+      displaySetor.includes(term) || // Permite buscar por "Setor", "Setor E", etc.
       o.contato.toLowerCase().includes(term)
     );
 
