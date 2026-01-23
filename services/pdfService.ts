@@ -57,7 +57,7 @@ const calculateTotalShirts = (order: Order) => {
 };
 
 /**
- * Gera o Relatório Geral de Pedidos consolidado por lote com tabelas visuais
+ * Gera o Relatório Geral de Pedidos consolidado por lote com tabelas visuais e totalizadores
  */
 export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: number) => {
   try {
@@ -88,7 +88,7 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
 
     let currentY = 50;
 
-    // Tabela 1: Resumo de Métricas
+    // Tabela 1: Resumo de Métricas (Já existente no escopo original)
     (doc as any).autoTable({
       startY: currentY,
       head: [['MÉTRICA', 'VALOR CONSOLIDADO']],
@@ -110,9 +110,11 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
       batchOrders.filter(o => o.local === 'Capital').map(o => o.setor)
     )).sort();
 
+    let totalCapitalShirts = 0;
     const sectorRows = sectorsWhoOrdered.map(s => {
       const sectorOrders = batchOrders.filter(o => o.local === 'Capital' && o.setor === s);
       const count = sectorOrders.reduce((acc, curr) => acc + calculateTotalShirts(curr), 0);
+      totalCapitalShirts += count;
       const label = s === 'UMADEMATS' ? s : `SETOR ${s}`;
       return [label, `${count} un.`];
     });
@@ -125,8 +127,10 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
       startY: currentY,
       head: [['SETOR / DEPARTAMENTO', 'QUANTIDADE']],
       body: sectorRows.length > 0 ? sectorRows : [['-', 'Nenhum pedido registrado']],
+      foot: [['TOTAL PARCIAL CAPITAL', `${totalCapitalShirts} un.`]],
       theme: 'striped',
       headStyles: { fillColor: primaryColor, textColor: 255 },
+      footStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold' },
       styles: { fontSize: 9 },
       columnStyles: { 1: { halign: 'right' } }
     });
@@ -147,10 +151,12 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
       startY: currentY,
       head: [['SETOR / DEPARTAMENTO', 'STATUS']],
       body: sectorsWhoDidntOrder.length > 0 ? sectorsWhoDidntOrder : [['-', 'Todos os setores realizaram pedidos']],
+      foot: [['TOTAL DE SETORES PENDENTES', `${sectorsWhoDidntOrder.length} SETORES`]],
       theme: 'grid',
       headStyles: { fillColor: [220, 38, 38], textColor: 255 },
+      footStyles: { fillColor: [254, 242, 242], textColor: [220, 38, 38], fontStyle: 'bold' },
       styles: { fontSize: 9 },
-      columnStyles: { 1: { halign: 'center', fontStyle: 'bold', textColor: [220, 38, 38] } }
+      columnStyles: { 1: { halign: 'center', fontStyle: 'bold' } }
     });
 
     currentY = (doc as any).lastAutoTable.finalY + 15;
@@ -160,13 +166,15 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
       batchOrders.filter(o => o.local === 'Interior').map(o => o.setor)
     )).sort();
 
+    let totalInteriorShirts = 0;
     const cityRows = citiesWhoOrdered.map(city => {
       const cityOrders = batchOrders.filter(o => o.local === 'Interior' && o.setor === city);
       const count = cityOrders.reduce((acc, curr) => acc + calculateTotalShirts(curr), 0);
+      totalInteriorShirts += count;
       return [city.toUpperCase(), `${count} un.`];
     });
 
-    if (currentY > 240) { doc.addPage(); currentY = 20; }
+    if (currentY > 220) { doc.addPage(); currentY = 20; }
     
     doc.setFontSize(12);
     doc.setTextColor(30, 41, 59);
@@ -176,10 +184,30 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
       startY: currentY,
       head: [['CIDADE / LOCALIDADE', 'QUANTIDADE']],
       body: cityRows.length > 0 ? cityRows : [['-', 'Nenhuma cidade registrada']],
+      foot: [['TOTAL PARCIAL INTERIOR', `${totalInteriorShirts} un.`]],
       theme: 'striped',
       headStyles: { fillColor: primaryColor, textColor: 255 },
+      footStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold' },
       styles: { fontSize: 9 },
       columnStyles: { 1: { halign: 'right' } }
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 20;
+
+    // FECHAMENTO GERAL (Consolidado Final no PDF)
+    if (currentY > 240) { doc.addPage(); currentY = 20; }
+
+    (doc as any).autoTable({
+      startY: currentY,
+      head: [['RESUMO GERAL DO LOTE', 'VALOR FINAL']],
+      body: [
+        ['VOLUME TOTAL (CAPITAL + INTERIOR)', `${totalCamisetasLote} UNIDADES`],
+        ['FINANCEIRO TOTAL DO LOTE', totalFinanceiroLote.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })]
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [30, 41, 59], textColor: 255, halign: 'center' },
+      styles: { fontSize: 11, fontStyle: 'bold', cellPadding: 6 },
+      columnStyles: { 1: { halign: 'right', textColor: primaryColor } }
     });
 
     const filename = `Relatorio_Geral_Pedidos_Lote_${batchNumber}.pdf`;
