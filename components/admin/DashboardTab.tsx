@@ -73,7 +73,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             <h3 className="text-sm font-black text-text-secondary uppercase tracking-[0.3em]">Totalizadores Globais</h3>
             <div className="h-px bg-border-light flex-1"></div>
          </div>
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <StatCard 
               label="Receita Global Prevista" 
               value={currentStats?.valor_total || 0} 
@@ -91,6 +91,14 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               description="Soma de todos os pagamentos efetuados" 
               accentColor="text-green-600" 
               bgStyle="bg-green-500/5 border-green-500/20" 
+            />
+            <StatCard 
+              label="Total de Camisetas" 
+              value={currentStats?.qtd_camisetas || 0} 
+              icon="fa-shirt" 
+              description="Volume total de todos os lotes" 
+              accentColor="text-sky-500" 
+              bgStyle="bg-sky-500/5 border-sky-500/20" 
             />
          </div>
       </div>

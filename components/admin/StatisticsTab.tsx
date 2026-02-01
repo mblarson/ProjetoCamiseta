@@ -1,4 +1,3 @@
-
 import { Order, ColorData } from '../../types';
 import { Card, Button, Modal } from '../UI';
 import React, { useMemo, useState, useEffect } from 'react';
@@ -159,9 +158,10 @@ export const StatisticsTab: React.FC<{ orders: Order[], isLoading: boolean }> = 
         };
     }, [orders]);
 
-    const handleSelectBatch = (batch: number) => {
+    const handleSelectBatch = (batch: number | 'Geral') => {
         setIsBatchModalOpen(false);
-        generateSummaryBatchPDF(orders, batch);
+        // "Geral" triggers the consolidated report
+        generateSummaryBatchPDF(orders, batch === 'Geral' ? 999 : batch);
     };
 
     if (isLoading) {
@@ -264,6 +264,13 @@ export const StatisticsTab: React.FC<{ orders: Order[], isLoading: boolean }> = 
                                 <span className="text-xl font-black text-text-primary group-hover:text-primary">{batch}</span>
                             </button>
                         ))}
+                        <button
+                            onClick={() => handleSelectBatch('Geral')}
+                            className="h-16 rounded-2xl border-2 border-primary bg-primary/5 hover:bg-primary-light transition-all flex flex-col items-center justify-center group"
+                        >
+                            <span className="text-[10px] font-black uppercase tracking-widest text-primary">OPÇÃO</span>
+                            <span className="text-xl font-black text-primary">GERAL</span>
+                        </button>
                     </div>
                 </div>
             </Modal>

@@ -24,7 +24,7 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
   const [stats, setStats] = useState<Stats | null>(null);
   const [unitPrice, setUnitPrice] = useState(DEFAULT_PRICE);
   const [availableBatches, setAvailableBatches] = useState<number[]>([]);
-  const [selectedBatch, setSelectedBatch] = useState<number | null>(null); // Novo: Controle de seleção de lote
+  const [selectedBatch, setSelectedBatch] = useState<number | 'Geral' | null>(null); 
   const [loading, setLoading] = useState(true);
   const [selectedCell, setSelectedCell] = useState<SelectedCellInfo | null>(null);
   
@@ -55,7 +55,7 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
     loadData();
   }, []);
 
-  // Processa APENAS o lote selecionado
+  // Processa APENAS o lote selecionado ou o total consolidado
   const batchDataResult = useMemo(() => {
     if (selectedBatch === null) return null;
 
@@ -76,7 +76,7 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
     });
 
     orders
-      .filter(o => (o.lote || 1) === selectedBatch)
+      .filter(o => selectedBatch === 'Geral' || (o.lote || 1) === selectedBatch)
       .forEach(order => {
         COLORS.forEach(color => {
           const colorData = order[color];
@@ -103,7 +103,7 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
   }, [orders, selectedBatch]);
 
   const contributors = useMemo(() => {
-    if (!selectedCell || selectedBatch === null) return [];
+    if (!selectedCell || selectedBatch === null || selectedBatch === 'Geral') return [];
     
     return orders
       .filter(o => (o.lote || 1) === selectedBatch)
@@ -127,8 +127,8 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
 
   const handleDownloadPDF = () => {
     if (selectedBatch === null) return;
-    const batchOrders = orders.filter(o => (o.lote || 1) === selectedBatch);
-    generateSizeMatrixPDF(batchOrders, unitPrice, stats, selectedBatch, reportComment);
+    const reportOrders = selectedBatch === 'Geral' ? orders : orders.filter(o => (o.lote || 1) === selectedBatch);
+    generateSizeMatrixPDF(reportOrders, unitPrice, stats, selectedBatch, reportComment);
     setIsCommentModalOpen(false);
     setReportComment('');
   };
@@ -161,6 +161,18 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <button
+              onClick={() => setSelectedBatch('Geral')}
+              className="group relative overflow-hidden card p-10 flex flex-col items-center justify-center gap-4 hover:border-primary transition-all hover:-translate-y-2 border-2 bg-primary/5"
+            >
+              <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150"></div>
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary group-hover:text-primary">Visão Consolidada</span>
+              <span className="text-4xl font-black text-primary group-hover:text-primary tracking-tighter">TOTAL GERAL</span>
+              <div className="mt-4 px-6 py-2 rounded-full bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                Visualizar Matriz Geral
+              </div>
+          </button>
+
           {availableBatches.map(batch => (
             <button
               key={batch}
@@ -171,7 +183,7 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
               <span className="text-[10px] font-black uppercase tracking-[0.4em] text-text-secondary group-hover:text-primary">Lote de Produção</span>
               <span className="text-6xl font-black text-text-primary group-hover:text-primary tracking-tighter">{batch}</span>
               <div className="mt-4 px-6 py-2 rounded-full bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                Visualizar Matriz
+                Visualizar Matriz Lote {batch}
               </div>
             </button>
           ))}
@@ -181,6 +193,7 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
   }
 
   const { data, grandTotal, totalVerde, totalTerracota } = batchDataResult!;
+  const isGlobalView = selectedBatch === 'Geral';
 
   return (
     <div className="animate-in fade-in duration-500 pb-20">
@@ -194,8 +207,12 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
             <i className="fas fa-chevron-left text-lg"></i>
           </button>
           <div>
-              <h3 className="text-2xl font-black text-text-primary uppercase tracking-tight">Lote {selectedBatch}</h3>
-              <p className="text-[10px] text-text-secondary font-bold uppercase tracking-[0.2em]">Relatório Detalhado de Produção</p>
+              <h3 className="text-2xl font-black text-text-primary uppercase tracking-tight">
+                {isGlobalView ? 'Total Geral' : `Lote ${selectedBatch}`}
+              </h3>
+              <p className="text-[10px] text-text-secondary font-bold uppercase tracking-[0.2em]">
+                Relatório {isGlobalView ? 'Consolidado' : 'Detalhado'} de Produção
+              </p>
           </div>
         </div>
         <div className="w-full sm:w-auto">
@@ -204,7 +221,7 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
               onClick={() => setIsCommentModalOpen(true)}
               className="w-full text-[10px] h-12 rounded-2xl"
           >
-              <i className="fas fa-file-pdf"></i> Baixar PDF do Lote {selectedBatch}
+              <i className="fas fa-file-pdf"></i> Baixar PDF {isGlobalView ? 'Geral' : `do Lote ${selectedBatch}`}
           </Button>
         </div>
       </div>
@@ -260,8 +277,8 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
                                   return (
                                     <td 
                                       key={size} 
-                                      className={`text-center font-bold text-lg py-4 px-2 ${val > 0 ? 'text-text-primary cursor-pointer hover:bg-primary/5 transition-colors' : 'text-text-secondary/20'}`}
-                                      onClick={() => val > 0 && setSelectedCell({ category, color, size, total: val })}
+                                      className={`text-center font-bold text-lg py-4 px-2 ${val > 0 ? 'text-text-primary transition-colors' : 'text-text-secondary/20'} ${!isGlobalView && val > 0 ? 'cursor-pointer hover:bg-primary/5' : ''}`}
+                                      onClick={() => !isGlobalView && val > 0 && setSelectedCell({ category, color, size, total: val })}
                                     >
                                       {val || '-'}
                                     </td>
@@ -295,7 +312,9 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
               </div>
             </div>
             <div className="flex items-center gap-6">
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-text-secondary">Total do Lote {selectedBatch}</span>
+              <span className="text-xs font-bold uppercase tracking-[0.2em] text-text-secondary">
+                Total {isGlobalView ? 'Consolidado' : `do Lote ${selectedBatch}`}
+              </span>
               <span className="text-4xl font-black text-primary tracking-tighter">{grandTotal}</span>
             </div>
           </div>
@@ -344,7 +363,7 @@ export const SizeMatrix: React.FC<SizeMatrixProps> = ({ onClose }) => {
       <Modal isOpen={isCommentModalOpen} onClose={() => setIsCommentModalOpen(false)} title="Observações do Relatório">
         <div className="space-y-6">
           <p className="text-[11px] text-text-secondary font-bold uppercase tracking-widest text-center">
-            Adicione uma nota opcional para constar no PDF da Matriz de Produção do Lote {selectedBatch}.
+            Adicione uma nota opcional para constar no PDF da Matriz de Produção {isGlobalView ? 'Geral' : `do Lote ${selectedBatch}`}.
           </p>
           <TextArea 
             placeholder="Ex: Instruções de separação, observações de prazo, etc." 
