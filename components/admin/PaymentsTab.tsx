@@ -76,7 +76,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
     });
     return Object.values(batchMap).map(b => ({
       ...b,
-      restante: b.total - b.pago
+      restante: Math.max(0, b.total - b.pago)
     })).sort((a, b) => a.lote - b.lote);
   };
 
@@ -107,49 +107,48 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
                 onToggle={() => setExpandedSector(expandedSector === group.name ? null : group.name)}
               />
               {expandedSector === group.name && (
-                <div className="space-y-6 animate-in slide-in-from-top-4 duration-500 pl-4 border-l-2 border-primary/30">
+                <div className="space-y-4 animate-in slide-in-from-top-4 duration-500 pl-4 border-l-2 border-primary/30">
                   {getBatchesForGroup(group.orders).map(batch => (
-                    <div key={batch.lote} className="space-y-3">
-                      <div className="card bg-slate-50/80 p-5 border border-primary/10 rounded-[2rem]">
-                        <div className="flex justify-between items-center mb-4">
-                           <span className="bg-primary text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-lg">LOTE {batch.lote}</span>
-                           <div className="text-right">
-                              <p className="text-[8px] font-bold text-text-secondary uppercase tracking-widest">Saldo Restante Lote {batch.lote}</p>
-                              <p className={`text-sm font-black tracking-tighter ${batch.restante > 0 ? 'text-red-500' : 'text-green-600'}`}>
-                                {batch.restante.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                              </p>
-                           </div>
+                    <div key={batch.lote} className="card bg-slate-50 p-5 border border-primary/10 rounded-[2rem] shadow-sm">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="bg-primary text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-lg">LOTE {batch.lote}</span>
+                        <div className="text-right">
+                          <p className="text-[8px] font-bold text-text-secondary uppercase tracking-widest leading-none mb-1">Restante Lote {batch.lote}</p>
+                          <p className={`text-sm font-black tracking-tighter ${batch.restante > 0 ? 'text-red-500' : 'text-green-600'}`}>
+                            {batch.restante.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </p>
                         </div>
-                        <div className="grid grid-cols-2 gap-4 border-t border-border-light/50 pt-3 mb-4">
-                            <div>
-                                <p className="text-[8px] font-bold text-text-secondary uppercase tracking-widest">Total Lote</p>
-                                <p className="text-xs font-black text-text-primary">{batch.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-[8px] font-bold text-text-secondary uppercase tracking-widest">Pago Lote</p>
-                                <p className="text-xs font-black text-green-600">{batch.pago.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                            </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4 border-y border-border-light/50 py-3 mb-4">
+                        <div>
+                          <p className="text-[8px] font-bold text-text-secondary uppercase tracking-widest">Total Lote</p>
+                          <p className="text-xs font-black text-text-primary">{batch.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                         </div>
-                        
-                        <div className="space-y-2">
-                          {batch.orders.map(order => (
-                            <div key={order.docId} className="flex justify-between items-center bg-white p-4 rounded-2xl border border-primary/5 shadow-sm">
-                              <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-text-primary tracking-tight uppercase">{order.nome}</span>
-                                <span className="text-[8px] font-bold text-text-secondary uppercase tracking-widest">Pedido #{order.numPedido}</span>
-                              </div>
-                              <button 
-                                onClick={() => {
-                                  setRegisterPaymentOrder(order);
-                                  setPaymentAmount('');
-                                }}
-                                className="bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest"
-                              >
-                                LIQUIDAR
-                              </button>
-                            </div>
-                          ))}
+                        <div className="text-right">
+                          <p className="text-[8px] font-bold text-text-secondary uppercase tracking-widest">Liquidado Lote</p>
+                          <p className="text-xs font-black text-green-600">{batch.pago.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                         </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        {batch.orders.map(order => (
+                          <div key={order.docId} className="flex justify-between items-center bg-white p-3 rounded-xl border border-primary/5">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] font-black text-text-primary uppercase leading-tight">{order.nome}</span>
+                              <span className="text-[8px] font-bold text-text-secondary uppercase tracking-widest">Pedido #{order.numPedido}</span>
+                            </div>
+                            <button 
+                              onClick={() => {
+                                setRegisterPaymentOrder(order);
+                                setPaymentAmount('');
+                              }}
+                              className="bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest"
+                            >
+                              LIQUIDAR
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ))}
@@ -166,35 +165,35 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
 const PaymentGroupCard: React.FC<{ group: PaymentGroup, isExpanded: boolean, onToggle: () => void }> = ({ group, isExpanded, onToggle }) => (
   <button 
     onClick={onToggle}
-    className={`w-full card bg-surface p-7 text-left flex flex-col gap-7 group transition-all duration-300 hover:shadow-xl active:scale-[0.98] border border-primary/20 rounded-[2.5rem] ${isExpanded ? 'ring-2 ring-primary' : 'hover:border-primary/40 hover:-translate-y-1'}`}
+    className={`w-full card bg-surface p-7 text-left flex flex-col gap-6 group transition-all duration-300 hover:shadow-xl active:scale-[0.98] border border-primary/20 rounded-[2.5rem] ${isExpanded ? 'ring-2 ring-primary shadow-lg' : 'hover:border-primary/40 hover:-translate-y-1'}`}
   >
     <div className="flex justify-between items-start">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <i className="fas fa-location-dot text-primary text-xl opacity-80 group-hover:scale-110 group-hover:rotate-6 transition-transform"></i>
-        <h3 className="text-xl font-black text-text-primary uppercase tracking-tight">{group.name}</h3>
+        <h3 className="text-lg font-black text-text-primary uppercase tracking-tight leading-none">{group.name}</h3>
       </div>
-      <span className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-[0.15em] border ${group.status === 'Pago' ? 'border-green-500/40 bg-green-500/10 text-green-500' : 'border-red-500/40 bg-red-500/10 text-red-500'}`}>
+      <span className={`px-2.5 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest border ${group.status === 'Pago' ? 'border-green-500/40 bg-green-500/10 text-green-500' : 'border-red-500/40 bg-red-500/10 text-red-500'}`}>
         {group.status}
       </span>
     </div>
 
-    <div className="grid grid-cols-3 gap-4 border-t border-border-light pt-6">
-      <div className="flex flex-col gap-1">
-        <p className="text-[9px] font-black text-text-secondary uppercase tracking-widest">Total Geral</p>
-        <p className="text-base font-black text-text-primary tracking-tighter whitespace-nowrap">{group.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+    <div className="grid grid-cols-3 gap-3 border-t border-border-light pt-5">
+      <div className="flex flex-col gap-0.5">
+        <p className="text-[8px] font-black text-text-secondary uppercase tracking-widest">Total Global</p>
+        <p className="text-sm font-black text-text-primary tracking-tighter whitespace-nowrap">{group.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
       </div>
-      <div className="flex flex-col gap-1">
-        <p className="text-[9px] font-black text-text-secondary uppercase tracking-widest">Pago</p>
-        <p className={`text-base font-black tracking-tighter whitespace-nowrap ${group.pago > 0 ? 'text-green-600' : 'text-red-500/60'}`}>{group.pago.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+      <div className="flex flex-col gap-0.5">
+        <p className="text-[8px] font-black text-text-secondary uppercase tracking-widest">Pago</p>
+        <p className={`text-sm font-black tracking-tighter whitespace-nowrap ${group.pago > 0 ? 'text-green-600' : 'text-red-500/60'}`}>{group.pago.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
       </div>
-      <div className="flex flex-col gap-1">
-        <p className="text-[9px] font-black text-text-secondary uppercase tracking-widest">Restante</p>
-        <p className={`text-base font-black tracking-tighter whitespace-nowrap ${group.restante > 0 ? 'text-text-primary' : 'text-green-600/70'}`}>{group.restante.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+      <div className="flex flex-col gap-0.5">
+        <p className="text-[8px] font-black text-text-secondary uppercase tracking-widest">Restante</p>
+        <p className={`text-sm font-black tracking-tighter whitespace-nowrap ${group.restante > 0 ? 'text-text-primary' : 'text-green-600/70'}`}>{group.restante.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
       </div>
     </div>
 
-    <div className="flex justify-center pt-2 mt-auto">
-      <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'} text-xs text-text-secondary/60 group-hover:text-primary transition-all duration-300 ${isExpanded ? 'text-primary' : ''}`}></i>
+    <div className="flex justify-center pt-1 mt-auto">
+      <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'} text-[10px] text-text-secondary/60 group-hover:text-primary transition-all duration-300 ${isExpanded ? 'text-primary' : ''}`}></i>
     </div>
   </button>
 );
