@@ -11,6 +11,14 @@ interface PaymentGroup {
   orders: Order[];
 }
 
+interface BatchSummary {
+  lote: number;
+  total: number;
+  pago: number;
+  restante: number;
+  orders: Order[];
+}
+
 interface PaymentsTabProps {
   searchText: string;
   setSearchText: (text: string) => void;
@@ -55,6 +63,23 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [orders]);
 
+  const getBatchesForGroup = (groupOrders: Order[]): BatchSummary[] => {
+    const batchMap: Record<number, BatchSummary> = {};
+    groupOrders.forEach(o => {
+      const lote = o.lote || 1;
+      if (!batchMap[lote]) {
+        batchMap[lote] = { lote, total: 0, pago: 0, restante: 0, orders: [] };
+      }
+      batchMap[lote].total += o.valorTotal;
+      batchMap[lote].pago += (o.valorPago || 0);
+      batchMap[lote].orders.push(o);
+    });
+    return Object.values(batchMap).map(b => ({
+      ...b,
+      restante: b.total - b.pago
+    })).sort((a, b) => a.lote - b.lote);
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="relative max-w-2xl mx-auto">
@@ -82,28 +107,50 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
                 onToggle={() => setExpandedSector(expandedSector === group.name ? null : group.name)}
               />
               {expandedSector === group.name && (
-                <div className="space-y-3 animate-in slide-in-from-top-4 duration-500 pl-4 border-l-2 border-primary/30">
-                  {group.orders.map(order => (
-                    <div key={order.docId} className="card bg-surface p-6 flex justify-between items-center hover:border-primary/30 transition-all border border-primary/20 rounded-[2.5rem]">
-                      <div className="flex flex-col gap-1.5">
-                        <span className="text-xs font-black text-primary uppercase tracking-[0.2em] opacity-80">Valor do Pedido</span>
-                        <span className="text-xl font-black text-text-primary tracking-tighter">
-                          {order.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </span>
-                        <div className="flex items-center gap-2">
-                           <span className={`w-2 h-2 rounded-full ${order.statusPagamento === 'Pago' ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                           <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{order.statusPagamento}</span>
+                <div className="space-y-6 animate-in slide-in-from-top-4 duration-500 pl-4 border-l-2 border-primary/30">
+                  {getBatchesForGroup(group.orders).map(batch => (
+                    <div key={batch.lote} className="space-y-3">
+                      <div className="card bg-slate-50/80 p-5 border border-primary/10 rounded-[2rem]">
+                        <div className="flex justify-between items-center mb-4">
+                           <span className="bg-primary text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-lg">LOTE {batch.lote}</span>
+                           <div className="text-right">
+                              <p className="text-[8px] font-bold text-text-secondary uppercase tracking-widest">Saldo Restante Lote {batch.lote}</p>
+                              <p className={`text-sm font-black tracking-tighter ${batch.restante > 0 ? 'text-red-500' : 'text-green-600'}`}>
+                                {batch.restante.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                              </p>
+                           </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 border-t border-border-light/50 pt-3 mb-4">
+                            <div>
+                                <p className="text-[8px] font-bold text-text-secondary uppercase tracking-widest">Total Lote</p>
+                                <p className="text-xs font-black text-text-primary">{batch.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[8px] font-bold text-text-secondary uppercase tracking-widest">Pago Lote</p>
+                                <p className="text-xs font-black text-green-600">{batch.pago.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {batch.orders.map(order => (
+                            <div key={order.docId} className="flex justify-between items-center bg-white p-4 rounded-2xl border border-primary/5 shadow-sm">
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-text-primary tracking-tight uppercase">{order.nome}</span>
+                                <span className="text-[8px] font-bold text-text-secondary uppercase tracking-widest">Pedido #{order.numPedido}</span>
+                              </div>
+                              <button 
+                                onClick={() => {
+                                  setRegisterPaymentOrder(order);
+                                  setPaymentAmount('');
+                                }}
+                                className="bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest"
+                              >
+                                LIQUIDAR
+                              </button>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                      <button 
-                        onClick={() => {
-                          setRegisterPaymentOrder(order);
-                          setPaymentAmount('');
-                        }}
-                        className="bg-primary-light border border-primary/20 text-primary hover:bg-primary hover:text-white transition-all px-7 py-4 rounded-full text-[11px] font-black uppercase tracking-widest active:scale-95"
-                      >
-                        GERENCIAR
-                      </button>
                     </div>
                   ))}
                 </div>
@@ -133,7 +180,7 @@ const PaymentGroupCard: React.FC<{ group: PaymentGroup, isExpanded: boolean, onT
 
     <div className="grid grid-cols-3 gap-4 border-t border-border-light pt-6">
       <div className="flex flex-col gap-1">
-        <p className="text-[9px] font-black text-text-secondary uppercase tracking-widest">Total</p>
+        <p className="text-[9px] font-black text-text-secondary uppercase tracking-widest">Total Geral</p>
         <p className="text-base font-black text-text-primary tracking-tighter whitespace-nowrap">{group.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
       </div>
       <div className="flex flex-col gap-1">

@@ -1,3 +1,4 @@
+
 import { Order, Stats, ColorData } from '../types';
 import { DEFAULT_PRICE, INFANTIL_SIZES, BABYLOOK_SIZES, UNISSEX_SIZES, SETORES_CAPITAL } from '../constants';
 
@@ -342,9 +343,17 @@ export const generateOrderPDF = async (order: Order) => {
       const categoryData = colorData[categoryKey];
       if (!categoryData) return false;
 
+      // Determinamos a lista de tamanhos correta seguindo a ordem das constantes
+      let relevantSizes: string[];
+      if (categoryKey === 'infantil') relevantSizes = INFANTIL_SIZES;
+      else if (categoryKey === 'babylook') relevantSizes = BABYLOOK_SIZES;
+      else relevantSizes = UNISSEX_SIZES;
+
       const rows: any[] = [];
-      Object.entries(categoryData).forEach(([size, qty]) => {
-        if ((qty as number) > 0) {
+      // Iteramos estritamente pela ordem das constantes para garantir a exibição visual solicitada
+      relevantSizes.forEach(size => {
+        const qty = categoryData[size];
+        if (typeof qty === 'number' && qty > 0) {
           rows.push([size, qty]);
         }
       });
@@ -381,13 +390,14 @@ export const generateOrderPDF = async (order: Order) => {
     const verdeColor = "#556B2F";
     const terraColor = "#a35e47";
     
+    // Regra de Cores: 1º Verde, 2º Terracota
     if (renderCategoryGrid("Verde Oliva", "Infantil", "verdeOliva", "infantil", verdeColor)) hasAnyItem = true;
     if (renderCategoryGrid("Verde Oliva", "Babylook", "verdeOliva", "babylook", verdeColor)) hasAnyItem = true;
-    if (renderCategoryGrid("Verde Oliva", "Unissex", "verdeOliva", "unissex", verdeColor)) hasAnyItem = true;
+    if (renderCategoryGrid("Verde Oliva", "Adulto / Unissex", "verdeOliva", "unissex", verdeColor)) hasAnyItem = true;
     
     if (renderCategoryGrid("Terracota", "Infantil", "terracota", "infantil", terraColor)) hasAnyItem = true;
     if (renderCategoryGrid("Terracota", "Babylook", "terracota", "babylook", terraColor)) hasAnyItem = true;
-    if (renderCategoryGrid("Terracota", "Unissex", "terracota", "unissex", terraColor)) hasAnyItem = true;
+    if (renderCategoryGrid("Terracota", "Adulto / Unissex", "terracota", "unissex", terraColor)) hasAnyItem = true;
 
     if (!hasAnyItem) {
         doc.setFontSize(10);
