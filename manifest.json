@@ -1,0 +1,21 @@
+{
+  "name": "Pedidos Camisetas",
+  "short_name": "Pedidos Camisetas",
+  "description": "Sistema de Gestão de Pedidos UMADEMATS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5e9",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/mblarson/imagens/main/iconepedidos.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/mblarson/imagens/main/iconepedidos.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
