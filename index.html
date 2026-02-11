@@ -21,7 +21,7 @@
     <!-- Web App Manifest -->
     <link rel="manifest" href="manifest.json">
 
-    <!-- Frameworks & CSS -->
+    <!-- Frameworks & CSS Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
@@ -29,11 +29,11 @@
     <!-- Dynamic Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Permanent+Marker&family=Bungee+Inline&family=Creepster&family=Satisfy&family=Space+Mono:wght@700&family=Playfair+Display:ital,wght@1,900&display=swap" rel="stylesheet">
     
-    <!-- Libraries -->
+    <!-- PDF Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
 
-    <!-- Tailwind Configuration -->
+    <!-- Tailwind System Configuration -->
     <script>
       tailwind.config = {
         theme: {
@@ -65,6 +65,7 @@
       }
     </script>
 
+    <!-- Import Map -->
     <script type="importmap">
     {
       "imports": {
@@ -81,7 +82,7 @@
     }
     </script>
 </head>
-<body class="font-manrope">
+<body class="font-manrope overflow-x-hidden">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
 </body>
