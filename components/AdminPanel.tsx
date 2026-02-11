@@ -24,11 +24,11 @@ interface AdminPanelProps {
 
 const getTabDescription = (tab: AdminTab) => {
     switch (tab) {
-        case AdminTab.Dashboard: return "Visão geral e métricas do evento.";
-        case AdminTab.Orders: return "Gerenciar todos os pedidos individuais.";
-        case AdminTab.Payments: return "Controlar recebimentos por setor ou cidade.";
-        case AdminTab.Statistics: return "Análise de performance e débitos por localidade.";
-        case AdminTab.Event: return "Configurações gerais e ações críticas.";
+        case AdminTab.Dashboard: return "Métricas e visão consolidada.";
+        case AdminTab.Orders: return "Gestão de pedidos individuais.";
+        case AdminTab.Payments: return "Controle de recebimentos.";
+        case AdminTab.Statistics: return "Análise de débitos e performance.";
+        case AdminTab.Event: return "Configurações críticas do sistema.";
         default: return "";
     }
 };
@@ -88,9 +88,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
       }
 
       if (tab === AdminTab.Dashboard) {
-        // Correção Crítica: Força o recálculo real das estatísticas ao abrir o Dashboard.
-        // Isso remove valores estagnados (como o "100" no Total Recebido) e garante que o
-        // valor exibido seja estritamente a soma atual dos pagamentos reais no banco.
         await syncAllStats();
         const s = await getStats();
         setCurrentStats(s);
@@ -318,137 +315,140 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
   };
 
   return (
-    <div className="flex flex-col gap-6 animate-in slide-in-from-right-4 duration-500">
-      <div className="flex flex-col md:flex-row justify-between md:items-center gap-6 border-b border-border-light pb-6">
-        <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-3">
-              <h2 className="font-black text-2xl md:text-3xl text-text-primary tracking-tight capitalize leading-none">{tab}</h2>
+    <div className="flex flex-col gap-4 sm:gap-6 animate-in slide-in-from-right-4 duration-500 px-2 sm:px-0">
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 sm:gap-6 border-b border-border-light pb-4 sm:pb-6">
+        <div className="flex flex-col gap-0.5 sm:gap-1 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-2 sm:gap-3">
+              <h2 className="font-black text-xl sm:text-2xl md:text-3xl text-text-primary tracking-tight capitalize leading-none">{tab}</h2>
               <button 
                 onClick={handleRefreshMetrics}
                 disabled={isProcessingConfig}
-                className="flex items-center gap-1.5 text-primary hover:text-text-primary transition-colors text-[9px] md:text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
+                className="flex items-center gap-1 text-primary hover:text-text-primary transition-colors text-[8px] sm:text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
               >
                 <i className={`fas fa-sync-alt ${isProcessingConfig ? 'fa-spin' : ''}`}></i>
-                <span className="hidden sm:inline">SINCRONIZAR</span>
-                <span className="sm:hidden">SYNC</span>
+                <span className="hidden xs:inline">Sincronizar</span>
               </button>
             </div>
-            <p className="text-[9px] md:text-[10px] text-text-secondary font-bold uppercase tracking-widest">
+            <p className="text-[8px] sm:text-[10px] text-text-secondary font-bold uppercase tracking-widest leading-tight">
                 {getTabDescription(tab)}
             </p>
         </div>
-        <AdminMenu activeTab={tab} onSelectTab={handleTabSelect} />
+        <div className="w-full md:w-auto">
+          <AdminMenu activeTab={tab} onSelectTab={handleTabSelect} />
+        </div>
       </div>
 
-      {tab === AdminTab.Dashboard && (
-        <DashboardTab 
-          handleAiAction={handleAiAction}
-          isAnalysing={isAnalysing}
-          onShowSizeMatrix={onShowSizeMatrix}
-          aiAnalysis={aiAnalysis}
-          currentStats={currentStats}
-        />
-      )}
-      
-      {tab === AdminTab.Payments && (
-        <PaymentsTab 
-          searchText={searchText}
-          setSearchText={setSearchText}
-          isLoadingOrders={isLoadingOrders}
-          orders={orders}
-          setRegisterPaymentOrder={setRegisterPaymentOrder}
-          setPaymentAmount={setPaymentAmount}
-        />
-      )}
-      
-      {tab === AdminTab.Orders && (
-        <OrdersTab 
-          searchText={searchText}
-          setSearchText={setSearchText}
-          isLoadingOrders={isLoadingOrders}
-          orders={orders}
-          onEditOrder={onEditOrder}
-          setOrderToDelete={setOrderToDelete}
-          loadMoreOrders={loadMoreOrders}
-          hasMoreOrders={hasMoreOrders}
-          isLoadingMore={isLoadingMore}
-        />
-      )}
+      <div className="w-full">
+        {tab === AdminTab.Dashboard && (
+          <DashboardTab 
+            handleAiAction={handleAiAction}
+            isAnalysing={isAnalysing}
+            onShowSizeMatrix={onShowSizeMatrix}
+            aiAnalysis={aiAnalysis}
+            currentStats={currentStats}
+          />
+        )}
+        
+        {tab === AdminTab.Payments && (
+          <PaymentsTab 
+            searchText={searchText}
+            setSearchText={setSearchText}
+            isLoadingOrders={isLoadingOrders}
+            orders={orders}
+            setRegisterPaymentOrder={setRegisterPaymentOrder}
+            setPaymentAmount={setPaymentAmount}
+          />
+        )}
+        
+        {tab === AdminTab.Orders && (
+          <OrdersTab 
+            searchText={searchText}
+            setSearchText={setSearchText}
+            isLoadingOrders={isLoadingOrders}
+            orders={orders}
+            onEditOrder={onEditOrder}
+            setOrderToDelete={setOrderToDelete}
+            loadMoreOrders={loadMoreOrders}
+            hasMoreOrders={hasMoreOrders}
+            isLoadingMore={isLoadingMore}
+          />
+        )}
 
-      {tab === AdminTab.Statistics && (
-        <StatisticsTab
-          orders={orders}
-          isLoading={isLoadingOrders}
-        />
-      )}
+        {tab === AdminTab.Statistics && (
+          <StatisticsTab
+            orders={orders}
+            isLoading={isLoadingOrders}
+          />
+        )}
 
-      {tab === AdminTab.Event && (
-        <EventTab 
-          config={config}
-          setNewPrice={setNewPrice}
-          setIsPriceModalOpen={setIsPriceModalOpen}
-          formatNumberToCurrency={formatNumberToCurrency}
-          setSecurityModal={setSecurityModal}
-        />
-      )}
+        {tab === AdminTab.Event && (
+          <EventTab 
+            config={config}
+            setNewPrice={setNewPrice}
+            setIsPriceModalOpen={setIsPriceModalOpen}
+            formatNumberToCurrency={formatNumberToCurrency}
+            setSecurityModal={setSecurityModal}
+          />
+        )}
+      </div>
 
       <Modal 
         isOpen={!!registerPaymentOrder} 
         onClose={() => setRegisterPaymentOrder(null)} 
         title="Liquidar Pagamento"
       >
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-6 sm:space-y-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <CurrencyInput 
               label="VALOR PAGO"
               value={paymentAmount} 
               onChange={setPaymentAmount}
               placeholder="R$ 0,00"
-              className="text-2xl font-black h-14"
+              className="text-lg sm:text-2xl font-black h-12 sm:h-14"
             />
             
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] uppercase font-black tracking-widest text-primary/70">DATA DO RECEBIMENTO</label>
+            <div className="flex flex-col gap-1.5 sm:gap-2">
+              <label className="text-[9px] sm:text-[10px] uppercase font-black tracking-widest text-primary/70">DATA DO RECEBIMENTO</label>
               <input 
                 type="date" 
                 value={paymentDate} 
                 onChange={e => setPaymentDate(e.target.value)} 
-                className="w-full bg-surface border border-border-light rounded-xl h-14 px-4 text-text-primary text-base font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all text-center"
+                className="w-full bg-surface border border-border-light rounded-xl h-12 sm:h-14 px-3 sm:px-4 text-text-primary text-sm sm:text-base font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all text-center"
               />
             </div>
           </div>
 
           <Button 
-            className="w-full h-14 text-sm" 
+            className="w-full h-12 sm:h-14 text-xs sm:text-sm" 
             onClick={handleRegisterPayment} 
             disabled={isProcessingPayment || !paymentAmount}
           >
             {isProcessingPayment ? "PROCESSANDO..." : "CONFIRMAR PAGAMENTO"}
           </Button>
 
-          <div className="pt-4 space-y-4">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-text-secondary text-center">Histórico de Pagamentos</h3>
+          <div className="pt-2 sm:pt-4 space-y-3 sm:space-y-4">
+            <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-text-secondary text-center">Histórico de Lançamentos</h3>
             
             <div className="overflow-hidden rounded-xl border border-border-light/50">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs sm:text-sm">
                 <thead>
                   <tr className="bg-slate-50 border-b border-border-light/50">
-                    <th className="py-3 text-center w-1/2 font-black text-[9px] uppercase tracking-widest text-text-secondary">DATA</th>
-                    <th className="py-3 text-center w-1/2 border-l border-border-light/50 font-black text-[9px] uppercase tracking-widest text-text-secondary">VALOR</th>
+                    <th className="py-2.5 sm:py-3 text-center w-1/2 font-black text-[8px] sm:text-[9px] uppercase tracking-widest text-text-secondary">DATA</th>
+                    <th className="py-2.5 sm:py-3 text-center w-1/2 border-l border-border-light/50 font-black text-[8px] sm:text-[9px] uppercase tracking-widest text-text-secondary">VALOR</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-light/30 text-center">
                   {isLoadingHistory ? (
-                    <tr><td colSpan={2} className="py-8 text-text-secondary/60 italic text-xs">Sincronizando...</td></tr>
+                    <tr><td colSpan={2} className="py-6 text-text-secondary/60 italic text-xs uppercase tracking-widest">Sincronizando...</td></tr>
                   ) : (orderPaymentHistory.length === 0) ? (
                     <tr>
-                      <td colSpan={2} className="py-8 text-text-secondary/60 italic text-xs uppercase tracking-widest">Sem lançamentos</td>
+                      <td colSpan={2} className="py-6 text-text-secondary/60 italic text-[10px] uppercase tracking-widest">Sem lançamentos</td>
                     </tr>
                   ) : (
                     orderPaymentHistory.slice().reverse().map((h: PaymentHistory) => (
                       <tr key={h.liquidacaoId} className="text-text-primary hover:bg-primary-light/30 transition-colors font-bold">
-                        <td className="py-3.5 text-text-secondary text-xs">{h.data}</td>
-                        <td className="py-3.5 border-l border-border-light/30 text-xs">{h.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                        <td className="py-3 text-text-secondary text-[10px] sm:text-xs">{h.data}</td>
+                        <td className="py-3 border-l border-border-light/30 text-[10px] sm:text-xs">{h.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                       </tr>
                     ))
                   )}
@@ -462,17 +462,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
                   onClick={() => handleCancelLastPayment(registerPaymentOrder!.docId)}
                   disabled={isProcessingPayment}
                   variant="danger"
-                  className="px-6 py-2 rounded-full text-[9px] flex items-center gap-2 h-10"
+                  className="px-4 py-2 sm:px-6 h-9 sm:h-10 rounded-full text-[8px] sm:text-[9px] flex items-center gap-2"
                 >
                   {isProcessingPayment ? (
-                    <>
-                      <i className="fas fa-spinner fa-spin"></i>
-                      <span>Cancelando...</span>
-                    </>
+                    <i className="fas fa-spinner fa-spin"></i>
                   ) : (
                     <>
                       <i className="fas fa-undo"></i>
-                      <span>CANCELAR ÚLTIMA</span>
+                      <span>ESTORNAR ÚLTIMA</span>
                     </>
                   )}
                 </Button>
@@ -484,27 +481,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
 
       <Modal isOpen={isPriceModalOpen} onClose={() => setIsPriceModalOpen(false)} title="Alterar Valor">
         <div className="space-y-6">
-          <div className="p-6 bg-surface border border-border-light rounded-2xl">
+          <div className="p-4 sm:p-6 bg-surface border border-border-light rounded-xl sm:rounded-2xl">
             <CurrencyInput 
               label="NOVO VALOR UNITÁRIO"
               value={newPrice}
               onChange={setNewPrice}
               placeholder="R$ 0,00"
-              className="text-center text-2xl font-black h-14"
+              className="text-center text-xl sm:text-2xl font-black h-12 sm:h-14"
               autoFocus
             />
           </div>
-          <div className="flex gap-4">
-            <Button variant="outline" className="flex-1 h-14" onClick={() => setIsPriceModalOpen(false)}>CANCELAR</Button>
+          <div className="flex gap-3 sm:gap-4">
+            <Button variant="outline" className="flex-1 h-12 sm:h-14" onClick={() => setIsPriceModalOpen(false)}>CANCELAR</Button>
             <Button 
-              className="flex-1 h-14"
+              className="flex-1 h-12 sm:h-14"
               onClick={() => {
                 const priceValue = parseCurrencyToNumber(newPrice);
                 if (newPrice && priceValue > 0) {
                   setIsPriceModalOpen(false);
                   setSecurityModal({ type: 'price', password: '', newValue: newPrice });
                 } else {
-                  alert("Por favor, insira um valor numérico válido e maior que zero.");
+                  alert("Valor inválido.");
                 }
               }}
               disabled={!newPrice || parseCurrencyToNumber(newPrice) <= 0}
@@ -517,27 +514,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
 
       <Modal isOpen={!!securityModal.type} onClose={() => setSecurityModal({ type: null, password: '' })} title="Verificação Mestre">
         <div className="space-y-6">
-          <div className="p-8 bg-surface border border-primary/20 rounded-2xl text-center">
-            <p className="text-sm text-text-secondary font-bold uppercase tracking-widest mb-6">Informe a senha mestre para confirmar:</p>
-            <Input type="text" placeholder="SENHA" autoFocus value={securityModal.password} onChange={e => setSecurityModal({...securityModal, password: e.target.value.toUpperCase()})} className="text-center tracking-[0.5em] text-xl" />
+          <div className="p-6 sm:p-8 bg-surface border border-primary/20 rounded-xl sm:rounded-2xl text-center">
+            <p className="text-xs sm:text-sm text-text-secondary font-bold uppercase tracking-widest mb-4 sm:mb-6">Confirme com a senha mestre:</p>
+            <Input type="text" placeholder="SENHA" autoFocus value={securityModal.password} onChange={e => setSecurityModal({...securityModal, password: e.target.value.toUpperCase()})} className="text-center tracking-[0.3em] sm:tracking-[0.5em] text-lg sm:text-xl h-12 sm:h-14" />
           </div>
-          <div className="flex gap-4">
-            <Button variant="outline" className="flex-1 h-14 text-sm" onClick={() => setSecurityModal({ type: null, password: '' })}>CANCELAR</Button>
-            <Button className="flex-1 h-14 text-sm" onClick={handleSecurityAction} disabled={isProcessingConfig || !securityModal.password}>CONFIRMAR</Button>
+          <div className="flex gap-3 sm:gap-4">
+            <Button variant="outline" className="flex-1 h-12 sm:h-14 text-[10px] sm:text-sm" onClick={() => setSecurityModal({ type: null, password: '' })}>CANCELAR</Button>
+            <Button className="flex-1 h-12 sm:h-14 text-[10px] sm:text-sm" onClick={handleSecurityAction} disabled={isProcessingConfig || !securityModal.password}>CONFIRMAR</Button>
           </div>
         </div>
       </Modal>
 
-      <Modal isOpen={!!orderToDelete} onClose={() => setOrderToDelete(null)} title="Excluir Pedido!">
+      <Modal isOpen={!!orderToDelete} onClose={() => setOrderToDelete(null)} title="Excluir Registro">
         <div className="space-y-6">
-          <div className="text-center p-6 bg-red-500/5 border border-red-500/20 rounded-2xl">
-            <p className="text-sm text-text-secondary font-bold uppercase tracking-widest mb-2 leading-relaxed">Apagar o pedido</p>
-            <p className="text-3xl font-black text-text-primary tracking-widest mb-2">#{orderToDelete?.numPedido}</p>
-            <p className="text-xs text-red-500/80 font-black uppercase tracking-widest">Essa ação é permanente!</p>
+          <div className="text-center p-4 sm:p-6 bg-red-500/5 border border-red-500/20 rounded-xl sm:rounded-2xl">
+            <p className="text-xs sm:text-sm text-text-secondary font-bold uppercase tracking-widest mb-2 leading-relaxed">Apagar permanentemente</p>
+            <p className="text-2xl sm:text-3xl font-black text-text-primary tracking-widest mb-1 sm:mb-2">#{orderToDelete?.numPedido}</p>
+            <p className="text-[10px] text-red-500 font-black uppercase tracking-widest">Ação irreversível!</p>
           </div>
-          <div className="flex gap-4">
-            <Button variant="outline" className="flex-1 h-14" onClick={() => setOrderToDelete(null)}>MANTER</Button>
-            <Button variant="danger" className="flex-1 h-14" onClick={handleDelete} disabled={isDeleting}>EXCLUIR!</Button>
+          <div className="flex gap-3 sm:gap-4">
+            <Button variant="outline" className="flex-1 h-12 sm:h-14" onClick={() => setOrderToDelete(null)}>CANCELAR</Button>
+            <Button variant="danger" className="flex-1 h-12 sm:h-14" onClick={handleDelete} disabled={isDeleting}>EXCLUIR</Button>
           </div>
         </div>
       </Modal>
