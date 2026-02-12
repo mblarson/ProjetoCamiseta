@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { AdminTab, Stats, Order, PaymentHistory } from '../types';
 import { Card, Button, Input, CurrencyInput, Modal } from './UI';
 import { AdminMenu } from './AdminMenu';
@@ -63,6 +64,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
   const [hasMoreOrders, setHasMoreOrders] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  // NOVO: Controle de lote centralizado no AdminPanel para garantir independência de paginação
+  const [ordersLoteFilter, setOrdersLoteFilter] = useState<number | 'Todos'>(1);
+
   const [registerPaymentOrder, setRegisterPaymentOrder] = useState<Order | null>(null);
   const [paymentAmount, setPaymentAmount] = useState<string>('');
   const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -81,26 +85,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
     return () => clearTimeout(timer);
   }, [searchText]);
 
+  const loadInitialOrdersPage = useCallback(async (lote?: number) => {
+    setIsLoadingOrders(true);
+    const { orders: newOrders, lastVisible } = await getPaginatedOrders(undefined, lote);
+    setOrders(newOrders);
+    setLastVisibleOrder(lastVisible);
+    setHasMoreOrders(lastVisible !== null);
+    setIsLoadingOrders(false);
+  }, []);
+
   useEffect(() => {
     const loadDataForTab = async () => {
-      if (!debouncedSearchText) {
-          setOrders([]);
-      }
-
       if (tab === AdminTab.Dashboard) {
         await syncAllStats();
         const s = await getStats();
         setCurrentStats(s);
       } else if (tab === AdminTab.Orders) {
-        setIsLoadingOrders(true);
         if (debouncedSearchText) {
+          setIsLoadingOrders(true);
           const results = await searchOrders(debouncedSearchText);
           setOrders(results);
           setHasMoreOrders(false);
+          setIsLoadingOrders(false);
         } else {
-          await loadInitialOrdersPage();
+          // Quando não há busca, usamos a paginação por lote
+          const currentLote = ordersLoteFilter === 'Todos' ? undefined : (ordersLoteFilter as number);
+          await loadInitialOrdersPage(currentLote);
         }
-        setIsLoadingOrders(false);
       } else if (tab === AdminTab.Payments || tab === AdminTab.Statistics) {
         setIsLoadingOrders(true);
         if (debouncedSearchText) {
@@ -115,7 +126,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
       }
     };
     loadDataForTab();
-  }, [tab, debouncedSearchText]);
+  }, [tab, debouncedSearchText, ordersLoteFilter, loadInitialOrdersPage]);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -134,6 +145,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
   const loadConfig = async () => {
     const c = await getGlobalConfig();
     setConfig(c);
+    // Inicializa o filtro de lote com o lote atual do sistema se for a primeira carga
+    if (ordersLoteFilter === 1 && c.currentBatch !== 1) {
+        setOrdersLoteFilter(c.currentBatch);
+    }
   };
 
   const loadAllOrders = async () => {
@@ -141,17 +156,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
     setOrders(data);
   };
   
-  const loadInitialOrdersPage = async () => {
-    const { orders: newOrders, lastVisible } = await getPaginatedOrders();
-    setOrders(newOrders);
-    setLastVisibleOrder(lastVisible);
-    setHasMoreOrders(lastVisible !== null);
-  };
-
   const loadMoreOrders = async () => {
     if (!lastVisibleOrder || !hasMoreOrders) return;
     setIsLoadingMore(true);
-    const { orders: newOrders, lastVisible } = await getPaginatedOrders(lastVisibleOrder);
+    const currentLote = ordersLoteFilter === 'Todos' ? undefined : (ordersLoteFilter as number);
+    const { orders: newOrders, lastVisible } = await getPaginatedOrders(lastVisibleOrder, currentLote);
     setOrders(prev => [...prev, ...newOrders]);
     setLastVisibleOrder(lastVisible);
     setHasMoreOrders(lastVisible !== null);
@@ -174,7 +183,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
         const data = await searchOrders(currentSearch);
         setOrders(data);
       } else {
-        await loadInitialOrdersPage();
+        const currentLote = ordersLoteFilter === 'Todos' ? undefined : (ordersLoteFilter as number);
+        await loadInitialOrdersPage(currentLote);
       }
     }
     setTimeout(() => setIsProcessingConfig(false), 500);
@@ -371,6 +381,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
             loadMoreOrders={loadMoreOrders}
             hasMoreOrders={hasMoreOrders}
             isLoadingMore={isLoadingMore}
+            loteFilter={ordersLoteFilter}
+            setLoteFilter={setOrdersLoteFilter}
           />
         )}
 

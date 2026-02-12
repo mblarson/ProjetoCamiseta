@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Order, ColorData } from '../../types';
 
@@ -36,10 +37,15 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
   setPaymentAmount
 }) => {
   const [expandedSector, setExpandedSector] = useState<string | null>(null);
+  const [showPaidOnly, setShowPaidOnly] = useState(false);
 
   const groupedPayments = useMemo(() => {
     const groups: Record<string, PaymentGroup> = {};
-    orders.forEach(o => {
+    
+    // Filtro inicial se o usuário quiser ver apenas quem já pagou algo
+    const sourceOrders = showPaidOnly ? orders.filter(o => (o.valorPago || 0) > 0) : orders;
+
+    sourceOrders.forEach(o => {
       let key = o.setor.toUpperCase();
       if (o.local === 'Capital' && !key.startsWith('SETOR')) {
         key = `SETOR ${key}`;
@@ -60,7 +66,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
         return g;
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [orders]);
+  }, [orders, showPaidOnly]);
 
   const getBatchesForGroup = (groupOrders: Order[]): BatchSummary[] => {
     const batchMap: Record<number, BatchSummary> = {};
@@ -81,15 +87,24 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-full overflow-x-hidden">
-      <div className="relative max-w-2xl mx-auto px-4 sm:px-0">
-        <i className="fas fa-search absolute left-9 sm:left-5 top-1/2 -translate-y-1/2 text-text-secondary/50 text-base"></i>
-        <input 
-          type="text"
-          placeholder="Buscar por Setor, Cidade, Líder ou Código..."
-          value={searchText}
-          onChange={e => setSearchText(e.target.value)}
-          className="w-full h-12 md:h-16 bg-surface border border-border-light rounded-2xl pl-12 md:pl-16 pr-6 md:pr-8 text-sm md:text-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-text-secondary/60"
-        />
+      <div className="flex flex-col sm:flex-row gap-4 max-w-4xl mx-auto px-4 sm:px-0">
+        <div className="relative flex-1">
+          <i className="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-text-secondary/50 text-base"></i>
+          <input 
+            type="text"
+            placeholder="Buscar por Setor, Cidade, Líder ou Código..."
+            value={searchText}
+            onChange={e => setSearchText(e.target.value)}
+            className="w-full h-12 md:h-14 bg-surface border border-border-light rounded-2xl pl-12 pr-6 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-text-secondary/60"
+          />
+        </div>
+        <button 
+          onClick={() => setShowPaidOnly(!showPaidOnly)}
+          className={`h-12 md:h-14 px-6 rounded-2xl border-2 font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-3 shrink-0 ${showPaidOnly ? 'bg-primary border-primary text-slate-900 shadow-lg' : 'bg-surface border-border-light text-text-secondary hover:border-primary/30'}`}
+        >
+          <i className={`fas ${showPaidOnly ? 'fa-check-double' : 'fa-filter'}`}></i>
+          PAGO
+        </button>
       </div>
 
       {isLoadingOrders ? (
@@ -162,14 +177,11 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
 };
 
 const PaymentGroupCard: React.FC<{ group: PaymentGroup, isExpanded: boolean, onToggle: () => void }> = ({ group, isExpanded, onToggle }) => {
-  // Lógica de cores conforme solicitado:
-  // Estado 1 (Parcial): Pago > 0 && Restante != 0 -> Laranja
-  // Estado 2 (Quitado): Pago > 0 && Restante == 0 -> Verde
   const getPaidColor = () => {
     if (group.pago > 0) {
       return group.restante !== 0 ? 'text-orange-500' : 'text-green-600';
     }
-    return 'text-red-500/60'; // Fallback quando não há pagamento
+    return 'text-red-500/60';
   };
 
   return (

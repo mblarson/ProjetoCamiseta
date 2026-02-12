@@ -69,11 +69,7 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
       ? Array.from(new Set(orders.map(o => o.lote || 1))).sort((a,b) => a-b) 
       : [batchNumber];
 
-    const addBatchPage = (bn: number, isLast: boolean) => {
-      const batchOrders = orders.filter(o => (o.lote || 1) === bn);
-      const totalCamisetasLote = batchOrders.reduce((acc, curr) => acc + calculateTotalShirts(curr), 0);
-      const totalFinanceiroLote = batchOrders.reduce((acc, curr) => acc + (curr.valorTotal || 0), 0);
-
+    const renderHeader = (bn: number | string) => {
       doc.setFillColor(30, 41, 59); 
       doc.rect(0, 0, 210, 40, 'F');
       
@@ -88,7 +84,15 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
       
       doc.setFontSize(14);
       doc.setTextColor(255, 255, 255);
-      doc.text(`LOTE DE PRODUÇÃO — ${bn}`, 105, 34, { align: "center" });
+      doc.text(typeof bn === 'number' ? `LOTE DE PRODUÇÃO — ${bn}` : bn, 105, 34, { align: "center" });
+    };
+
+    const addBatchPage = (bn: number) => {
+      const batchOrders = orders.filter(o => (o.lote || 1) === bn);
+      const totalCamisetasLote = batchOrders.reduce((acc, curr) => acc + calculateTotalShirts(curr), 0);
+      const totalFinanceiroLote = batchOrders.reduce((acc, curr) => acc + (curr.valorTotal || 0), 0);
+
+      renderHeader(bn);
 
       let currentY = 50;
 
@@ -191,15 +195,86 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
         styles: { fontSize: 9 },
         columnStyles: { 1: { halign: 'right' } }
       });
-
-      if (!isLast) {
-        doc.addPage();
-      }
     };
 
     batchesToProcess.forEach((bn, idx) => {
-      addBatchPage(bn, idx === batchesToProcess.length - 1 && !isGlobal);
+      addBatchPage(bn);
+      if (idx < batchesToProcess.length - 1) {
+          doc.addPage();
+      }
     });
+
+    // Seção de DADOS GERAIS (apenas para o relatório consolidado)
+    if (isGlobal) {
+      doc.addPage();
+      renderHeader("DADOS GERAIS CONSOLIDADOS");
+      
+      let currentY = 50;
+      const totalCamisetas = orders.reduce((acc, curr) => acc + calculateTotalShirts(curr), 0);
+      const totalFinanceiro = orders.reduce((acc, curr) => acc + (curr.valorTotal || 0), 0);
+
+      (doc as any).autoTable({
+        startY: currentY,
+        head: [['CATEGORIA', 'VALOR CONSOLIDADO']],
+        body: [
+            ['TOTAL DE PEDIDOS (TODOS OS LOTES)', `${orders.length} PEDIDOS`],
+            ['TOTAL DE CAMISETAS (TODOS OS LOTES)', `${totalCamisetas} UNIDADES`],
+            ['VALOR TOTAL PREVISTO', totalFinanceiro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })]
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [30, 41, 59], textColor: 255 },
+        styles: { fontSize: 10, cellPadding: 5 }
+      });
+
+      currentY = (doc as any).lastAutoTable.finalY + 15;
+
+      // CAPITAL CONSOLIDADA
+      doc.setFontSize(12);
+      doc.setTextColor(30, 41, 59);
+      doc.text("CAPITAL — CONSOLIDADO POR SETOR", 14, currentY - 5);
+
+      let totalGlobalCapital = 0;
+      const globalSectorRows = SETORES_CAPITAL.map(s => {
+          const sectorOrders = orders.filter(o => o.local === 'Capital' && o.setor === s);
+          const count = sectorOrders.reduce((acc, curr) => acc + calculateTotalShirts(curr), 0);
+          totalGlobalCapital += count;
+          const label = s === 'UMADEMATS' ? s : `SETOR ${s}`;
+          return [label, `${count} un.`];
+      }).sort((a,b) => (a[0] as string).localeCompare(b[0] as string));
+
+      (doc as any).autoTable({
+        startY: currentY,
+        head: [['SETOR', 'QUANTIDADE TOTAL']],
+        body: globalSectorRows,
+        foot: [['TOTAL GERAL CAPITAL', `${totalGlobalCapital} un.`]],
+        theme: 'striped',
+        headStyles: { fillColor: primaryColor },
+        footStyles: { fillColor: [241, 245, 249], fontStyle: 'bold' },
+        styles: { fontSize: 9 }
+      });
+
+      currentY = (doc as any).lastAutoTable.finalY + 15;
+
+      // INTERIOR CONSOLIDADO (Apenas um totalizador conforme solicitado)
+      const interiorOrders = orders.filter(o => o.local === 'Interior');
+      const totalGlobalInterior = interiorOrders.reduce((acc, curr) => acc + calculateTotalShirts(curr), 0);
+
+      if (currentY > 240) { doc.addPage(); currentY = 20; }
+
+      doc.setFontSize(12);
+      doc.setTextColor(30, 41, 59);
+      doc.text("INTERIOR — CONSOLIDADO GERAL", 14, currentY - 5);
+
+      (doc as any).autoTable({
+        startY: currentY,
+        head: [['LOCALIDADE', 'QUANTIDADE TOTAL']],
+        body: [['TODAS AS CIDADES (INTERIOR)', `${totalGlobalInterior} un.`]],
+        theme: 'grid',
+        headStyles: { fillColor: primaryColor },
+        styles: { fontSize: 10, fontStyle: 'bold' },
+        columnStyles: { 1: { halign: 'right' } }
+      });
+    }
 
     const filename = isGlobal ? `Relatorio_Geral_Pedidos_TOTAL.pdf` : `Relatorio_Geral_Pedidos_Lote_${batchNumber}.pdf`;
     triggerPdfActionModal(doc, filename);
@@ -312,7 +387,7 @@ export const generateOrderPDF = async (order: Order) => {
     
     triggerPdfActionModal(doc, `Pedido_${order.numPedido}.pdf`);
   } catch (error) {
-    console.error("Erro PDF:", error);
+    console.error("Erro PDF:");
   }
 };
 

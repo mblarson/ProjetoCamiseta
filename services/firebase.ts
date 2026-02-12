@@ -156,7 +156,7 @@ export const syncAllStats = async () => {
 
     ordersSnap.forEach(doc => {
       const data = doc.data() as Order;
-      const lote = data.lote || 1;
+      const lote = data.lote || 1; // Fallback LOTE 1
 
       if (!batches[lote]) {
         batches[lote] = { qtd_pedidos: 0, qtd_camisetas: 0, valor_total: 0 };
@@ -215,7 +215,7 @@ export const fetchFullBackup = async () => {
       backupDate: new Date().toISOString(),
       evento: "UMADEMATS - JUBILEU DE OURO",
       config: configSnap.data(),
-      pedidos: ordersSnap.docs.map(d => ({ docId: d.id, ...d.data() })),
+      pedidos: ordersSnap.docs.map(d => ({ docId: d.id, ...d.data(), lote: d.data().lote || 1 })),
       pagamentos: paymentsSnap.docs.map(d => ({ docId: d.id, ...d.data() })),
       estatisticasFinal: statsSnap.exists() ? statsSnap.data() : null
     };
@@ -566,24 +566,57 @@ export const getAllOrders = async (): Promise<Order[]> => {
     const snap = await getDocs(q);
     return snap.docs.map(d => {
         const data = d.data();
-        return { docId: d.id, ...data, lote: data.lote || 1 } as Order;
+        return { docId: d.id, ...data, lote: data.lote || 1 } as Order; // Fallback LOTE 1
     });
   } catch (e: any) { service.handleFirebaseError(e, "Get All Orders"); return []; }
 };
 
-const ORDERS_PAGE_SIZE = 50;
+const ORDERS_PAGE_SIZE = 100;
 
+/**
+ * Busca pedidos de forma segura evitando erros de índice composto do Firestore.
+ * Implementa a regra de "Padronização de Lote" onde registros sem lote são considerados LOTE 1.
+ * Para garantir compatibilidade e evitar a criação manual de índices, utilizamos filtragem e ordenação em memória quando filtros são aplicados.
+ */
 export const getPaginatedOrders = async (lastVisible?: DocumentSnapshot, loteFilter?: number): Promise<{ orders: Order[], lastVisible: DocumentSnapshot | null }> => {
   try {
     await service.connect();
+    
+    // Se houver um filtro de lote (exceto 999 que é 'Todos'), buscamos todos e processamos em memória para evitar index errors e aplicar o fallback.
+    if (loteFilter && loteFilter !== 999) {
+      const snap = await getDocs(collection(db, "pedidos"));
+      
+      // Mapeia e aplica fallback de LOTE 1
+      let filteredOrders = snap.docs.map(d => {
+        const data = d.data();
+        return { docId: d.id, ...data, lote: data.lote || 1 } as Order;
+      }).filter(o => o.lote === loteFilter);
+
+      // Ordenação por data (desc) em memória
+      filteredOrders.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+
+      // Paginação manual
+      let startIndex = 0;
+      if (lastVisible) {
+        startIndex = filteredOrders.findIndex(o => o.docId === lastVisible.id) + 1;
+        if (startIndex === 0) startIndex = 0; // Se não encontrado, começa do início
+      }
+
+      const paginatedOrders = filteredOrders.slice(startIndex, startIndex + ORDERS_PAGE_SIZE);
+      
+      // Identifica o DocumentSnapshot para a próxima página
+      const lastItem = paginatedOrders[paginatedOrders.length - 1];
+      const hasMore = (startIndex + ORDERS_PAGE_SIZE < filteredOrders.length);
+      const lastVisibleDoc = (hasMore && lastItem) ? snap.docs.find(d => d.id === lastItem.docId) || null : null;
+
+      return { orders: paginatedOrders, lastVisible: lastVisibleDoc as any };
+    }
+
+    // Se o filtro for 'Todos' ou undefined, usamos a busca nativa por data (apenas um índice simples de campo único necessário)
     const constraints: any[] = [
       orderBy("data", "desc"),
       limit(ORDERS_PAGE_SIZE)
     ];
-
-    if (loteFilter) {
-        constraints.unshift(where("lote", "==", loteFilter));
-    }
 
     if (lastVisible) {
       constraints.push(startAfter(lastVisible));
@@ -594,7 +627,7 @@ export const getPaginatedOrders = async (lastVisible?: DocumentSnapshot, loteFil
     
     const orders = snap.docs.map(d => {
         const data = d.data();
-        return { docId: d.id, ...data, lote: data.lote || 1 } as Order;
+        return { docId: d.id, ...data, lote: data.lote || 1 } as Order; // Fallback LOTE 1
     });
     const lastVisibleDoc = snap.docs.length === ORDERS_PAGE_SIZE ? snap.docs[snap.docs.length - 1] : null;
 
@@ -616,7 +649,7 @@ export const searchOrders = async (searchTerm: string): Promise<Order[]> => {
     
     snap.forEach(d => {
       const data = d.data();
-      const order = { docId: d.id, ...data, lote: data.lote || 1 } as Order;
+      const order = { docId: d.id, ...data, lote: data.lote || 1 } as Order; // Fallback LOTE 1
       
       const displaySetor = (order.setor === 'UMADEMATS') 
         ? 'UMADEMATS' 
@@ -655,7 +688,7 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
     const orderSnap = await getDoc(orderRef);
     if (orderSnap.exists()) {
         const data = orderSnap.data();
-      return { docId: orderSnap.id, ...data, lote: data.lote || 1 } as Order;
+      return { docId: orderSnap.id, ...data, lote: data.lote || 1 } as Order; // Fallback LOTE 1
     }
     return null;
   } catch (e: any) {
@@ -685,7 +718,7 @@ export const deleteOrder = async (order: Order) => {
     });
 
     if (success) {
-      syncAllStats(); // Agora é chamado de forma assíncrona sem await para não travar o fluxo
+      syncAllStats(); 
     }
     return success;
   } catch (e: any) { service.handleFirebaseError(e, "Delete Order"); return false; }
@@ -702,7 +735,7 @@ export const checkExistingEmail = async (email: string, currentBatch: number) =>
 
     const duplicate = snap.docs.find(d => {
         const data = d.data();
-        const recordBatch = data.lote || 1;
+        const recordBatch = data.lote || 1; // Fallback LOTE 1
         return recordBatch === currentBatch;
     });
 
@@ -726,7 +759,7 @@ export const checkExistingSector = async (local: 'Capital' | 'Interior', setor: 
 
     const duplicate = snap.docs.find(d => {
         const data = d.data();
-        const recordBatch = data.lote || 1;
+        const recordBatch = data.lote || 1; // Fallback LOTE 1
         return recordBatch === currentBatch;
     });
 
@@ -750,7 +783,7 @@ export const findOrder = async (id: string) => {
     const snap = await getDocs(q);
     if (snap.empty) return null;
     const data = snap.docs[0].data();
-    return { docId: snap.docs[0].id, ...data, lote: data.lote || 1 } as Order;
+    return { docId: snap.docs[0].id, ...data, lote: data.lote || 1 } as Order; // Fallback LOTE 1
   } catch (e: any) { service.handleFirebaseError(e, "Find Order"); return null; }
 };
 
@@ -761,7 +794,7 @@ export const findOrderByEmail = async (email: string): Promise<Order[]> => {
     const snap = await getDocs(q);
     return snap.docs.map(d => {
         const data = d.data();
-        return { docId: d.id, ...data, lote: data.lote || 1 } as Order;
+        return { docId: d.id, ...data, lote: data.lote || 1 } as Order; // Fallback LOTE 1
     }).sort((a, b) => b.lote - a.lote);
   } catch (e: any) { service.handleFirebaseError(e, "Find Order by Email"); return []; }
 };
@@ -822,7 +855,6 @@ export const createOrder = async (orderData: Partial<Order>, prefix: string = 'P
     });
 
     if (numPedido) {
-      // Chamamos o sync sem await para garantir que o usuário receba o OK mesmo se as regras do Firestore para estatísticas estiverem bloqueadas
       syncAllStats().catch(err => console.warn("Erro silencioso ao sincronizar:", err));
     }
     return numPedido;

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Order, ColorData } from '../../types';
 import { Button, Input } from '../UI';
@@ -14,6 +15,8 @@ interface OrdersTabProps {
   loadMoreOrders: () => void;
   hasMoreOrders: boolean;
   isLoadingMore: boolean;
+  loteFilter: number | 'Todos';
+  setLoteFilter: (lote: number | 'Todos') => void;
 }
 
 const getShirtCount = (order: Order) => {
@@ -45,10 +48,11 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
   setOrderToDelete,
   loadMoreOrders,
   hasMoreOrders,
-  isLoadingMore
+  isLoadingMore,
+  loteFilter,
+  setLoteFilter
 }) => {
   const [localFilter, setLocalFilter] = useState<'Todos' | 'Capital' | 'Interior'>('Todos');
-  const [loteFilter, setLoteFilter] = useState<number | 'Todos'>('Todos');
   const [expandedSector, setExpandedSector] = useState<string | null>(null);
   const [availableBatches, setAvailableBatches] = useState<number[]>([1]);
 
@@ -56,25 +60,14 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
     getGlobalConfig().then(c => {
         const batches = Array.from({length: c.currentBatch}, (_, i) => i + 1);
         setAvailableBatches(batches);
-        setLoteFilter(c.currentBatch);
     });
   }, []);
 
   const filteredOrders = orders.filter(o => {
     const matchesLocal = localFilter === 'Todos' || o.local === localFilter;
-    const matchesLote = loteFilter === 'Todos' || (o.lote || 1) === loteFilter;
-    const term = searchText.trim().toLowerCase();
-    const displaySetor = formatSetor(o).toLowerCase();
-    
-    const matchesText = !term || (
-      o.numPedido.toLowerCase().includes(term) ||
-      o.nome.toLowerCase().includes(term) ||
-      o.setor.toLowerCase().includes(term) ||
-      displaySetor.includes(term) ||
-      o.contato.toLowerCase().includes(term)
-    );
-
-    return matchesLocal && matchesLote && matchesText;
+    // O filtro de lote e busca de texto agora são aplicados na query do firebase via AdminPanel
+    // Aqui fazemos apenas o filtro local de 'Localidade' para complementar a UI
+    return matchesLocal;
   });
 
   return (
