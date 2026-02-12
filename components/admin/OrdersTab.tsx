@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Order, ColorData } from '../../types';
-import { Button, Input } from '../UI';
+import { Button, Input, TextArea } from '../UI';
 import { generateOrderPDF } from '../../services/pdfService';
-import { getGlobalConfig } from '../../services/firebase';
+import { getGlobalConfig, updateOrderComment } from '../../services/firebase';
 
 interface OrdersTabProps {
   searchText: string;
@@ -65,8 +65,6 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
 
   const filteredOrders = orders.filter(o => {
     const matchesLocal = localFilter === 'Todos' || o.local === localFilter;
-    // O filtro de lote e busca de texto agora são aplicados na query do firebase via AdminPanel
-    // Aqui fazemos apenas o filtro local de 'Localidade' para complementar a UI
     return matchesLocal;
   });
 
@@ -165,8 +163,23 @@ const OrderListItem: React.FC<{
   shirtCount: number,
   displaySetor: string
 }> = ({ order, isExpanded, onToggle, onEdit, onPDF, onDelete, shirtCount, displaySetor }) => {
+  const [comentario, setComentario] = useState(order.comentario || '');
+  const [isSavingComment, setIsSavingComment] = useState(false);
+  const [showCommentEditor, setShowCommentEditor] = useState(false);
+
   const whatsappMessage = "Prezado lider, segue em anexo o último relatório de seu pedido de camisetas para o Jubileu da Umademats. Por gentileza, analise o mesmo e nos confirme se está correto para que possamos encaminhar para Produção.";
   const whatsappUrl = `https://wa.me/${order.contato.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMessage)}`;
+
+  const handleSaveComment = async () => {
+    setIsSavingComment(true);
+    const success = await updateOrderComment(order.docId, comentario);
+    if (success) {
+      alert("Comentário salvo com sucesso!");
+    } else {
+      alert("Erro ao salvar comentário.");
+    }
+    setIsSavingComment(false);
+  };
 
   return (
     <div className={`card bg-surface overflow-hidden transition-all duration-300 border border-primary/20 rounded-[1.5rem] sm:rounded-[2.5rem] ${isExpanded ? 'ring-2 ring-primary/40 shadow-lg' : 'hover:-translate-y-1 hover:shadow-lg'}`}>
@@ -176,6 +189,11 @@ const OrderListItem: React.FC<{
             <div className="flex flex-wrap items-center gap-2">
                 <span className="bg-primary/10 text-primary text-[7px] sm:text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-widest border border-primary/20">Lote {order.lote || 1}</span>
                 <h3 className="text-sm sm:text-base font-black text-text-primary tracking-widest uppercase leading-none">#{order.numPedido}</h3>
+                {order.comentario && (
+                  <span className="bg-orange-500/10 text-orange-600 text-[7px] sm:text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-widest border border-orange-500/20">
+                    <i className="fas fa-comment-dots mr-1"></i> Comentário Interno
+                  </span>
+                )}
             </div>
             <p className="text-primary font-black text-[10px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] opacity-80">
               {shirtCount} peças • {order.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -209,10 +227,56 @@ const OrderListItem: React.FC<{
       {isExpanded && (
         <div className="p-5 sm:p-8 bg-background border-t border-border-light animate-in slide-in-from-top-4 duration-500">
           <div className="space-y-6 sm:space-y-8">
+            {/* SEÇÃO DE COMENTÁRIO ADMINISTRATIVO REORGANIZADA */}
+            {!showCommentEditor ? (
+              <div className="flex justify-center sm:justify-start">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setShowCommentEditor(true); }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900/5 text-slate-900 border-2 border-slate-900/10 hover:bg-slate-900/10 transition-all text-[9px] sm:text-[10px] font-black uppercase tracking-widest"
+                >
+                  <i className={`fas ${order.comentario ? 'fa-eye' : 'fa-plus'} mr-1`}></i>
+                  {order.comentario ? 'Visualizar comentário' : '+ Adicionar Comentário'}
+                </button>
+              </div>
+            ) : (
+              <div className="p-4 sm:p-6 rounded-[1.5rem] bg-slate-900/5 border-2 border-slate-900/10 space-y-4 animate-in fade-in zoom-in-95 duration-300">
+                 <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-sm">
+                        <i className="fas fa-user-shield"></i>
+                      </div>
+                      <h4 className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-900">Anotações Administrativas (Privado)</h4>
+                    </div>
+                    <button 
+                      onClick={() => setShowCommentEditor(false)}
+                      className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      Recolher
+                    </button>
+                 </div>
+                 <TextArea 
+                    placeholder="Insira aqui notas internas sobre este pedido que apenas a administração poderá ver..."
+                    value={comentario}
+                    onChange={(e) => setComentario(e.target.value)}
+                    className="bg-white border-slate-200 text-slate-800 text-sm focus:border-slate-900 focus:ring-slate-900/10"
+                 />
+                 <div className="flex justify-end gap-3 items-center">
+                    <Button 
+                      onClick={(e) => { e.stopPropagation(); handleSaveComment(); }} 
+                      disabled={isSavingComment}
+                      className="h-10 sm:h-12 bg-slate-900 hover:bg-slate-800 rounded-xl sm:px-10 text-[9px] sm:text-[10px]"
+                    >
+                      {isSavingComment ? <i className="fas fa-spinner fa-spin mr-2"></i> : <i className="fas fa-save mr-2"></i>}
+                      SALVAR ANOTAÇÃO
+                    </Button>
+                 </div>
+              </div>
+            )}
+
             <div className="space-y-3 sm:space-y-4">
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="w-1 h-4 sm:w-1.5 sm:h-6 bg-primary rounded-full"></div>
-                <p className="text-[9px] sm:text-[11px] font-black text-text-primary uppercase tracking-[0.15em] sm:tracking-[0.2em]">Detalhamento</p>
+                <p className="text-[9px] sm:text-[11px] font-black text-text-primary uppercase tracking-[0.15em] sm:tracking-[0.2em]">Detalhamento de Peças</p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 <ColorSummary label="Verde Oliva" data={order.verdeOliva} hex="#3b4a3c" />
@@ -221,7 +285,7 @@ const OrderListItem: React.FC<{
             </div>
             {order.observacao && (
               <div className="p-3 sm:p-4 rounded-xl bg-surface border border-border-light">
-                <p className="text-[8px] sm:text-[9px] font-black text-primary/50 uppercase tracking-widest mb-1 sm:mb-2">Observações</p>
+                <p className="text-[8px] sm:text-[9px] font-black text-primary/50 uppercase tracking-widest mb-1 sm:mb-2">Observação do Usuário</p>
                 <p className="text-xs sm:text-sm text-text-secondary italic">"{order.observacao}"</p>
               </div>
             )}

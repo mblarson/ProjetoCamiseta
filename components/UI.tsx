@@ -1,7 +1,9 @@
+
 import React from 'react';
 
+// Fix: Updated onClick type to accept React.MouseEvent for better compatibility with standard event handling
 export const Button: React.FC<{
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   type?: 'button' | 'submit';
   variant?: 'primary' | 'outline' | 'danger';
   className?: string;
@@ -27,7 +29,8 @@ export const Button: React.FC<{
   );
 };
 
-export const Card: React.FC<{ children: React.ReactNode, className?: string, onClick?: () => void }> = ({ children, className = "", onClick }) => (
+// Fix: Updated onClick type to accept React.MouseEvent for compatibility with event handlers
+export const Card: React.FC<{ children: React.ReactNode, className?: string, onClick?: (e: React.MouseEvent<HTMLDivElement>) => void }> = ({ children, className = "", onClick }) => (
   <div onClick={onClick} className={`card p-4 xs:p-5 sm:p-8 w-full max-w-full ${className}`}>
     {children}
   </div>

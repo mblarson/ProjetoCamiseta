@@ -1,3 +1,4 @@
+
 export type ColorType = 'verdeOliva' | 'terracota';
 export type CategoryType = 'infantil' | 'babylook' | 'unissex';
 
@@ -28,6 +29,7 @@ export interface Order {
   email: string;
   contato: string;
   observacao?: string;
+  comentario?: string; // Campo exclusivo da administração
   data: string;
   statusPagamento: 'Pendente' | 'Parcial' | 'Pago';
   formaPagamento?: string;

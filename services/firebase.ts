@@ -830,6 +830,18 @@ export const updateOrder = async (docId: string, orderData: Partial<Order>) => {
   }
 };
 
+export const updateOrderComment = async (docId: string, comentario: string) => {
+  try {
+    await service.connect();
+    const orderRef = doc(db, "pedidos", docId);
+    await updateDoc(orderRef, { comentario });
+    return true;
+  } catch (e: any) {
+    service.handleFirebaseError(e, "Update Order Comment");
+    return false;
+  }
+};
+
 export const createOrder = async (orderData: Partial<Order>, prefix: string = 'PED') => {
   try {
     await service.connect();

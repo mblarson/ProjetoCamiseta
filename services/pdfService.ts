@@ -321,7 +321,7 @@ export const generateOrderPDF = async (order: Order) => {
     doc.text(`Local: ${order.local} - ${formatSetor(order)}`, 14, 47);
     doc.text(`Data: ${new Date(order.data).toLocaleDateString('pt-BR')}`, 14, 54);
 
-    let currentY = 70;
+    let currentY = 65;
 
     const renderGrid = (colorName: string, category: typeof CATEGORIES[number], colorKey: 'verdeOliva' | 'terracota', headerColor: string) => {
       const colorData = order[colorKey];
@@ -380,11 +380,27 @@ export const generateOrderPDF = async (order: Order) => {
     renderGrid("Terracota", "babylook", "terracota", terra);
     renderGrid("Terracota", "unissex", "terracota", terra);
 
+    if (currentY > 250) { doc.addPage(); currentY = 20; }
+
     doc.setFontSize(12);
     doc.setTextColor('#1e293b');
     doc.setFont("helvetica", "bold");
     doc.text(`TOTAL: ${order.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (${totalCamisetas} Camisetas)`, 14, currentY + 5);
     
+    // ADICIONAR COMENTÁRIO ADMINISTRATIVO SE EXISTIR
+    if (order.comentario) {
+      currentY += 15;
+      if (currentY > 260) { doc.addPage(); currentY = 20; }
+      doc.setFontSize(10);
+      doc.setTextColor('#64748b');
+      doc.setFont("helvetica", "bold");
+      doc.text("ANOTAÇÕES ADMINISTRATIVAS:", 14, currentY);
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(9);
+      const splitComment = doc.splitTextToSize(order.comentario, 180);
+      doc.text(splitComment, 14, currentY + 6);
+    }
+
     triggerPdfActionModal(doc, `Pedido_${order.numPedido}.pdf`);
   } catch (error) {
     console.error("Erro PDF:");
