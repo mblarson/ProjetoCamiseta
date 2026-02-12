@@ -13,6 +13,8 @@
 html {
   font-size: 16px;
   scroll-behavior: smooth;
+  /* Suporte para Safe Areas em dispositivos mobile */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 /* Tipografia Fluida */
@@ -36,11 +38,27 @@ body {
   width: 100%;
 }
 
+/* Utilitários de Safe Area */
+.pt-safe { padding-top: max(1rem, env(safe-area-inset-top)); }
+.pb-safe { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+.px-safe { 
+  padding-left: max(1rem, env(safe-area-inset-left)); 
+  padding-right: max(1rem, env(safe-area-inset-right)); 
+}
+
 .card {
   background: #ffffff;
   border-radius: 1.5rem;
   border: 1px solid var(--border-light);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
+}
+
+/* Ajuste específico de cards para mobile */
+@media (max-width: 640px) {
+  .card {
+    border-radius: 1.25rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  }
 }
 
 ::selection {

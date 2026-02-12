@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { AdminTab, Stats, Order, PaymentHistory } from '../types';
 import { Card, Button, Input, CurrencyInput, Modal } from './UI';
@@ -94,6 +93,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
     setIsLoadingOrders(false);
   }, []);
 
+  const loadConfig = useCallback(async () => {
+    const c = await getGlobalConfig();
+    setConfig(c);
+    // REGRA OBRIGATÓRIA: Força a abertura no lote atual definido no banco
+    setOrdersLoteFilter(c.currentBatch);
+  }, []);
+
   useEffect(() => {
     const loadDataForTab = async () => {
       if (tab === AdminTab.Dashboard) {
@@ -126,7 +132,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
       }
     };
     loadDataForTab();
-  }, [tab, debouncedSearchText, ordersLoteFilter, loadInitialOrdersPage]);
+  }, [tab, debouncedSearchText, ordersLoteFilter, loadInitialOrdersPage, loadConfig]);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -142,14 +148,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
     fetchHistory();
   }, [registerPaymentOrder]);
 
-  const loadConfig = async () => {
-    const c = await getGlobalConfig();
-    setConfig(c);
-    // Inicializa o filtro de lote com o lote atual do sistema se for a primeira carga
-    if (ordersLoteFilter === 1 && c.currentBatch !== 1) {
-        setOrdersLoteFilter(c.currentBatch);
-    }
-  };
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
 
   const loadAllOrders = async () => {
     const data = await getAllOrders();
