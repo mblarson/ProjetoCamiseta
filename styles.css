@@ -13,32 +13,56 @@
 html {
   font-size: 16px;
   scroll-behavior: smooth;
-  /* Prevenção total de overflow lateral */
+  /* Prevenção total de overflow lateral em nível de raiz */
   overflow-x: hidden;
   width: 100vw;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
-/* Tipografia Mobile-First Otimizada (iPhone/Xiaomi) */
+/* 
+   AJUSTES EXCLUSIVOS MOBILE (iPhone 13-17 / Xiaomi X5 Pro) 
+   --------------------------------------------------------
+*/
 @media (max-width: 639px) {
-  html { font-size: 14px; } /* Base para cálculos de rem */
+  html { 
+    font-size: 16px; /* Base sólida para legibilidade e prevenção de zoom no iOS */
+  } 
   
   body {
     font-size: 1rem;
     -webkit-text-size-adjust: 100%;
+    overflow-x: hidden;
+    width: 100%;
   }
 
-  h1 { font-size: 1.75rem !important; }
-  h2 { font-size: 1.5rem !important; }
-  h3 { font-size: 1.25rem !important; }
+  /* Escala Tipográfica Mobile Reajustada */
+  h1 { font-size: 2rem !important; line-height: 1.1 !important; }
+  h2 { font-size: 1.6rem !important; line-height: 1.2 !important; }
+  h3 { font-size: 1.3rem !important; line-height: 1.2 !important; }
   
-  /* Ajuste de inputs para evitar zoom automático no iOS */
+  /* Garantia de campos sem zoom automático */
   input, select, textarea {
-    font-size: 16px !important;
+    font-size: 16px !important; 
+  }
+
+  .card {
+    border-radius: 1rem;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Prevenção de overflow em tabelas mobile */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
   }
 }
 
-/* Tipografia Fluida para Tablet/Desktop (Mantida conforme regra) */
+/* 
+   TABLET / DESKTOP (100% PRESERVADOS) 
+   -----------------------------------
+*/
 @media (min-width: 1200px) {
   html { font-size: 18px; }
 }
@@ -72,17 +96,6 @@ body {
   border-radius: 1.5rem;
   border: 1px solid var(--border-light);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
-}
-
-/* Ajuste específico de largura total de cards para mobile */
-@media (max-width: 640px) {
-  .card {
-    border-radius: 1rem;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
-    width: 100% !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-  }
 }
 
 ::selection {

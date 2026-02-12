@@ -28,27 +28,27 @@ export const Button: React.FC<{
 };
 
 export const Card: React.FC<{ children: React.ReactNode, className?: string, onClick?: () => void }> = ({ children, className = "", onClick }) => (
-  <div onClick={onClick} className={`card p-4 xs:p-5 sm:p-8 w-full ${className}`}>
+  <div onClick={onClick} className={`card p-4 xs:p-5 sm:p-8 w-full max-w-full ${className}`}>
     {children}
   </div>
 );
 
 export const Input: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { label?: string }> = ({ label, ...props }) => (
-  <div className="flex flex-col gap-1.5 sm:gap-2.5 w-full text-left">
+  <div className="flex flex-col gap-1.5 sm:gap-2.5 w-full text-left max-w-full">
     {label && <label className="text-[10px] sm:text-sm uppercase font-black tracking-widest text-primary/80 ml-1">{label}</label>}
     <input 
       {...props} 
-      className={`bg-surface border-2 border-border-light rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg text-text-primary focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-secondary/40 disabled:bg-background disabled:text-text-secondary w-full ${props.className || ''}`}
+      className={`bg-surface border-2 border-border-light rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg text-text-primary focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-secondary/40 disabled:bg-background disabled:text-text-secondary w-full box-border ${props.className || ''}`}
     />
   </div>
 );
 
 export const TextArea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string }> = ({ label, ...props }) => (
-  <div className="flex flex-col gap-1.5 sm:gap-2.5 w-full text-left">
+  <div className="flex flex-col gap-1.5 sm:gap-2.5 w-full text-left max-w-full">
     {label && <label className="text-[10px] sm:text-sm uppercase font-black tracking-widest text-primary/80 ml-1">{label}</label>}
     <textarea 
       {...props} 
-      className={`bg-surface border-2 border-border-light rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg text-text-primary focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-secondary/40 disabled:bg-background disabled:text-text-secondary min-h-[100px] sm:min-h-[120px] resize-none w-full ${props.className || ''}`}
+      className={`bg-surface border-2 border-border-light rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg text-text-primary focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-secondary/40 disabled:bg-background disabled:text-text-secondary min-h-[100px] sm:min-h-[120px] resize-none w-full box-border ${props.className || ''}`}
     />
   </div>
 );
@@ -75,7 +75,7 @@ export const CurrencyInput: React.FC<{
   };
 
   return (
-    <div className="flex flex-col gap-1.5 sm:gap-2.5 w-full text-left">
+    <div className="flex flex-col gap-1.5 sm:gap-2.5 w-full text-left max-w-full">
       {label && <label className="text-[10px] sm:text-sm uppercase font-black tracking-widest text-primary/80 ml-1">{label}</label>}
       <input 
         type="text"
@@ -84,7 +84,7 @@ export const CurrencyInput: React.FC<{
         onChange={handleInputChange}
         placeholder={placeholder || "R$ 0,00"}
         autoFocus={autoFocus}
-        className={`bg-surface border-2 border-border-light rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-lg sm:text-xl font-bold text-text-primary focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-secondary/40 w-full ${className || ''}`}
+        className={`bg-surface border-2 border-border-light rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-lg sm:text-xl font-bold text-text-primary focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder:text-text-secondary/40 w-full box-border ${className || ''}`}
       />
     </div>
   );
@@ -94,13 +94,13 @@ export const Modal: React.FC<{ isOpen: boolean, onClose: () => void, title?: str
   if (!isOpen) return null;
   const sizeClass = size === 'large' ? 'max-w-7xl' : 'max-w-2xl';
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-2 xs:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300 pt-safe pb-safe overflow-hidden">
-      <div className={`card bg-surface w-full ${sizeClass} p-5 sm:p-10 max-h-[92vh] overflow-y-auto relative animate-in zoom-in-95 duration-300 border-2 border-primary/30 shadow-2xl flex flex-col`}>
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-2 xs:p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300 pt-safe pb-safe overflow-hidden">
+      <div className={`card bg-surface w-full ${sizeClass} p-5 sm:p-10 max-h-[95vh] overflow-y-auto relative animate-in zoom-in-95 duration-300 border-2 border-primary/30 shadow-2xl flex flex-col box-border`}>
         <button onClick={onClose} className="absolute top-3 right-3 sm:top-6 sm:right-6 text-text-secondary hover:text-text-primary transition-colors p-2 z-[2010]">
           <i className="fas fa-times text-xl sm:text-2xl"></i>
         </button>
         {title && <h2 className="text-xl sm:text-3xl font-black mb-6 sm:mb-8 text-primary border-b border-border-light pb-4 sm:pb-5 uppercase tracking-tighter pr-10">{title}</h2>}
-        <div className="pb-2 w-full">
+        <div className="pb-2 w-full max-w-full">
           {children}
         </div>
       </div>

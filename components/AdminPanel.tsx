@@ -527,7 +527,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
 
       <Modal isOpen={!!securityModal.type} onClose={() => setSecurityModal({ type: null, password: '' })} title="Verificação Mestre">
         <div className="space-y-6 w-full max-w-full overflow-hidden">
-          <div className="p-5 sm:p-10 bg-surface border-2 border-primary/20 rounded-xl sm:rounded-2xl text-center flex flex-col gap-6">
+          <div className="p-5 sm:p-8 md:p-10 bg-surface border-2 border-primary/20 rounded-xl sm:rounded-2xl text-center flex flex-col gap-6">
             <p className="text-xs sm:text-sm text-text-secondary font-bold uppercase tracking-widest leading-relaxed">Confirme com a senha mestre para prosseguir:</p>
             <Input 
               type="text" 
@@ -535,7 +535,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
               autoFocus 
               value={securityModal.password} 
               onChange={e => setSecurityModal({...securityModal, password: e.target.value.toUpperCase()})} 
-              className="text-center tracking-[0.4em] sm:tracking-[0.6em] text-xl sm:text-2xl h-14 sm:h-16 font-black uppercase" 
+              className="text-center tracking-[0.2em] sm:tracking-[0.6em] text-lg sm:text-2xl h-14 sm:h-16 font-black uppercase" 
             />
           </div>
           <div className="flex gap-3 sm:gap-4">
