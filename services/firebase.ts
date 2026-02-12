@@ -638,10 +638,16 @@ export const getPaginatedOrders = async (lastVisible?: DocumentSnapshot, loteFil
   }
 };
 
+/**
+ * Busca de pedidos otimizada: Pesquisa apenas em Líder, Setor e Cidade.
+ * Implementa normalização de acentos para garantir resultados precisos.
+ */
 export const searchOrders = async (searchTerm: string): Promise<Order[]> => {
   try {
     await service.connect();
-    const term = searchTerm.trim().toLowerCase();
+    
+    const normalize = (str: string) => (str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const term = normalize(searchTerm.trim());
     if (!term) return [];
 
     const snap = await getDocs(collection(db, "pedidos"));
@@ -649,7 +655,7 @@ export const searchOrders = async (searchTerm: string): Promise<Order[]> => {
     
     snap.forEach(d => {
       const data = d.data();
-      const order = { docId: d.id, ...data, lote: data.lote || 1 } as Order; // Fallback LOTE 1
+      const order = { docId: d.id, ...data, lote: data.lote || 1 } as Order;
       
       const displaySetor = (order.setor === 'UMADEMATS') 
         ? 'UMADEMATS' 
@@ -657,15 +663,12 @@ export const searchOrders = async (searchTerm: string): Promise<Order[]> => {
             ? `SETOR ${order.setor}` 
             : order.setor);
 
+      // Limita a busca exclusivamente a LÍDER, SETOR e CIDADE
       const searchableFields = [
-        order.numPedido,
         order.nome,
         order.setor,
-        displaySetor,
-        order.local,
-        order.email,
-        order.contato
-      ].map(f => (f || "").toLowerCase());
+        displaySetor
+      ].map(normalize);
 
       const isMatch = searchableFields.some(f => f.includes(term));
 

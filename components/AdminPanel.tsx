@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { AdminTab, Stats, Order, PaymentHistory } from '../types';
 import { Card, Button, Input, CurrencyInput, Modal } from './UI';
@@ -63,7 +64,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
   const [hasMoreOrders, setHasMoreOrders] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // NOVO: Controle de lote centralizado no AdminPanel para garantir independência de paginação
   const [ordersLoteFilter, setOrdersLoteFilter] = useState<number | 'Todos'>(1);
 
   const [registerPaymentOrder, setRegisterPaymentOrder] = useState<Order | null>(null);
@@ -96,7 +96,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
   const loadConfig = useCallback(async () => {
     const c = await getGlobalConfig();
     setConfig(c);
-    // REGRA OBRIGATÓRIA: Força a abertura no lote atual definido no banco
     setOrdersLoteFilter(c.currentBatch);
   }, []);
 
@@ -109,12 +108,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
       } else if (tab === AdminTab.Orders) {
         if (debouncedSearchText) {
           setIsLoadingOrders(true);
+          // Busca global de texto (o filtro final por Lote e Local ocorre no componente OrdersTab)
           const results = await searchOrders(debouncedSearchText);
           setOrders(results);
           setHasMoreOrders(false);
           setIsLoadingOrders(false);
         } else {
-          // Quando não há busca, usamos a paginação por lote
           const currentLote = ordersLoteFilter === 'Todos' ? undefined : (ordersLoteFilter as number);
           await loadInitialOrdersPage(currentLote);
         }

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Order, ColorData } from '../../types';
 import { Button, Input, TextArea } from '../UI';
 import { generateOrderPDF } from '../../services/pdfService';
@@ -63,18 +63,40 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
     });
   }, []);
 
-  const filteredOrders = orders.filter(o => {
-    const matchesLocal = localFilter === 'Todos' || o.local === localFilter;
-    return matchesLocal;
-  });
+  // Lógica de filtragem corrigida: Lote -> Local -> Texto (Limitado a Líder, Setor e Cidade)
+  const filteredOrders = useMemo(() => {
+    const normalize = (str: string) => (str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    return orders.filter(o => {
+      // 1. Filtrar por LOTE ativo
+      const matchesLote = loteFilter === 'Todos' || (o.lote || 1) === loteFilter;
+      if (!matchesLote) return false;
+
+      // 2. Filtrar por LOCAL ativo
+      const matchesLocal = localFilter === 'Todos' || o.local === localFilter;
+      if (!matchesLocal) return false;
+
+      // 3. Aplicar FILTRO DE TEXTO sobre o resultado já filtrado (Apenas Líder, Setor e Cidade)
+      if (!searchText) return true;
+      
+      const term = normalize(searchText);
+      const searchableFields = [
+        o.nome,
+        o.setor,
+        formatSetor(o)
+      ].map(normalize);
+
+      return searchableFields.some(f => f.includes(term));
+    });
+  }, [orders, loteFilter, localFilter, searchText]);
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500 px-2 sm:px-0">
       <div className="flex flex-col gap-6">
         <div className="w-full">
           <Input 
-            label="Pesquisar Líder, Código ou Setor" 
-            placeholder="Ex: João Silva, PED-A1B2, Dourados..." 
+            label="Pesquisar Líder, Cidade ou Setor" 
+            placeholder="Ex: João Silva, SETOR A, Dourados..." 
             value={searchText} 
             onChange={e => setSearchText(e.target.value)}
             className="rounded-xl sm:rounded-2xl"
@@ -134,7 +156,7 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
               onToggle={() => setExpandedSector(expandedSector === order.docId ? null : order.docId)}
               onEdit={() => onEditOrder(order)}
               onPDF={() => generateOrderPDF(order)}
-              onDelete={() => setOrderToDelete(order)}
+              setOrderToDelete={setOrderToDelete}
               shirtCount={getShirtCount(order)}
               displaySetor={formatSetor(order)}
             />
@@ -159,10 +181,10 @@ const OrderListItem: React.FC<{
   onToggle: () => void,
   onEdit: () => void,
   onPDF: () => void,
-  onDelete: () => void,
+  setOrderToDelete: (order: Order | null) => void,
   shirtCount: number,
   displaySetor: string
-}> = ({ order, isExpanded, onToggle, onEdit, onPDF, onDelete, shirtCount, displaySetor }) => {
+}> = ({ order, isExpanded, onToggle, onEdit, onPDF, setOrderToDelete, shirtCount, displaySetor }) => {
   const [comentario, setComentario] = useState(order.comentario || '');
   const [isSavingComment, setIsSavingComment] = useState(false);
   const [showCommentEditor, setShowCommentEditor] = useState(false);
@@ -227,7 +249,6 @@ const OrderListItem: React.FC<{
       {isExpanded && (
         <div className="p-5 sm:p-8 bg-background border-t border-border-light animate-in slide-in-from-top-4 duration-500">
           <div className="space-y-6 sm:space-y-8">
-            {/* SEÇÃO DE COMENTÁRIO ADMINISTRATIVO REORGANIZADA */}
             {!showCommentEditor ? (
               <div className="flex justify-center sm:justify-start">
                 <button 
@@ -300,7 +321,7 @@ const OrderListItem: React.FC<{
               
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <button 
-                  onClick={(e) => { e.stopPropagation(); onDelete(); }} 
+                  onClick={(e) => { e.stopPropagation(); setOrderToDelete(order); }} 
                   className="flex items-center justify-center gap-2 px-2 sm:px-4 py-3 sm:py-4 rounded-xl sm:rounded-full bg-red-500/10 text-red-500 border border-red-500/20 text-[8px] sm:text-[10px] font-black uppercase hover:bg-red-500 hover:text-white transition-all w-full h-12 sm:h-14"
                 >
                   <i className="fas fa-trash-alt"></i>
