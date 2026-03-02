@@ -72,7 +72,7 @@ export const CurrencyInput: React.FC<{
       return;
     }
     
-    const options = { style: 'currency', currency: 'BRL' };
+    const options = { style: 'currency', currency: 'BRL' } as const;
     const formattedValue = (Number(rawValue) / 100).toLocaleString('pt-BR', options);
     onChange(formattedValue);
   };
