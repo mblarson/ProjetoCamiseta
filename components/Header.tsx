@@ -9,7 +9,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ isAdmin, onAdminClick, onLogout, isAtAdminPanel }) => (
-  <header className="fixed top-0 inset-x-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-700/80 py-1">
+  <header className="fixed top-0 inset-x-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-700/80" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 4px)', paddingBottom: '4px' }}>
     <div className="container mx-auto px-4 md:px-6 flex justify-between items-center">
       <div className="flex items-center gap-0">
         <div className="relative group">

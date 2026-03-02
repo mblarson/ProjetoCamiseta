@@ -6,19 +6,19 @@ export const HomeMenu: React.FC<{ onNavigate: (s: Section) => void, isOrdersOpen
   return (
     <div className="flex flex-col items-center justify-center min-h-[50vh] gap-8 md:gap-16 animate-in fade-in zoom-in-95 duration-1000 pt-8 md:pt-24 px-4">
       <div className="text-center space-y-6 md:space-y-8 w-full max-w-[1400px]">
-        <h1 className="text-3xl xs:text-4xl md:text-6xl lg:text-7xl 3xl:text-8xl font-black tracking-tighter leading-tight text-text-primary text-balance mx-auto">
+        <h1 className="text-3xl xs:text-4xl md:text-6xl lg:text-7xl 3xl:text-8xl font-bold tracking-tighter leading-tight text-text-primary text-balance mx-auto">
           Gestão de <span className="text-primary">Pedidos</span>
         </h1>
         
         <p className="text-xs xs:text-sm md:text-xl text-text-secondary font-bold max-w-3xl mx-auto leading-relaxed px-4">
-          Registre aqui os pedidos de camisetas para o Jubileu da Umademats 2026. <span className="text-primary font-black uppercase tracking-wider">AQUI JESUS REINA!</span>
+          Registre aqui os pedidos de camisetas para o Jubileu da Umademats 2026. <span className="text-primary font-bold uppercase tracking-wider">AQUI JESUS REINA!</span>
         </p>
         
         <div className="flex flex-col items-center gap-4">
           {!isOrdersOpen && (
             <div className="flex items-center gap-2 px-4 sm:px-5 py-2 rounded-full border border-red-200 bg-white text-red-500 shadow-sm animate-in fade-in slide-in-from-top-2 duration-700">
               <i className="fas fa-lock text-[9px] sm:text-[10px]"></i>
-              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em]">Prazo de novos pedidos encerrado</span>
+              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.15em] sm:tracking-[0.2em]">Prazo de novos pedidos encerrado</span>
             </div>
           )}
         </div>
@@ -68,7 +68,7 @@ const HomeCard: React.FC<{ icon: string, title: string, onClick: () => void }> =
       <i className={`fas ${icon}`}></i>
     </div>
     <div className="flex-1 overflow-hidden">
-      <h3 className="text-sm md:text-base lg:text-lg font-black tracking-tight text-text-primary uppercase leading-snug">
+      <h3 className="text-xs md:text-sm lg:text-base font-bold tracking-tight text-text-primary uppercase leading-snug">
         {title}
       </h3>
     </div>

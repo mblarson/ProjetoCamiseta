@@ -269,7 +269,7 @@ service cloud.firestore {
                         setEditingOrder(null);
                     }
                   }} 
-                  className="mb-8 group flex items-center gap-4 text-text-secondary hover:text-primary transition-all font-black text-[11px] uppercase tracking-[0.2em]"
+                  className="mb-8 group flex items-center gap-4 text-text-secondary hover:text-primary transition-all font-bold text-[11px] uppercase tracking-[0.2em]"
                 >
                   <div className="w-10 h-10 rounded-full border border-border-light flex items-center justify-center group-hover:border-primary/50 transition-colors">
                     <i className="fas fa-arrow-left"></i>

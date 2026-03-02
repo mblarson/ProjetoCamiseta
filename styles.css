@@ -13,19 +13,14 @@
 html {
   font-size: 16px;
   scroll-behavior: smooth;
-  /* Prevenção total de overflow lateral em nível de raiz */
   overflow-x: hidden;
   width: 100vw;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
-/* 
-   AJUSTES EXCLUSIVOS MOBILE (iPhone 13-17 / Xiaomi X5 Pro) 
-   --------------------------------------------------------
-*/
 @media (max-width: 639px) {
   html { 
-    font-size: 16px; /* Base sólida para legibilidade e prevenção de zoom no iOS */
+    font-size: 16px;
   } 
   
   body {
@@ -35,12 +30,10 @@ html {
     width: 100%;
   }
 
-  /* Escala Tipográfica Mobile Reajustada */
   h1 { font-size: 2rem !important; line-height: 1.1 !important; }
   h2 { font-size: 1.6rem !important; line-height: 1.2 !important; }
   h3 { font-size: 1.3rem !important; line-height: 1.2 !important; }
   
-  /* Garantia de campos sem zoom automático */
   input, select, textarea {
     font-size: 16px !important; 
   }
@@ -53,22 +46,9 @@ html {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   }
 
-  /* Prevenção de overflow em tabelas mobile */
   .overflow-x-auto {
     -webkit-overflow-scrolling: touch;
   }
-}
-
-/* 
-   TABLET / DESKTOP (100% PRESERVADOS) 
-   -----------------------------------
-*/
-@media (min-width: 1200px) {
-  html { font-size: 18px; }
-}
-
-@media (min-width: 1920px) {
-  html { font-size: 20px; }
 }
 
 body {
@@ -83,64 +63,9 @@ body {
   width: 100%;
 }
 
-/* Utilitários de Safe Area */
-.pt-safe { padding-top: max(1rem, env(safe-area-inset-top)); }
-.pb-safe { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
-.px-safe { 
-  padding-left: max(1rem, env(safe-area-inset-left)); 
-  padding-right: max(1rem, env(safe-area-inset-right)); 
-}
-
 .card {
   background: #ffffff;
   border-radius: 1.5rem;
   border: 1px solid var(--border-light);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
-}
-
-::selection {
-  background-color: var(--primary);
-  color: #ffffff;
-}
-
-input[type=number]::-webkit-inner-spin-button, 
-input[type=number]::-webkit-outer-spin-button { 
-  -webkit-appearance: none !important; 
-  margin: 0 !important; 
-}
-
-input[type=number] {
-  -moz-appearance: textfield !important;
-  appearance: none !important;
-}
-
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 10px;
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.animate-shake {
-  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-}
-
-@keyframes shake {
-  10%, 90% { transform: translate3d(-1px, 0, 0); }
-  20%, 80% { transform: translate3d(2px, 0, 0); }
-  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-  40%, 60% { transform: translate3d(4px, 0, 0); }
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
 }
