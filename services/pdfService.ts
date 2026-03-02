@@ -284,17 +284,17 @@ export const generateSummaryBatchPDF = async (orders: Order[], batchNumber: numb
   }
 };
 
+const formatSetor = (order: Order) => {
+  if (order.setor === 'UMADEMATS') return 'UMADEMATS';
+  return order.local === 'Capital' && !order.setor.startsWith('SETOR') 
+    ? `SETOR ${order.setor}` 
+    : order.setor;
+};
+
 export const generateOrderPDF = async (order: Order) => {
   try {
     const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF();
-
-    const formatSetor = (order: Order) => {
-      if (order.setor === 'UMADEMATS') return 'UMADEMATS';
-      return order.local === 'Capital' && !order.setor.startsWith('SETOR') 
-        ? `SETOR ${order.setor}` 
-        : order.setor;
-    };
 
     let totalCamisetas = 0;
     const countOrderShirts = (data?: ColorData) => {
@@ -469,4 +469,251 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
   } catch (error) {
     console.error("Erro Matriz:", error);
   }
+};
+
+/**
+ * Gera o PDF de Separação de Pedidos (Exclusivo para o Dashboard)
+ */
+export const generateOrderSeparationPDF = async (orders: Order[], batchNumber: number) => {
+  try {
+    const { jsPDF } = (window as any).jspdf;
+    const doc = new jsPDF();
+    
+    const batchOrders = orders.filter(o => (o.lote || 1) === batchNumber);
+    if (batchOrders.length === 0) {
+      alert("Nenhum pedido encontrado para este lote.");
+      return;
+    }
+
+    // Ordenação: Capital -> Interior, depois Setor/Cidade alfabético, depois número do pedido
+    const sortedOrders = [...batchOrders].sort((a, b) => {
+      if (a.local !== b.local) return a.local === 'Capital' ? -1 : 1;
+      if (a.setor !== b.setor) return a.setor.localeCompare(b.setor);
+      return Number(a.numPedido) - Number(b.numPedido);
+    });
+
+    let currentSetor = "";
+    let isFirstPage = true;
+
+    for (const order of sortedOrders) {
+      const orderSetor = order.setor;
+      
+      // Página Separadora por Setor/Cidade
+      if (orderSetor !== currentSetor) {
+        if (!isFirstPage) doc.addPage();
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(30);
+        doc.setTextColor(30, 41, 59);
+        const setorTitle = order.local === 'Capital' ? (orderSetor === 'UMADEMATS' ? orderSetor : `SETOR ${orderSetor}`) : orderSetor.toUpperCase();
+        
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        doc.text(setorTitle, pageWidth / 2, pageHeight / 2, { align: "center" });
+        
+        currentSetor = orderSetor;
+        doc.addPage();
+      } else {
+        doc.addPage();
+      }
+
+      // Renderização do Pedido (Adaptado de generateOrderPDF)
+      renderSingleOrderForSeparation(doc, order);
+      isFirstPage = false;
+    }
+
+    // Página Separadora Final "TOTAL GERAL"
+    doc.addPage();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(30);
+    doc.setTextColor(30, 41, 59);
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    doc.text("TOTAL GERAL", pageWidth / 2, pageHeight / 2, { align: "center" });
+
+    // Resumo Geral do Lote (Estilo Matriz de Produção)
+    doc.addPage();
+    renderBatchSummaryForSeparation(doc, batchOrders, batchNumber);
+
+    triggerPdfActionModal(doc, `Separacao_Pedidos_Lote_${batchNumber}.pdf`);
+  } catch (error) {
+    console.error("Erro Separação PDF:", error);
+    alert("Falha ao gerar o PDF de separação.");
+  }
+};
+
+/**
+ * Helper para renderizar um pedido individual dentro do PDF de separação
+ */
+const renderSingleOrderForSeparation = (doc: any, order: Order) => {
+  let totalCamisetas = 0;
+  const countOrderShirts = (data?: ColorData) => {
+    if (!data) return;
+    Object.values(data).forEach(catData => {
+      Object.values(catData).forEach(qty => {
+        totalCamisetas += (qty as number || 0);
+      });
+    });
+  };
+  countOrderShirts(order.verdeOliva);
+  countOrderShirts(order.terracota);
+
+  doc.setFontSize(20);
+  doc.setTextColor('#1e293b');
+  doc.setFont("helvetica", "bold");
+  doc.text("UMADEMATS - JUBILEU DE OURO", 105, 20, { align: "center" });
+  
+  doc.setFontSize(14);
+  doc.text(`PEDIDO #${order.numPedido}`, 105, 28, { align: "center" });
+
+  doc.setFontSize(10);
+  doc.setTextColor(0, 0, 0);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Líder: ${order.nome}`, 14, 40);
+  
+  // AJUSTE SOLICITADO: Fonte +2 e Negrito para Setor/Cidade
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.text(`Local: ${order.local} - ${formatSetor(order)}`, 14, 47);
+  
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Data: ${new Date(order.data).toLocaleDateString('pt-BR')}`, 14, 54);
+
+  let currentY = 65;
+
+  const renderGrid = (colorName: string, category: typeof CATEGORIES[number], colorKey: 'verdeOliva' | 'terracota', headerColor: string) => {
+    const colorData = order[colorKey];
+    if (!colorData) return false;
+    const catData = colorData[category];
+    if (!catData) return false;
+
+    let sizes: string[] = [];
+    let catLabel = "";
+    if (category === 'infantil') { sizes = INFANTIL_SIZES; catLabel = "INFANTIL"; }
+    else if (category === 'babylook') { sizes = BABYLOOK_SIZES; catLabel = "BABY LOOK"; }
+    else { sizes = UNISSEX_SIZES; catLabel = "ADULTO"; }
+
+    const rows: any[] = [];
+    sizes.forEach(sz => {
+      const qty = catData[sz];
+      if (typeof qty === 'number' && qty > 0) {
+        rows.push([sz, qty]);
+      }
+    });
+
+    if (rows.length === 0) return false;
+
+    if (currentY > 240) { doc.addPage(); currentY = 20; }
+
+    doc.setFontSize(11);
+    doc.setTextColor(headerColor);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${colorName.toUpperCase()} - ${catLabel}`, 14, currentY);
+    currentY += 4;
+
+    (doc as any).autoTable({
+      startY: currentY,
+      head: [['Tamanho', 'Quantidade']],
+      body: rows,
+      theme: 'striped',
+      headStyles: { fillColor: headerColor, textColor: '#FFFFFF' },
+      styles: { fontSize: 9, halign: 'center' },
+      columnStyles: { 0: { halign: 'left' }, 1: { halign: 'right' } }
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 10;
+    return true;
+  };
+
+  const verde = "#556B2F";
+  const terra = "#a35e47";
+  
+  renderGrid("Verde Oliva", "infantil", "verdeOliva", verde);
+  renderGrid("Verde Oliva", "babylook", "verdeOliva", verde);
+  renderGrid("Verde Oliva", "unissex", "verdeOliva", verde);
+  
+  renderGrid("Terracota", "infantil", "terracota", terra);
+  renderGrid("Terracota", "babylook", "terracota", terra);
+  renderGrid("Terracota", "unissex", "terracota", terra);
+
+  if (currentY > 250) { doc.addPage(); currentY = 20; }
+
+  doc.setFontSize(12);
+  doc.setTextColor('#1e293b');
+  doc.setFont("helvetica", "bold");
+  doc.text(`TOTAL: ${order.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (${totalCamisetas} Camisetas)`, 14, currentY + 5);
+  
+  if (order.comentario) {
+    currentY += 15;
+    if (currentY > 260) { doc.addPage(); currentY = 20; }
+    doc.setFontSize(10);
+    doc.setTextColor('#64748b');
+    doc.setFont("helvetica", "bold");
+    doc.text("ANOTAÇÕES ADMINISTRATIVAS:", 14, currentY);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(9);
+    const splitComment = doc.splitTextToSize(order.comentario, 180);
+    doc.text(splitComment, 14, currentY + 6);
+  }
+};
+
+/**
+ * Helper para renderizar o resumo do lote (estilo Matriz) no final do PDF de separação
+ */
+const renderBatchSummaryForSeparation = (doc: any, orders: Order[], batchNumber: number) => {
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(30, 41, 59);
+  doc.text("RESUMO GERAL DO LOTE", 105, 22, { align: "center" });
+  
+  doc.setFontSize(12);
+  doc.text(`LOTE ${batchNumber}`, 105, 30, { align: "center" });
+
+  let grandTotal = 0;
+  let currentY = 40;
+
+  CATEGORIES.forEach(cat => {
+    let sizes = cat === 'infantil' ? INFANTIL_SIZES : (cat === 'babylook' ? BABYLOOK_SIZES : UNISSEX_SIZES);
+    let catLabel = cat === 'infantil' ? "INFANTIL" : (cat === 'babylook' ? "BABY LOOK" : "ADULTO");
+
+    const verdeRow: any[] = ["Verde Oliva"];
+    const terraRow: any[] = ["Terracota"];
+    const footerRow: any[] = ["Total"];
+
+    let catTotal = 0;
+    sizes.forEach(sz => {
+      let vQty = 0;
+      let tQty = 0;
+      orders.forEach(o => {
+        vQty += (o.verdeOliva?.[cat]?.[sz] || 0);
+        tQty += (o.terracota?.[cat]?.[sz] || 0);
+      });
+      verdeRow.push(vQty || '-');
+      terraRow.push(tQty || '-');
+      footerRow.push(vQty + tQty || '-');
+      catTotal += (vQty + tQty);
+    });
+
+    verdeRow.push(verdeRow.slice(1).reduce((a:any, b:any) => a + (Number(b) || 0), 0));
+    terraRow.push(terraRow.slice(1).reduce((a:any, b:any) => a + (Number(b) || 0), 0));
+    footerRow.push(catTotal);
+    grandTotal += catTotal;
+
+    (doc as any).autoTable({
+      startY: currentY,
+      head: [[catLabel, ...sizes, 'Total']],
+      body: [verdeRow, terraRow],
+      foot: [footerRow],
+      theme: 'grid',
+      headStyles: { fillColor: '#0ea5e9' },
+      styles: { halign: 'center', fontSize: 8 },
+      columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } }
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 10;
+  });
+
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text(`TOTAL GERAL DO LOTE: ${grandTotal} Camisetas`, 14, currentY + 5);
 };

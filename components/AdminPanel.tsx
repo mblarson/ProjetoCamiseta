@@ -21,6 +21,7 @@ interface AdminPanelProps {
   stats: Stats | null;
   onEditOrder: (order: Order) => void;
   onShowSizeMatrix: () => void;
+  onShowOrderSeparation: () => void;
 }
 
 const getTabDescription = (tab: AdminTab) => {
@@ -44,7 +45,7 @@ const formatNumberToCurrency = (value: number): string => {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onEditOrder, onShowSizeMatrix }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onEditOrder, onShowSizeMatrix, onShowOrderSeparation }) => {
   const [tab, setTab] = useState<AdminTab>(AdminTab.Dashboard);
   const [aiAnalysis, setAiAnalysis] = useState('');
   const [isAnalysing, setIsAnalysing] = useState(false);
@@ -354,6 +355,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ stats: initialStats, onE
             handleAiAction={handleAiAction}
             isAnalysing={isAnalysing}
             onShowSizeMatrix={onShowSizeMatrix}
+            onShowOrderSeparation={onShowOrderSeparation}
             aiAnalysis={aiAnalysis}
             currentStats={currentStats}
           />

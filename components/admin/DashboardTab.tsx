@@ -6,6 +6,7 @@ interface DashboardTabProps {
   handleAiAction: () => void;
   isAnalysing: boolean;
   onShowSizeMatrix: () => void;
+  onShowOrderSeparation: () => void;
   aiAnalysis: string;
   currentStats: Stats | null;
 }
@@ -14,6 +15,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   handleAiAction,
   isAnalysing,
   onShowSizeMatrix,
+  onShowOrderSeparation,
   aiAnalysis,
   currentStats,
 }) => {
@@ -132,13 +134,21 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         })}
       </div>
 
-      <div className="pt-4 sm:pt-6 px-2 sm:px-0 pb-10">
+      <div className="pt-4 sm:pt-6 px-2 sm:px-0 pb-10 space-y-4">
         <Button 
           onClick={onShowSizeMatrix} 
           variant="outline"
           className="w-full h-16 sm:h-20 text-sm sm:text-base rounded-2xl sm:rounded-3xl"
         >
             <i className="fas fa-file-alt text-lg sm:text-xl"></i> Matriz de Produção
+        </Button>
+
+        <Button 
+          onClick={(onShowOrderSeparation as any)} 
+          variant="outline"
+          className="w-full h-16 sm:h-20 text-sm sm:text-base rounded-2xl sm:rounded-3xl"
+        >
+            <i className="fas fa-layer-group text-lg sm:text-xl"></i> Separação de Pedidos
         </Button>
       </div>
     </div>

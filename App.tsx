@@ -12,6 +12,7 @@ import { ConsultSection } from './components/ConsultSection';
 import { AdminPanel } from './components/AdminPanel';
 import { LoginModal } from './components/LoginModal';
 import { SizeMatrix } from './components/SizeMatrix';
+import { OrderSeparation } from './components/OrderSeparation';
 import { SplashScreen } from './components/SplashScreen';
 import { PdfActionModal } from './components/PdfActionModal';
 
@@ -27,6 +28,7 @@ const App: React.FC = () => {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [showSizeMatrix, setShowSizeMatrix] = useState(false);
+  const [showOrderSeparation, setShowOrderSeparation] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(true);
   const [pdfToAction, setPdfToAction] = useState<{ doc: any, filename: string } | null>(null);
 
@@ -255,6 +257,10 @@ service cloud.firestore {
         <main className="container mx-auto px-4 sm:px-6 pt-28 animate-in fade-in duration-700">
           <SizeMatrix onClose={() => setShowSizeMatrix(false)} />
         </main>
+      ) : showOrderSeparation ? (
+        <main className="container mx-auto px-4 sm:px-6 pt-28 animate-in fade-in duration-700">
+          <OrderSeparation onClose={() => setShowOrderSeparation(false)} />
+        </main>
       ) : (
         <main className="container mx-auto px-4 sm:px-6 pt-28 animate-in fade-in duration-700">
           {connection !== 'connected' && connection !== 'connecting' ? renderErrorState() : (
@@ -282,7 +288,7 @@ service cloud.firestore {
                 {activeSection === Section.Home && <HomeMenu onNavigate={handleNavigation} isOrdersOpen={isOrdersOpen} />}
                 {activeSection === Section.Consult && <ConsultSection onEdit={handleEdit} isOrdersOpen={isOrdersOpen} />}
                 {activeSection === Section.Order && <OrderSection initialOrder={editingOrder} onBackToHome={() => setActiveSection(Section.Home)} />}
-                {activeSection === Section.Admin && <AdminPanel stats={stats} onEditOrder={handleEdit} onShowSizeMatrix={() => setShowSizeMatrix(true)} />}
+                {activeSection === Section.Admin && <AdminPanel stats={stats} onEditOrder={handleEdit} onShowSizeMatrix={() => setShowSizeMatrix(true)} onShowOrderSeparation={() => setShowOrderSeparation(true)} />}
               </div>
             </div>
           )}
