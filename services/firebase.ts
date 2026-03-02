@@ -151,11 +151,23 @@ export const syncAllStats = async () => {
     let pagos = 0;
     let parciais = 0;
     let pendentes = 0;
+    let totalInfantil = 0;
+    let totalBabylook = 0;
+    let totalUnissex = 0;
 
     const batches: Record<number, { qtd_pedidos: number, qtd_camisetas: number, valor_total: number }> = {};
 
+    const countCategory = (catData?: Record<string, number>) => {
+      if (!catData) return 0;
+      return Object.values(catData).reduce((a, b) => a + (b || 0), 0);
+    };
+
     ordersSnap.forEach(doc => {
       const data = doc.data() as Order;
+      
+      // Regra: Ignorar pedidos marcados como excluídos (soft delete)
+      if ((data as any).deleted === true || (data as any).excluido === true) return;
+
       const lote = data.lote || 1; // Fallback LOTE 1
 
       if (!batches[lote]) {
@@ -174,12 +186,26 @@ export const syncAllStats = async () => {
       totalPrevisto += valTotal;
       totalRecebido += (data.valorPago || 0);
 
+      // Calcular contagens globais por categoria
+      if (data.verdeOliva) {
+        totalInfantil += countCategory(data.verdeOliva.infantil);
+        totalBabylook += countCategory(data.verdeOliva.babylook);
+        totalUnissex += countCategory(data.verdeOliva.unissex);
+      }
+      if (data.terracota) {
+        totalInfantil += countCategory(data.terracota.infantil);
+        totalBabylook += countCategory(data.terracota.babylook);
+        totalUnissex += countCategory(data.terracota.unissex);
+      }
+
       if (data.statusPagamento === 'Pago') pagos++;
       else if (data.statusPagamento === 'Parcial') parciais++;
       else pendentes++;
     });
 
     const statsRef = doc(db, "configuracoes", "estatisticas");
+    // Usamos setDoc SEM merge: true para garantir que o campo 'batches' seja substituído inteiramente,
+    // removendo lotes que não possuem mais pedidos (como o Lote 4 revertido).
     await setDoc(statsRef, {
       qtd_pedidos: totalPedidos,
       qtd_camisetas: totalCamisetas,
@@ -189,10 +215,10 @@ export const syncAllStats = async () => {
       pedidos_parciais: parciais,
       pedidos_pendentes: pendentes,
       batches: batches,
-      qtd_infantil: 0,
-      qtd_babylook: 0,
-      qtd_unissex: 0
-    }, { merge: true });
+      qtd_infantil: totalInfantil,
+      qtd_babylook: totalBabylook,
+      qtd_unissex: totalUnissex
+    });
 
     return true;
   } catch (e: any) {
@@ -567,7 +593,7 @@ export const getAllOrders = async (): Promise<Order[]> => {
     return snap.docs.map(d => {
         const data = d.data();
         return { docId: d.id, ...data, lote: data.lote || 1 } as Order; // Fallback LOTE 1
-    });
+    }).filter(o => !(o as any).deleted && !(o as any).excluido);
   } catch (e: any) { service.handleFirebaseError(e, "Get All Orders"); return []; }
 };
 
@@ -586,11 +612,11 @@ export const getPaginatedOrders = async (lastVisible?: DocumentSnapshot, loteFil
     if (loteFilter && loteFilter !== 999) {
       const snap = await getDocs(collection(db, "pedidos"));
       
-      // Mapeia e aplica fallback de LOTE 1
+      // Mapeia e aplica fallback de LOTE 1 e filtro de exclusão
       let filteredOrders = snap.docs.map(d => {
         const data = d.data();
         return { docId: d.id, ...data, lote: data.lote || 1 } as Order;
-      }).filter(o => o.lote === loteFilter);
+      }).filter(o => o.lote === loteFilter && !(o as any).deleted && !(o as any).excluido);
 
       // Ordenação por data (desc) em memória
       filteredOrders.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
@@ -628,8 +654,8 @@ export const getPaginatedOrders = async (lastVisible?: DocumentSnapshot, loteFil
     const orders = snap.docs.map(d => {
         const data = d.data();
         return { docId: d.id, ...data, lote: data.lote || 1 } as Order; // Fallback LOTE 1
-    });
-    const lastVisibleDoc = snap.docs.length === ORDERS_PAGE_SIZE ? snap.docs[snap.docs.length - 1] : null;
+    }).filter(o => !(o as any).deleted && !(o as any).excluido);
+    const lastVisibleDoc = orders.length > 0 && snap.docs.length === ORDERS_PAGE_SIZE ? snap.docs[snap.docs.length - 1] : null;
 
     return { orders, lastVisible: lastVisibleDoc };
   } catch (e: any) {
@@ -656,6 +682,9 @@ export const searchOrders = async (searchTerm: string): Promise<Order[]> => {
     snap.forEach(d => {
       const data = d.data();
       const order = { docId: d.id, ...data, lote: data.lote || 1 } as Order;
+      
+      // Regra: Ignorar pedidos marcados como excluídos (soft delete)
+      if ((order as any).deleted === true || (order as any).excluido === true) return;
       
       const displaySetor = (order.setor === 'UMADEMATS') 
         ? 'UMADEMATS' 
