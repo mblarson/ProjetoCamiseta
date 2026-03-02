@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { GoogleGenAI } from "@google/genai";
 import { Stats } from '../types';
 
