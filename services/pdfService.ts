@@ -598,7 +598,7 @@ const renderSingleOrderForSeparation = (doc: any, order: Order) => {
     sizes.forEach(sz => {
       const qty = catData[sz];
       if (typeof qty === 'number' && qty > 0) {
-        rows.push([sz, qty]);
+        rows.push([sz, qty, '[    ]']);
       }
     });
 
@@ -614,12 +614,24 @@ const renderSingleOrderForSeparation = (doc: any, order: Order) => {
 
     (doc as any).autoTable({
       startY: currentY,
-      head: [['Tamanho', 'Quantidade']],
+      head: [['Tamanho', 'Quantidade', 'Check']],
       body: rows,
-      theme: 'striped',
-      headStyles: { fillColor: headerColor, textColor: '#FFFFFF' },
-      styles: { fontSize: 9, halign: 'center' },
-      columnStyles: { 0: { halign: 'left' }, 1: { halign: 'right' } }
+      theme: 'plain',
+      headStyles: { fillColor: headerColor, textColor: '#FFFFFF', fontSize: 11, halign: 'center' },
+      styles: { fontSize: 11, halign: 'center' },
+      columnStyles: { 
+        0: { halign: 'center', fontStyle: 'bold', cellWidth: 60 }, 
+        1: { halign: 'center', fontStyle: 'bold', cellWidth: 30 },
+        2: { halign: 'center', fontStyle: 'normal' }
+      },
+      didDrawCell: (data: any) => {
+        if (data.section === 'body') {
+          const { doc, cell } = data;
+          doc.setDrawColor(200, 200, 200);
+          doc.setLineWidth(0.1);
+          doc.line(cell.x, cell.y + cell.height, cell.x + cell.width, cell.y + cell.height);
+        }
+      }
     });
 
     currentY = (doc as any).lastAutoTable.finalY + 10;
