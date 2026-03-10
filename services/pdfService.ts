@@ -469,6 +469,19 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
     doc.setFontSize(14);
     doc.text(`TOTAL GERAL: ${grandTotal} Camisetas`, 14, currentY + 5);
 
+    if (comment) {
+      currentY += 15;
+      if (currentY > 180) { doc.addPage(); currentY = 20; }
+      doc.setFontSize(10);
+      doc.setTextColor('#64748b');
+      doc.setFont("helvetica", "bold");
+      doc.text("OBSERVAÇÕES:", 14, currentY);
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(9);
+      const splitComment = doc.splitTextToSize(comment, 260);
+      doc.text(splitComment, 14, currentY + 6);
+    }
+
     triggerPdfActionModal(doc, `Matriz_Lote_${batchNumber}.pdf`);
   } catch (error) {
     console.error("Erro Matriz:", error);
