@@ -407,7 +407,7 @@ export const generateOrderPDF = async (order: Order) => {
   }
 };
 
-export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, stats: Stats | null, batchNumber: number | 'Geral' = 1, comment?: string) => {
+export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, stats: Stats | null, batchNumber: number | 'Geral' = 1, comment?: string, locationFilter: 'Capital' | 'Interior' | 'Ambos' = 'Ambos') => {
   try {
     const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF({ orientation: 'landscape' });
@@ -416,10 +416,14 @@ export const generateSizeMatrixPDF = async (orders: Order[], unitPrice: number, 
     doc.text("Relatório de Produção - Matriz de Tamanhos - UMADEMATS", 148.5, 22, { align: "center" });
     
     doc.setFontSize(12);
-    doc.text(batchNumber === 'Geral' ? "CONSOLIDADO GERAL" : `LOTE ${batchNumber}`, 148.5, 30, { align: "center" });
+    const filterText = locationFilter !== 'Ambos' ? ` (${locationFilter})` : '';
+    doc.text((batchNumber === 'Geral' ? "CONSOLIDADO GERAL" : `LOTE ${batchNumber}`) + filterText, 148.5, 30, { align: "center" });
 
     let grandTotal = 0;
     let currentY = 40;
+
+    // The orders passed here are already filtered by location in SizeMatrix.tsx
+    // but we'll keep the logic consistent.
 
     CATEGORIES.forEach(cat => {
       let sizes = cat === 'infantil' ? INFANTIL_SIZES : (cat === 'babylook' ? BABYLOOK_SIZES : UNISSEX_SIZES);
@@ -622,7 +626,7 @@ const renderSingleOrderForSeparation = (doc: any, order: Order) => {
       columnStyles: { 
         0: { halign: 'center', fontStyle: 'bold', cellWidth: 60 }, 
         1: { halign: 'center', fontStyle: 'bold', cellWidth: 30 },
-        2: { halign: 'center', fontStyle: 'normal' }
+        2: { halign: 'right', fontStyle: 'normal' }
       },
       didDrawCell: (data: any) => {
         if (data.section === 'body') {

@@ -89,3 +89,14 @@ export enum AdminTab {
   Statistics = 'estatisticas',
   Event = 'evento'
 }
+
+export interface UnifiedCity {
+  id?: string;
+  name: string;
+  prefix: string;
+  cities: string[];
+  batchTotals: Record<number, number>;
+  grandTotal: number;
+  totalValue: number;
+  createdAt: string;
+}

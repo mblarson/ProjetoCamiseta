@@ -5,8 +5,9 @@ import {
   doc, getDoc, setDoc, runTransaction, increment, limit, Firestore, updateDoc, orderBy, deleteDoc, writeBatch,
   DocumentSnapshot, startAfter, documentId
 } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
-import { getAuth, signInAnonymously, Auth, User, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
-import { Order, Stats, PaymentHistory, ColorData } from '../types';
+// @ts-ignore
+import { getAuth, signInAnonymously, Auth, User, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
+import { Order, Stats, PaymentHistory, ColorData, UnifiedCity } from '../types';
 
 const firebaseConfig = {
   apiKey: "AIzaSyA1I6zqowDo3k8eG1A1c-1hnGBofNX6PoA",
@@ -28,14 +29,37 @@ class FirebaseService {
   private constructor() {
     try {
       const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+      
+      // Use long polling to avoid WebSocket issues in restricted environments (like iframes)
       this.db = initializeFirestore(app, {
         experimentalForceLongPolling: true,
         useFetchStreams: false
       });
+      
+      // Add global listener for IndexedDB errors which can happen in restricted environments
+      window.addEventListener('unhandledrejection', (event) => {
+        if (event.reason && event.reason.message && event.reason.message.includes('IndexedDB')) {
+          console.warn('⚠️ IndexedDB error detected, likely due to browser restrictions:', event.reason.message);
+          // Prevent the error from crashing the app if possible
+          event.preventDefault();
+        }
+      });
+      
       this.auth = getAuth(app);
+      
+      // Try local persistence, fallback to session if it fails (common in restricted iframes/IndexedDB issues)
+      setPersistence(this.auth, browserLocalPersistence)
+        .catch(() => {
+          console.warn("⚠️ Local persistence failed, falling back to session persistence.");
+          return setPersistence(this.auth, browserSessionPersistence);
+        })
+        .catch(err => {
+          console.error("❌ Auth Persistence Error:", err.message);
+        });
+
     } catch (e) {
       console.error("🔥 Firebase Init Error:", e);
-      throw e;
+      // Don't rethrow here to allow the app to at least render UI
     }
   }
 
@@ -65,26 +89,41 @@ class FirebaseService {
       throw new Error("AUTH_DISABLED");
     }
 
+    if (code === "auth/network-request-failed" || msg.includes("network-request-failed")) {
+      alert("⚠️ Erro de conexão com o servidor. Verifique sua internet ou se o navegador está bloqueando o acesso ao Firebase.");
+    }
+
     throw e;
   }
 
-  public async connect(): Promise<User> {
+  public async connect(retries = 3): Promise<User> {
     if (this.auth.currentUser) {
       this.isReady = true;
       return this.auth.currentUser;
     }
     if (this.authPromise) return this.authPromise;
     
-    this.authPromise = signInAnonymously(this.auth)
-      .then(cred => {
+    const attemptSignIn = async (attempt: number): Promise<User> => {
+      try {
+        const cred = await signInAnonymously(this.auth);
         this.isReady = true;
         return cred.user;
-      })
-      .catch(err => {
+      } catch (err: any) {
+        console.error(`❌ Conexão anônima falhou (Tentativa ${attempt}/${retries}):`, err.message);
+        
+        if (attempt < retries && (err.code === 'auth/network-request-failed' || err.message.includes('network'))) {
+          const delay = Math.pow(2, attempt) * 1000;
+          console.log(`🔄 Retentando em ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return attemptSignIn(attempt + 1);
+        }
+        
         this.authPromise = null;
-        console.warn("Conexão anônima falhou...");
         throw err;
-      });
+      }
+    };
+
+    this.authPromise = attemptSignIn(1);
     return this.authPromise;
   }
 }
@@ -595,6 +634,46 @@ export const getAllOrders = async (): Promise<Order[]> => {
         return { docId: d.id, ...data, lote: data.lote || 1 } as Order; // Fallback LOTE 1
     }).filter(o => !(o as any).deleted && !(o as any).excluido);
   } catch (e: any) { service.handleFirebaseError(e, "Get All Orders"); return []; }
+};
+
+export const saveUnifiedCity = async (unifiedCity: UnifiedCity) => {
+  try {
+    await service.connect();
+    const ref = unifiedCity.id 
+      ? doc(db, "cidades_unificadas", unifiedCity.id)
+      : doc(collection(db, "cidades_unificadas"));
+    
+    const data = { ...unifiedCity, createdAt: unifiedCity.createdAt || new Date().toISOString() };
+    if (!unifiedCity.id) delete (data as any).id;
+    
+    await setDoc(ref, data);
+    return true;
+  } catch (e: any) {
+    service.handleFirebaseError(e, "Save Unified City");
+    return false;
+  }
+};
+
+export const getUnifiedCities = async (): Promise<UnifiedCity[]> => {
+  try {
+    await service.connect();
+    const snap = await getDocs(collection(db, "cidades_unificadas"));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as UnifiedCity));
+  } catch (e: any) {
+    service.handleFirebaseError(e, "Get Unified Cities");
+    return [];
+  }
+};
+
+export const deleteUnifiedCity = async (id: string) => {
+  try {
+    await service.connect();
+    await deleteDoc(doc(db, "cidades_unificadas", id));
+    return true;
+  } catch (e: any) {
+    service.handleFirebaseError(e, "Delete Unified City");
+    return false;
+  }
 };
 
 const ORDERS_PAGE_SIZE = 100;

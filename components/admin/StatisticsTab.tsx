@@ -3,6 +3,7 @@ import { Card, Button, Modal } from '../UI';
 import React, { useMemo, useState, useEffect } from 'react';
 import { getGlobalConfig } from '../../services/firebase';
 import { generateSummaryBatchPDF } from '../../services/pdfService';
+import { UnifyCities } from './UnifyCities';
 
 const getShirtCount = (order: Order) => {
     const calculate = (data?: ColorData) => {
@@ -79,6 +80,7 @@ const StatHighlightCard: React.FC<StatHighlightCardProps> = ({ title, value, sub
 export const StatisticsTab: React.FC<{ orders: Order[], isLoading: boolean }> = ({ orders, isLoading }) => {
     const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
     const [availableBatches, setAvailableBatches] = useState<number[]>([]);
+    const [showUnifyView, setShowUnifyView] = useState(false);
 
     useEffect(() => {
         getGlobalConfig().then(config => {
@@ -184,10 +186,14 @@ export const StatisticsTab: React.FC<{ orders: Order[], isLoading: boolean }> = 
         );
     }
 
+    if (showUnifyView) {
+        return <UnifyCities orders={orders} onBack={() => setShowUnifyView(false)} />;
+    }
+
     return (
         <div className="space-y-10 animate-in fade-in duration-500">
-            {/* BOTÃO DO NOVO RELATÓRIO */}
-            <div className="flex justify-start">
+            {/* BOTÕES DE AÇÃO */}
+            <div className="flex flex-wrap gap-4">
                 <Button 
                     variant="outline" 
                     className="h-14 px-8 border-primary/30 hover:bg-primary-light"
@@ -195,6 +201,15 @@ export const StatisticsTab: React.FC<{ orders: Order[], isLoading: boolean }> = 
                 >
                     <i className="fas fa-file-pdf text-lg"></i>
                     RELATÓRIO GERAL DE PEDIDOS
+                </Button>
+
+                <Button 
+                    variant="outline" 
+                    className="h-14 px-8 border-primary/30 hover:bg-primary-light text-primary"
+                    onClick={() => setShowUnifyView(true)}
+                >
+                    <i className="fas fa-link text-lg"></i>
+                    UNIFICAR (INTERIOR)
                 </Button>
             </div>
 
